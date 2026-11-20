@@ -6,13 +6,62 @@ Where the spec was silent: [`docs/rules-interpretations.md`](docs/rules-interpre
 
 ## Status
 
-**M0 (pure rules engine) is complete and accepted** (see `docs/m0-hardening.md`). A deterministic,
+**M0 (pure rules engine) is complete and accepted** (see `docs/m0-hardening.md`): a deterministic,
 headless C++20 rules library, a transport-agnostic `GameServer`, a stdio JSON host and a POSIX
-reference simulator complete full 2-4 player matches with no clients connected. 149 test cases cover
-all 14 acceptance categories of the spec (clean under ASan/UBSan; identical results in Debug and
-Release). **Not built yet (M1):** the networked playable MVP: a NIO transport adapter, an
-interactive ASCII client, unattended planning timers, host-level recovery and the binary wire
-protocol for retro clients (`docs/binary-protocol-requirements.md`).
+reference simulator, covered by tests for all 14 acceptance categories of the spec (clean under
+ASan/UBSan; identical results in Debug and Release).
+
+**M1-A (minimal playable POSIX multiplayer) is built:** a TCP server and an interactive terminal
+client play a complete 2-4 player match (see "Play a match" below). **Not built yet:** the NIO
+transport, retro clients and the binary wire protocol (`docs/binary-protocol-requirements.md`),
+reconnection, authentication beyond per-seat session tokens, and host persistence.
+
+## Play a match (2-4 players, separate terminals)
+
+Build once (`cmake -S . -B build && cmake --build build -j`), then:
+
+```sh
+# Terminal 1: the server (127.0.0.1:7878, 60 s planning per round)
+./build/botched-tcp-server
+#   --port N  --planning-seconds N  --bind 0.0.0.0   (LAN play: see the warning below)
+
+# Terminal 2: create a match for 3 players and join it as P1
+./build/botched-client --create --players 3
+#   prints:  Match m1 created ...   Others join with:  botched-client --join m1 ...
+
+# Terminals 3 and 4: join (use --host and --port when the server is on another machine)
+./build/botched-client --join m1
+```
+
+The match starts when all seats are filled (or type `start` in the creating client to begin with the
+players who have joined; at least 2). Each round, every player has the planning time to enter **three
+orders** and lock them in:
+
+```
+F2 R T        type three orders separated by spaces, then Enter (type again to change them)
+go            lock in: the round runs as soon as everyone is locked in, or when the timer ends
+```
+
+| Code | Order | Code | Order |
+|---|---|---|---|
+| `F` / `F2` | forward 1 / 2 | `U` | turn around |
+| `B` | back 1 | `D` | drop the crate |
+| `L` / `R` | turn left / right | `T` | toggle the console next to you |
+| `W` | wait | | |
+
+Other commands: `help`, `show` (redraw), `quit`. Players who do not lock in before the timer simply
+`WAIT` (the programme you saved but did not lock is used). The screen shows the factory, robots, crates,
+scores, who is ready, the time left, and what every robot did last round. When round 12 ends the client
+prints the final scores and the winner (ties are shared victories, per the spec).
+
+`botched-client --bot ...` plays automatically through the same request path (useful for filling seats,
+demos and tests); `--plain` disables screen redraws (also the default when output is not a terminal).
+
+**Limits of this MVP:** there is no authentication beyond the per-seat session token, so keep the
+server on `127.0.0.1` or a trusted LAN; a client that quits or crashes cannot rejoin (its robot waits
+every round); one server hosts up to 16 matches; no TLS.
+
+Tests: `ctest --test-dir build` (the TCP host and a full match over real sockets are in `tests/test_tcp.cpp`).
 
 ## Layout
 
@@ -21,6 +70,8 @@ protocol for retro clients (`docs/binary-protocol-requirements.md`).
 | `include/botched/`, `src/` | **Rules**: map, state, engine, match lifecycle, canonical JSON. No clocks, sockets, rendering or platform code. | C++20 stdlib |
 | `server/` | **Orchestration**: rooms, sessions, planning deadlines, the logical API of spec 9.2. JSON in, JSON out. | rules |
 | `apps/botched_server_main.cpp` | Host: JSON lines over stdin/stdout. The seam where a NIO channel adapter attaches later. | server |
+| `server/tcp_host.*`, `apps/botched_tcpd_main.cpp` | **TCP host**: single-threaded `poll()` loop around `GameServer`; advances planning deadlines without requests. | server |
+| `apps/client_core.*`, `apps/botched_client_main.cpp` | **Terminal client** (and `--bot` auto-play) over the JSON API. | server, sim lib |
 | `apps/botched_sim.cpp`, `bot.*`, `ascii_render.*`, `sim_runner.*` | **POSIX reference app**: four simulated players play a full match through the public API. | server |
 | `tests/` | doctest suites mapped to spec section 11. | all |
 

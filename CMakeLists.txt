@@ -42,12 +42,30 @@ add_library(botched_sim_lib STATIC
 target_include_directories(botched_sim_lib PUBLIC apps)
 target_link_libraries(botched_sim_lib PUBLIC botched_server)
 
+# --- Minimal POSIX multiplayer MVP (M1-A): TCP host + terminal client. POSIX sockets only.
+if(UNIX)
+  add_library(botched_tcp_host STATIC server/tcp_host.cpp)
+  target_include_directories(botched_tcp_host PUBLIC server)
+  target_link_libraries(botched_tcp_host PUBLIC botched_server)
+
+  add_library(botched_client_lib STATIC apps/client_core.cpp)
+  target_include_directories(botched_client_lib PUBLIC apps server)
+  target_link_libraries(botched_client_lib PUBLIC botched_sim_lib)
+endif()
+
 if(BOTCHED_BUILD_APPS)
   add_executable(botched-server apps/botched_server_main.cpp)
   target_link_libraries(botched-server PRIVATE botched_server)
 
   add_executable(botched-sim apps/botched_sim.cpp)
   target_link_libraries(botched-sim PRIVATE botched_sim_lib)
+
+  if(UNIX)
+    add_executable(botched-tcp-server apps/botched_tcpd_main.cpp)
+    target_link_libraries(botched-tcp-server PRIVATE botched_tcp_host)
+    add_executable(botched-client apps/botched_client_main.cpp)
+    target_link_libraries(botched-client PRIVATE botched_client_lib)
+  endif()
 endif()
 
 if(BOTCHED_BUILD_TESTS)
@@ -56,5 +74,8 @@ if(BOTCHED_BUILD_TESTS)
   add_executable(botched_tests tests/test_main.cpp ${BOTCHED_TEST_SOURCES})
   target_include_directories(botched_tests PRIVATE tests tests/third_party)
   target_link_libraries(botched_tests PRIVATE botched_sim_lib)
+  if(UNIX)
+    target_link_libraries(botched_tests PRIVATE botched_tcp_host botched_client_lib)
+  endif()
   add_test(NAME botched_tests COMMAND botched_tests)
 endif()

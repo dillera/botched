@@ -113,9 +113,9 @@ M0 acceptance criteria (spec 12 "M0 - Pure rules engine" plus the original task 
 
 ## Deferred — M1 (do not implement under this tracker)
 
-- **M1-01: Unattended planning deadlines.** The blocking stdio host only calls `poll()` when input arrives; the real host needs scheduling independent of requests.
+- **M1-01: Unattended planning deadlines.** The blocking stdio host only calls `poll()` when input arrives; the real host needs scheduling independent of requests. *(Done for the TCP host in M1-A: its loop applies deadlines every pass; the stdio host is unchanged.)*
 - **M1-02: Full server recovery.** `Match::save()/restore()` is not persistence for rooms, sessions, deadlines or **request-ID idempotency records** (approved decision D8; the contract's records are 56 B and cheap to checkpoint). Define and implement the required host-level recovery during M1.
-- **M1-03: Network transport and playable client.** NIO adapter, interactive ASCII reference client and real multi-process play belong to M1; retro ports to M2. The transport carries whichever wire representation M1-04 defines.
+- **M1-03: Network transport and playable client.** NIO adapter, interactive ASCII reference client and real multi-process play belong to M1; retro ports to M2. *(M1-A delivered the POSIX TCP host and the interactive terminal client; the NIO adapter remains.)* The transport carries whichever wire representation M1-04 defines.
 - **M1-04: Binary wire protocol for retro clients.** One authoritative engine, multiple wire representations: keep JSON for POSIX testing/debugging/reference tooling and add a compact binary encoding for production retro (6502-class) clients. Normative requirements, budgets, open design choices (O1-O13) and acceptance criteria: **`docs/binary-protocol-requirements.md`**. Must honour the approved H3 request-id contract (a per-player sequence number may replace ASCII ids only by mapping into the same keyspace and semantics), reuse existing FujiBus/SLIP/packet-link framing and integrity, and prove JSON/binary equivalence with golden fixtures, round-trip and cross-encoding tests. M0 changes nothing for it.
 
 ## Completion log
