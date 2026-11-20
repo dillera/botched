@@ -43,7 +43,9 @@ std::string format_utc(std::int64_t unix_ms);
 
 struct ServerConfig {
     int default_planning_seconds = 60;  // spec 2 suggestion; 0 disables the timer
-    std::uint64_t token_seed = 0x426f746368656421ULL;  // reference-grade session tokens only
+    // Session tokens come from OS entropy (std::random_device, 256 bits). Set this ONLY for
+    // reproducible tests/simulations: it makes tokens predictable.
+    std::optional<std::uint64_t> deterministic_token_seed;
 };
 
 class GameServer {
@@ -96,6 +98,7 @@ private:
     std::map<std::string, Room> rooms_;
     int next_room_ = 1;
     std::uint64_t token_counter_ = 0;
+    std::string make_token(const std::string& room, int pid);
 };
 
 Json make_error(std::string code, std::string message, const Json* request = nullptr);

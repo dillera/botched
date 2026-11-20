@@ -1,6 +1,7 @@
 #include "server.hpp"
 
 #include <chrono>
+#include <random>
 #include <cstdio>
 #include <string_view>
 
@@ -125,6 +126,31 @@ Json GameServer::create(const Json& req) {
     return out;
 }
 
+std::string GameServer::make_token(const std::string& room, int pid) {
+    static const char* hex = "0123456789abcdef";
+    std::string out;
+    if (cfg_.deterministic_token_seed) {
+        std::string seed = std::to_string(*cfg_.deterministic_token_seed) + ":" + std::to_string(++token_counter_) +
+                           ":" + room + ":" + std::to_string(pid);
+        return hex64(fnv1a64(seed)) + hex64(fnv1a64(seed + "/2"));
+    }
+    std::random_device rd;
+    for (int i = 0; i < 8; ++i) {  // 8 x 32 bits = 256 bits
+        std::uint32_t v = rd();
+        for (int sh = 28; sh >= 0; sh -= 4) out += hex[(v >> sh) & 15];
+    }
+    return out;
+}
+
+namespace {
+// Length-independent-ish constant-time equality for session tokens.
+bool token_equal(const std::string& a, const std::string& b) {
+    unsigned diff = a.size() ^ b.size();
+    for (std::size_t i = 0; i < a.size(); ++i) diff |= static_cast<unsigned char>(a[i] ^ b[i % (b.empty() ? 1 : b.size())]);
+    return diff == 0;
+}
+}  // namespace
+
 Json GameServer::join(const Json& req) {
     Json err;
     Room* r = room_for(req, err);
@@ -132,9 +158,7 @@ Json GameServer::join(const Json& req) {
     if (r->match) return make_error("ALREADY_STARTED", "match already started", &req);
     if (static_cast<int>(r->tokens.size()) >= r->capacity) return make_error("MATCH_FULL", "no free slot", &req);
     int pid = static_cast<int>(r->tokens.size()) + 1;
-    std::string seedtext = std::to_string(cfg_.token_seed) + ":" + std::to_string(++token_counter_) + ":" + r->id +
-                           ":" + std::to_string(pid);
-    std::string token = hex64(fnv1a64(seedtext)) + hex64(fnv1a64(seedtext + "/2"));
+    std::string token = make_token(r->id, pid);
     r->tokens.push_back(token);
     Json out = Json::object();
     out.set("type", "JOINED");
@@ -226,7 +250,7 @@ Json GameServer::submit(const Json& req) {
         return make_error("BAD_REQUEST", "SUBMIT_PROGRAM needs player_id, round, revision, orders", &req);
     if (*player < 1 || *player > r->match->config().player_count)
         return make_error("UNKNOWN_PLAYER", "no such player slot", &req);
-    if (!session || *session != r->tokens[static_cast<std::size_t>(*player - 1)])
+    if (!session || !token_equal(*session, r->tokens[static_cast<std::size_t>(*player - 1)]))
         return make_error("UNAUTHORIZED", "session does not own this player slot", &req);
     std::vector<std::string> toks;
     for (const auto& o : orders->items()) {

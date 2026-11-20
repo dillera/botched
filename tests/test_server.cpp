@@ -209,3 +209,20 @@ TEST_CASE("server: GET_EVENTS, GET_MAP and SNAPSHOT_REQUIRED") {
     srv.poll();
     CHECK(srv.find_match(id)->state().round == 2);
 }
+
+TEST_CASE("server: session tokens are 256-bit, unique and not derived from a known seed") {
+    ManualClock clock;
+    GameServer a(ServerConfig{}, clock), b(ServerConfig{}, clock);
+    auto join_one = [](GameServer& s) {
+        Json c = req("CREATE_MATCH");
+        std::string id = *s.handle(c).get_string("match_id");
+        return *s.handle(req("JOIN_MATCH", id)).get_string("session");
+    };
+    std::string ta = join_one(a), tb = join_one(b);
+    CHECK(ta.size() == 64);
+    CHECK(ta != tb);  // two identical servers must not mint the same token
+    ServerConfig det;
+    det.deterministic_token_seed = 1;
+    GameServer d1(det, clock), d2(det, clock);
+    CHECK(join_one(d1) == join_one(d2));  // opt-in reproducible mode still available
+}
