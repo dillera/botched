@@ -56,6 +56,7 @@ ParseLimits request_parse_limits();
 struct ServerConfig {
     int default_planning_seconds = 60;  // spec 2 suggestion; 0 disables the timer
     int max_matches = 16;               // simultaneously hosted matches (spec 14: deployment setting)
+    int request_budget_per_round = kDefaultRequestBudget;  // new request ids per player per round (8-128)
     // Session tokens come from OS entropy (std::random_device, 256 bits). Set this ONLY for
     // reproducible tests/simulations: it makes tokens predictable.
     std::optional<std::uint64_t> deterministic_token_seed;

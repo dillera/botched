@@ -32,7 +32,11 @@ struct Fixture {
     GameServer srv;
     std::string match;
     std::vector<std::string> session;
-    explicit Fixture(ServerConfig cfg = {}) : srv(cfg, clock) {
+    static ServerConfig reproducible(ServerConfig cfg) {  // fixed tokens: failures must be reproducible
+        cfg.deterministic_token_seed = 1;
+        return cfg;
+    }
+    explicit Fixture(ServerConfig cfg = {}) : srv(reproducible(cfg), clock) {
         Json c = req("CREATE_MATCH");
         c.set("player_count", 2);
         match = *srv.handle(c).get_string("match_id");
@@ -329,29 +333,8 @@ TEST_CASE("H2 server: error responses never reflect arbitrary client text") {
 
 // ------------------------------------------------------------------ bounded memory
 
-TEST_CASE("H2 match: the idempotency cache is bounded; recent ids stay idempotent") {
-    MatchConfig cfg;
-    cfg.match_id = "m";
-    cfg.map = std::make_shared<const Map>(training01());
-    cfg.player_count = 2;
-    Match m(cfg);
-    const std::vector<std::string> wait = {"WAIT", "WAIT", "WAIT"};
-    for (int i = 0; i < 5000; ++i) m.submit_program(1, 1, 1, wait, false, "id-" + std::to_string(i));
-    CHECK(m.request_cache_size() <= kRequestCachePerPlayer);
-    // Rejections are bounded too, and non-existent players are never cached.
-    for (int i = 0; i < 5000; ++i) m.submit_program(9, 1, 1, wait, false, "u-" + std::to_string(i));
-    for (int i = 0; i < 5000; ++i) m.submit_program(2, 7, 1, wait, false, "w-" + std::to_string(i));
-    CHECK(m.request_cache_size() <= 2 * kRequestCachePerPlayer);
-    // A recent id is still answered from memory ...
-    int v = m.state_version();
-    auto a = m.submit_program(2, 7, 1, wait, false, "w-4999");
-    CHECK(a.code == "WRONG_ROUND");
-    CHECK(m.state_version() == v);
-    // ... and the oldest has been forgotten (it is processed as a fresh request).
-    auto old = m.submit_program(1, 1, 1, wait, false, "id-0");
-    CHECK(old.ok);  // identical resubmission of the same revision: accepted as a no-op
-    CHECK(m.state_version() == v);
-}
+// (The H2 LRU-cache test was superseded by tests/test_idempotency.cpp: the H3 contract keeps every
+// record for the life of the match and bounds memory with a per-round budget instead.)
 
 TEST_CASE("H2 host: bounded line reader caps memory and resynchronises after an oversize line") {
     using namespace botched::server;

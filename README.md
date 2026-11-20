@@ -49,6 +49,13 @@ ctest --test-dir build --output-on-failure     # or ./build/botched_tests
 `CREATE_MATCH`, `JOIN_MATCH`, `START_MATCH` are lobby operations outside the spec's section 9.2
 list. Session tokens here are reference-grade; real authentication belongs to NIO infrastructure.
 
+## Request ids and idempotency
+
+`SUBMIT_PROGRAM` retries are idempotent for the life of a match, with a per-player per-round budget of new
+ids instead of any eviction. Contract, rationale and memory bounds: [`docs/request-id-contract.md`](docs/request-id-contract.md).
+The retro-client binary wire protocol (M1) is specified as requirements in
+[`docs/binary-protocol-requirements.md`](docs/binary-protocol-requirements.md).
+
 ## Untrusted input
 
 Request size, JSON shape, field types/ranges, identifier alphabets and memory bounds are

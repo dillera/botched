@@ -124,7 +124,9 @@ fields). An id over 15 characters adds one heap block (<= ~80 B). Bound = player
 | 4 | 12 | conforming client, ~5 ids/round | 11 KB | - |
 
 The H2 cache (64/player, ~160-190 B each) cost up to ~49 KB per match *with the guarantee broken*. Hosts
-for which these numbers are too large lower `request_budget_per_round` or `rounds`. Lookup is a linear
+for which these numbers are too large lower `request_budget_per_round` or `rounds`. Measured on the implementation: a record is 56 B; a 64-character id adds a 65 B heap block
+(121 B/record before allocator overhead). Records live in a per-player `std::deque` so growth has no 2x
+vector slack; container overhead is about 10% on top of the table. Lookup is a linear
 scan of one player's records (<= N x rounds = 3 168 at the extremes): microseconds.
 
 ## 6. Protocol clarifications and tightenings (botched/1)

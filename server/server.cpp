@@ -270,6 +270,7 @@ bool GameServer::start_room(Room& r, std::string& error) {
     mc.map = r.map;
     mc.player_count = joined;  // unoccupied slots are disabled
     mc.rounds = r.rounds;
+    mc.request_budget_per_round = cfg_.request_budget_per_round;
     r.match = std::make_unique<Match>(std::move(mc));
     open_planning(r);
     return true;

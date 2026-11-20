@@ -40,7 +40,7 @@ and a 64-bit number is never narrowed into a valid-looking 32-bit one. Violation
 | `type` | 1-32 chars of `[A-Za-z0-9._:-]` |
 | `match_id` | 1-16 chars, same alphabet |
 | `map_id` | optional, 1-32 chars, same alphabet |
-| `request_id` | optional, 1-64 chars, same alphabet (`""` = no idempotency key) |
+| `request_id` | optional, 1-64 chars, same alphabet (`""` = no idempotency key). Single-use per command: see `docs/request-id-contract.md` |
 | `session` | string; compared without early exit; mismatch is `UNAUTHORIZED` |
 | `player_count` | optional integer 2-4 |
 | `rounds` | optional integer 1-99 |
@@ -48,6 +48,8 @@ and a 64-bit number is never narrowed into a valid-looking 32-bit one. Violation
 | `player_id`, `round`, `revision`, `since_version` | integers that fit in 32 bits; in-range but meaningless values keep their rules-level answers (`UNKNOWN_PLAYER`, `WRONG_ROUND`, `INVALID_REVISION`, `SNAPSHOT_REQUIRED`) |
 | `ready` | optional boolean |
 | `orders` | array of exactly 3 strings (`INVALID_ORDERS` otherwise; unknown tokens as before) |
+
+Idempotency applies only to well-formed, authenticated requests for an existing slot; malformed, unauthenticated and unknown-player requests never touch the store or consume budget.
 
 Error responses echo `request_type` and `request_id` only when they are well-formed
 identifiers; arbitrary client text is never reflected.
@@ -58,7 +60,7 @@ identifiers; arbitrary client text is never reflected.
 |---|---|---|
 | Hosted matches (`ServerConfig::max_matches`) | 16 | `TOO_MANY_MATCHES`. Spec 14 lists this as a deployment setting. Rooms are not yet reclaimed (M1). |
 | Players per match | 4 | |
-| Request ids remembered per player (`kRequestCachePerPlayer`) | 64 | Oldest forgotten first. A retry that old is handled as a new request and is normally refused (`WRONG_ROUND`, `PLANNING_CLOSED`, `STALE_REVISION`). Requests for non-existent players are never remembered. |
+| New request ids per player per round (`request_budget_per_round`) | 32 (configurable 8-128; clamped) | `REQUEST_LIMIT`, not recorded. Nothing is ever evicted: every keyed outcome is remembered for the life of the match and an identical retry always replays the original (`REQUEST_ID_REUSED` if the contents differ). Memory is bounded by players x rounds x budget records of 56 B (+65 B heap for ids over 15 characters): 86-209 KB for a 4-player, 12-round match at the default budget. Details and the bypass analysis: `docs/request-id-contract.md`. |
 | Retained event history | 512 state versions | Older: `SNAPSHOT_REQUIRED` (unchanged). |
 
 ## Not covered here (deliberately)

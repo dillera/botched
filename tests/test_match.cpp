@@ -68,11 +68,12 @@ TEST_CASE("11. duplicate request ids are answered with the original response") {
     CHECK(b.ok);
     CHECK(b.state_version == a.state_version);
     CHECK(m->state_version() == v);  // second call changed nothing
-    // Same request id, different body: still the original answer, no effect.
+    // Same request id, different body (H3 / D2): refused, nothing applied, the original is kept.
     SubmitResult c = submit(*m, 1, 2, {"FORWARD_1", "WAIT", "WAIT"}, true, "req-1");
-    CHECK(c.ok);
-    CHECK(c.revision == a.revision);
+    CHECK_FALSE(c.ok);
+    CHECK(c.code == "REQUEST_ID_REUSED");
     CHECK(m->state_version() == v);
+    CHECK(submit(*m, 1, 1, {"WAIT", "WAIT", "WAIT"}, false, "req-1").message == a.message);
 }
 
 TEST_CASE("11. revisions: stale and conflicting resubmissions are rejected") {

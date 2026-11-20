@@ -36,6 +36,11 @@ void Match::trim_events() {
 }
 
 Match::Match(MatchConfig cfg) : cfg_(std::move(cfg)) {
+    cfg_.request_budget_per_round =
+        std::clamp(cfg_.request_budget_per_round, kMinRequestBudget, kMaxRequestBudget);
+    request_records_.assign(static_cast<std::size_t>(cfg_.player_count), {});
+    budget_used_.assign(static_cast<std::size_t>(cfg_.player_count),
+                        std::vector<int>(static_cast<std::size_t>(cfg_.rounds) + 2, 0));
     state_ = make_initial_state(*cfg_.map, cfg_.player_count, cfg_.rounds);
     entries_.assign(static_cast<std::size_t>(cfg_.player_count), Entry{});
     Engine eng(*cfg_.map, log_);
@@ -51,62 +56,130 @@ bool Match::all_ready() const {
     return std::all_of(entries_.begin(), entries_.end(), [](const Entry& e) { return e.has && e.ready; });
 }
 
+namespace {
+
+struct OutcomeInfo {
+    bool ok;
+    const char* code;
+    const char* message;
+};
+
+}  // namespace
+
+// Decision order for a keyed request (docs/request-id-contract.md section 4):
+//   record + same payload -> replay; record + different payload -> REQUEST_ID_REUSED;
+//   no record and budget used up -> REQUEST_LIMIT; otherwise decide by the rules and record.
 SubmitResult Match::submit_program(int player, int round, int revision, const std::vector<std::string>& orders,
                                    bool ready, const std::string& request_id) {
-    auto key = std::make_pair(player, request_id);
-    if (!request_id.empty()) {
-        auto it = request_cache_.find(key);
-        if (it != request_cache_.end()) return it->second;
-    }
-    auto remember = [&](int pl, const std::string& id, const SubmitResult& r) {
-        if (id.empty() || pl < 1 || pl > cfg_.player_count) return;  // never cache for non-existent players
-        if (request_order_.size() < static_cast<std::size_t>(cfg_.player_count))
-            request_order_.resize(static_cast<std::size_t>(cfg_.player_count));
-        auto& order = request_order_[static_cast<std::size_t>(pl - 1)];
-        request_cache_[std::make_pair(pl, id)] = r;
-        order.push_back(id);
-        while (order.size() > kRequestCachePerPlayer) {
-            request_cache_.erase(std::make_pair(pl, order.front()));
-            order.pop_front();
-        }
+    static const OutcomeInfo kInfo[] = {
+        {true, "OK", "accepted"},
+        {true, "OK", "unchanged"},
+        {false, "PLANNING_CLOSED", "planning is closed"},
+        {false, "WRONG_ROUND", "programme is for a different round"},
+        {false, "PROGRAM_LOCKED", "programme already marked ready"},
+        {false, "INVALID_ORDERS", "exactly 3 orders required"},
+        {false, "INVALID_ORDERS", "unknown order token"},
+        {false, "INVALID_REVISION", "revision must be >= 1"},
+        {false, "STALE_REVISION", "revision lower than accepted"},
+        {false, "REVISION_CONFLICT", "same revision with different contents"},
     };
-    auto reply = [&](bool ok, const char* code, const char* msg) {
+    auto build = [&](const OutcomeInfo& i, int reply_round, int version) {
         SubmitResult r;
-        r.ok = ok;
-        r.code = code;
-        r.message = msg;
-        r.round = state_.round;
+        r.ok = i.ok;
+        r.code = i.code;
+        r.message = i.message;
+        r.round = reply_round;
         r.revision = revision;
-        r.state_version = version_;
-        remember(player, request_id, r);
+        r.state_version = version;
         return r;
     };
+    auto refusal = [&](const char* code, const char* msg) {  // never recorded, never charged
+        return build(OutcomeInfo{false, code, msg}, state_.round, version_);
+    };
 
-    if (player < 1 || player > cfg_.player_count) return reply(false, "UNKNOWN_PLAYER", "no such player slot");
-    if (state_.phase != Phase::Planning) return reply(false, "PLANNING_CLOSED", "planning is closed");
-    if (round != state_.round) return reply(false, "WRONG_ROUND", "programme is for a different round");
-    Entry& cur = entries_[static_cast<std::size_t>(player - 1)];
-    if (cur.has && cur.ready) return reply(false, "PROGRAM_LOCKED", "programme already marked ready");
-    if (static_cast<int>(orders.size()) != kRegisters) return reply(false, "INVALID_ORDERS", "exactly 3 orders required");
+    if (player < 1 || player > cfg_.player_count) return refusal("UNKNOWN_PLAYER", "no such player slot");
+
+    // Canonical payload. An unrecognised token is one value: the rules answer every such payload
+    // with the same rejection and no effect, so conflating them is safe (contract 3.1).
+    RequestRecord probe;
+    probe.round = round;
+    probe.revision = revision;
+    probe.ready = ready;
+    probe.order_count = static_cast<std::uint8_t>(orders.size() > 255 ? 255 : orders.size());
     Programme prog{};
-    for (std::size_t i = 0; i < orders.size(); ++i) {
+    bool tokens_ok = true;
+    for (std::size_t i = 0; i < 3; ++i) {
+        if (i >= orders.size()) { probe.orders[i] = 0xFE; continue; }
         auto o = parse_order(orders[i]);
-        if (!o) return reply(false, "INVALID_ORDERS", "unknown order token");
-        prog[i] = *o;
+        if (o) { probe.orders[i] = static_cast<std::uint8_t>(*o); prog[i] = *o; }
+        else { probe.orders[i] = 0xFF; tokens_ok = false; }
     }
-    if (revision < 1) return reply(false, "INVALID_REVISION", "revision must be >= 1");
-    if (cur.has && revision < cur.revision) return reply(false, "STALE_REVISION", "revision lower than accepted");
-    if (cur.has && revision == cur.revision) {
-        if (cur.orders != prog || cur.ready != ready)
-            return reply(false, "REVISION_CONFLICT", "same revision with different contents");
-        return reply(true, "OK", "unchanged");  // identical resubmission under a new request id
+    for (std::size_t i = 3; i < orders.size() && tokens_ok; ++i)
+        if (!parse_order(orders[i])) tokens_ok = false;
+
+    const bool keyed = !request_id.empty();
+    auto& records = request_records_[static_cast<std::size_t>(player - 1)];
+    if (keyed) {
+        for (const RequestRecord& rec : records) {
+            if (rec.id != request_id) continue;
+            const bool same = rec.round == probe.round && rec.revision == probe.revision && rec.ready == probe.ready &&
+                              rec.order_count == probe.order_count && rec.orders[0] == probe.orders[0] &&
+                              rec.orders[1] == probe.orders[1] && rec.orders[2] == probe.orders[2];
+            if (!same) return refusal("REQUEST_ID_REUSED", "request_id was already used with different contents");
+            return build(kInfo[rec.outcome], rec.reply_round, rec.state_version);  // replay: no effect at all
+        }
+        const int used = budget_used_[static_cast<std::size_t>(player - 1)][static_cast<std::size_t>(state_.round)];
+        if (used >= cfg_.request_budget_per_round)
+            return refusal("REQUEST_LIMIT", "too many new request ids this round");
     }
-    cur.has = true;
-    cur.revision = revision;
-    cur.orders = prog;
-    cur.ready = ready;
-    publish([] {});  // submitted/ready sets changed: new authoritative state version
-    return reply(true, "OK", "accepted");
+
+    // ---- the rules decide (unchanged from before the idempotency work) ----
+    Outcome oc;
+    Entry& cur = entries_[static_cast<std::size_t>(player - 1)];
+    if (state_.phase != Phase::Planning) oc = Outcome::PlanningClosed;
+    else if (round != state_.round) oc = Outcome::WrongRound;
+    else if (cur.has && cur.ready) oc = Outcome::ProgramLocked;
+    else if (static_cast<int>(orders.size()) != kRegisters) oc = Outcome::InvalidOrdersCount;
+    else if (!tokens_ok) oc = Outcome::InvalidOrdersToken;
+    else if (revision < 1) oc = Outcome::InvalidRevision;
+    else if (cur.has && revision < cur.revision) oc = Outcome::StaleRevision;
+    else if (cur.has && revision == cur.revision) {
+        oc = (cur.orders != prog || cur.ready != ready) ? Outcome::RevisionConflict : Outcome::Unchanged;
+    } else {
+        cur.has = true;
+        cur.revision = revision;
+        cur.orders = prog;
+        cur.ready = ready;
+        publish([] {});  // submitted/ready sets changed: new authoritative state version
+        oc = Outcome::Accepted;
+    }
+
+    SubmitResult res = build(kInfo[static_cast<std::size_t>(oc)], state_.round, version_);
+    if (keyed) {
+        probe.id = request_id;
+        probe.reply_round = state_.round;
+        probe.state_version = version_;
+        probe.outcome = static_cast<std::uint8_t>(oc);
+        records.push_back(std::move(probe));
+        ++budget_used_[static_cast<std::size_t>(player - 1)][static_cast<std::size_t>(state_.round)];
+    }
+    return res;
+}
+
+std::size_t Match::request_record_count() const {
+    std::size_t n = 0;
+    for (const auto& v : request_records_) n += v.size();
+    return n;
+}
+
+std::size_t Match::request_store_bytes() const {
+    std::size_t bytes = 0;
+    for (const auto& v : request_records_) {
+        bytes += v.size() * sizeof(RequestRecord);
+        for (const auto& r : v)
+            if (r.id.capacity() > 15) bytes += r.id.capacity() + 1;
+    }
+    return bytes;
 }
 
 bool Match::close_planning() {
@@ -433,8 +506,8 @@ std::optional<Match> Match::restore(MatchConfig cfg, const Json& saved, std::str
     m.version_ = version;
     m.trimmed_below_ = version;  // earlier events are not part of a save
     m.events_.clear();
-    m.request_cache_.clear();
-    m.request_order_.clear();
+    // The idempotency store is not part of a checkpoint (D8): a restored match starts with an
+    // empty store and fresh budgets. The constructor already produced exactly that.
     m.log_.take();
     m.log_.restore_cursor(cur_round, cur_tick, cur_seq);
     m.deadline_utc_ = std::move(deadline);

@@ -3,6 +3,7 @@
 // close_planning(); the outcome never depends on call timing.
 #pragma once
 
+#include <cstdint>
 #include <deque>
 #include <map>
 #include <memory>
@@ -18,11 +19,12 @@
 
 namespace botched {
 
-// Idempotency memory: the most recent request ids remembered per player. Older ids are
-// forgotten (a retry that late is processed as a new request and normally rejected as
-// WRONG_ROUND / PLANNING_CLOSED / STALE_REVISION). Bounds memory against a client that
-// sends endless unique ids. See docs/protocol-limits.md.
-inline constexpr std::size_t kRequestCachePerPlayer = 64;
+// Request-id idempotency (docs/request-id-contract.md). Every keyed SUBMIT_PROGRAM outcome is
+// remembered for the life of the match; memory is bounded by rationing NEW ids per player per
+// round instead of evicting old ones.
+inline constexpr int kDefaultRequestBudget = 32;  // new request ids per player per round
+inline constexpr int kMinRequestBudget = 8;       // configurable range; out-of-range values are clamped
+inline constexpr int kMaxRequestBudget = 128;
 
 struct MatchConfig {
     std::string match_id;
@@ -30,6 +32,7 @@ struct MatchConfig {
     int player_count = kMaxPlayers;
     int rounds = kDefaultRounds;
     int event_retention_versions = 512;  // older events answer GET_EVENTS with SNAPSHOT_REQUIRED
+    int request_budget_per_round = kDefaultRequestBudget;  // clamped to [kMinRequestBudget, kMaxRequestBudget]
 };
 
 struct SubmitResult {
@@ -48,12 +51,15 @@ public:
 
     // ---- commands -------------------------------------------------------------
     // Rejection codes: UNKNOWN_PLAYER, PLANNING_CLOSED, WRONG_ROUND, PROGRAM_LOCKED,
-    // INVALID_ORDERS, INVALID_REVISION, STALE_REVISION, REVISION_CONFLICT.
+    // INVALID_ORDERS, INVALID_REVISION, STALE_REVISION, REVISION_CONFLICT, plus the idempotency
+    // refusals REQUEST_ID_REUSED and REQUEST_LIMIT (never recorded; see the contract).
     SubmitResult submit_program(int player, int round, int revision, const std::vector<std::string>& orders,
                                 bool ready, const std::string& request_id);
 
-    // Number of remembered request ids across all players (bounded; see above).
-    std::size_t request_cache_size() const { return request_cache_.size(); }
+    // Idempotency store introspection (bounded: players x rounds x budget records).
+    std::size_t request_record_count() const;
+    std::size_t request_store_bytes() const;  // records plus heap held by long ids (excl. ~10% container overhead)
+    int request_budget() const { return cfg_.request_budget_per_round; }
 
     bool all_ready() const;
     // Lock programmes (missing -> WAIT x3) and publish PLANNING_CLOSED. Planning only.
@@ -108,8 +114,25 @@ private:
     int trimmed_below_ = 0;  // events with version <= this have been discarded
     std::vector<Entry> entries_;
     std::string deadline_utc_;
-    std::map<std::pair<int, std::string>, SubmitResult> request_cache_;
-    std::vector<std::deque<std::string>> request_order_;  // per player, oldest first
+    // Outcomes a recorded request can have (the reply is rebuilt from this, byte for byte).
+    enum class Outcome : std::uint8_t {
+        Accepted, Unchanged, PlanningClosed, WrongRound, ProgramLocked, InvalidOrdersCount,
+        InvalidOrdersToken, InvalidRevision, StaleRevision, RevisionConflict
+    };
+    // Exact record of one keyed request: the id verbatim and the payload field by field.
+    struct RequestRecord {
+        std::string id;
+        std::int32_t round = 0;       // payload
+        std::int32_t revision = 0;    // payload
+        std::int32_t reply_round = 0; // response
+        std::int32_t state_version = 0;  // response
+        std::uint8_t orders[3] = {0, 0, 0};  // payload: Order value, 0xFE absent, 0xFF unrecognised
+        std::uint8_t order_count = 0;        // payload (saturating)
+        std::uint8_t outcome = 0;            // Outcome
+        bool ready = false;                  // payload
+    };
+    std::vector<std::deque<RequestRecord>> request_records_;   // per player, first-seen order (deque: no 2x growth slack)
+    std::vector<std::vector<int>> budget_used_;                 // [player-1][round]
 };
 
 }  // namespace botched
