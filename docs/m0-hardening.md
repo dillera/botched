@@ -50,7 +50,7 @@ Review JSON parsing and `GameServer` request handling for input/depth/collection
 
 Verify that identical `(player, request_id)` retries return their original response. A reused ID with different payload currently returns that original response; assess the trade-off of rejecting it as a conflict. **Document the recommended contract first and seek approval if this changes `botched/1` behaviour.** Add/adjust regression tests only for approved semantics.
 
-**Evidence:** Commit: _pending_ · Tests: _pending_ · Notes: _pending_
+**Evidence:** Commit: _pending (proposal only; no code changed)_ · Tests: _none yet — added after approval_ · Notes: **Proposal awaiting approval:** `docs/request-id-contract.md` (commit `PROPOSAL_SHA`). Measured finding: the H2 64-entry LRU breaks the spec §9.2 MUST (a retry of an accepted+locked programme returns `PROGRAM_LOCKED`) and is reachable by conforming clients (~48 ids/player/match). Recommended: no eviction + per-player per-round budget (32) + 32-byte compact records + reject id reuse with a different payload; decisions D1-D8 listed in the document.
 
 ### [ ] M0-H4 — Freeze and test rules interpretations
 
@@ -76,6 +76,6 @@ Run complete tests, ASan/UBSan and deterministic full-match simulations (2–4 p
 |---|---|---|---|
 | H1 | `159f7047` | 111 cases / 6109 assertions; ASan+UBSan clean; sim hashes unchanged | None blocking. Reachability and authentication are out of scope (see notes). |
 | H2 | `e91271c8` | 129 cases / 17924 assertions; ASan+UBSan clean; sim hashes unchanged; 50 MB hostile stream at ~12 MB RSS | None blocking. New error codes and request-id memory window flagged for review (see H2 notes / H3). |
-| H3 | | | |
+| H3 | _proposal only_ | scenario measurements S1-S7 in the proposal; no code change | Awaiting approval of D1-D8. |
 | H4 | | | |
 | H5 | | | |
