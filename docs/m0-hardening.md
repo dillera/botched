@@ -33,7 +33,7 @@ Audit `read_world()` and `Match::restore()`. Reject malformed or incompatible ch
 
 Review JSON parsing and `GameServer` request handling for input/depth/collection limits, numeric overflow or narrowing, invalid field types/ranges and malformed messages. Reject bad requests without crashes or state mutation. Keep dependencies lightweight; add negative tests. Avoid turning the stdio reference host into a production network server.
 
-**Evidence:** Commit: `e91271c8` · Tests: `tests/test_hardening.cpp` (15 cases); full suite 129 cases / 17924 assertions pass, also under ASan+UBSan; `botched-sim` state/event hashes byte-identical to pre-H2 · Limits: `docs/protocol-limits.md` · Notes:
+**Evidence:** Commit: `e91271c8` · Tests: `tests/test_hardening.cpp` (18 cases); full suite 129 cases / 17924 assertions pass, also under ASan+UBSan; `botched-sim` state/event hashes byte-identical to pre-H2 · Limits: `docs/protocol-limits.md` · Notes:
 
 - **Baseline first:** the field/parser tests were run against the old code (21/21 wrong-type optionals, 11/15 wraparound, 25/34 SUBMIT, 6/9 `since_version`, 6/7 identifiers, 4 number, 3 string, 2 duplicate-key assertions failed).
 - **Real defects (M0 blockers, fixed):**
