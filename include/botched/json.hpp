@@ -3,6 +3,7 @@
 // Numbers are signed 64-bit integers only; the game never needs floats.
 #pragma once
 
+#include <cstddef>
 #include <cstdint>
 #include <optional>
 #include <string>
@@ -11,6 +12,19 @@
 #include <vector>
 
 namespace botched {
+
+// Resource limits for parsing untrusted text. Exceeding any limit makes parse() fail;
+// nothing is partially returned. The defaults suit trusted-size documents (maps,
+// checkpoints, server responses); network requests use the much stricter limits that
+// GameServer applies (see docs/protocol-limits.md).
+struct ParseLimits {
+    std::size_t max_bytes = 4u << 20;     // total input size
+    int max_depth = 32;                   // nesting of arrays/objects
+    std::size_t max_string = 4096;        // bytes in one string (after unescaping)
+    std::size_t max_array = 65536;        // elements in one array
+    std::size_t max_members = 4096;       // members in one object
+    std::size_t max_nodes = 1u << 20;     // total values in the document
+};
 
 class Json {
 public:
@@ -58,7 +72,9 @@ public:
     std::optional<bool> get_bool(std::string_view key) const;
 
     std::string dump() const;
-    static std::optional<Json> parse(std::string_view text);
+    // Strict RFC 8259 subset: integers only (|n| <= 2^53, no leading zeros), printable-ASCII
+    // strings, unique object keys, and the resource limits above.
+    static std::optional<Json> parse(std::string_view text, const ParseLimits& limits = {});
 
     friend bool operator==(const Json& a, const Json& b);
 

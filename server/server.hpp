@@ -41,8 +41,21 @@ private:
 // "2026-11-20T20:40:00Z"
 std::string format_utc(std::int64_t unix_ms);
 
+// Hard limits on untrusted requests (documented in docs/protocol-limits.md). They are sized
+// for constrained clients: the largest legal request (SUBMIT_PROGRAM with a 64-character
+// request_id and a 64-character session) is about 350 bytes.
+inline constexpr std::size_t kMaxRequestBytes = 2048;
+inline constexpr std::size_t kMaxIdLength = 64;      // request_id, session
+inline constexpr std::size_t kMaxMatchIdLength = 16;
+inline constexpr std::size_t kMaxNameLength = 32;    // request type, map_id
+inline constexpr int kMaxPlanningSeconds = 86400;
+
+// Parser limits for one request line: flat object, one short array.
+ParseLimits request_parse_limits();
+
 struct ServerConfig {
     int default_planning_seconds = 60;  // spec 2 suggestion; 0 disables the timer
+    int max_matches = 16;               // simultaneously hosted matches (spec 14: deployment setting)
     // Session tokens come from OS entropy (std::random_device, 256 bits). Set this ONLY for
     // reproducible tests/simulations: it makes tokens predictable.
     std::optional<std::uint64_t> deterministic_token_seed;

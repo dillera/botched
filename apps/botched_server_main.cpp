@@ -10,6 +10,7 @@
 #include <iostream>
 #include <string>
 
+#include "line_reader.hpp"
 #include "server.hpp"
 
 int main(int argc, char** argv) {
@@ -26,7 +27,15 @@ int main(int argc, char** argv) {
     botched::server::SystemClock clock;
     botched::server::GameServer srv(cfg, clock);
     std::string line;
-    while (std::getline(std::cin, line)) {
+    for (;;) {
+        // One request per line, read with a hard size bound (kMaxRequestBytes + room for CRLF).
+        auto st = botched::server::read_line_bounded(std::cin, line, botched::server::kMaxRequestBytes + 2);
+        if (st == botched::server::LineStatus::Eof) break;
+        if (st == botched::server::LineStatus::TooLong) {
+            std::cout << botched::server::make_error("REQUEST_TOO_LARGE", "request line is too long").dump() << '\n'
+                      << std::flush;
+            continue;
+        }
         if (line.empty()) continue;
         std::cout << srv.handle_text(line).dump() << '\n' << std::flush;
     }

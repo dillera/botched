@@ -18,6 +18,12 @@
 
 namespace botched {
 
+// Idempotency memory: the most recent request ids remembered per player. Older ids are
+// forgotten (a retry that late is processed as a new request and normally rejected as
+// WRONG_ROUND / PLANNING_CLOSED / STALE_REVISION). Bounds memory against a client that
+// sends endless unique ids. See docs/protocol-limits.md.
+inline constexpr std::size_t kRequestCachePerPlayer = 64;
+
 struct MatchConfig {
     std::string match_id;
     std::shared_ptr<const Map> map;
@@ -45,6 +51,9 @@ public:
     // INVALID_ORDERS, INVALID_REVISION, STALE_REVISION, REVISION_CONFLICT.
     SubmitResult submit_program(int player, int round, int revision, const std::vector<std::string>& orders,
                                 bool ready, const std::string& request_id);
+
+    // Number of remembered request ids across all players (bounded; see above).
+    std::size_t request_cache_size() const { return request_cache_.size(); }
 
     bool all_ready() const;
     // Lock programmes (missing -> WAIT x3) and publish PLANNING_CLOSED. Planning only.
@@ -100,6 +109,7 @@ private:
     std::vector<Entry> entries_;
     std::string deadline_utc_;
     std::map<std::pair<int, std::string>, SubmitResult> request_cache_;
+    std::vector<std::deque<std::string>> request_order_;  // per player, oldest first
 };
 
 }  // namespace botched

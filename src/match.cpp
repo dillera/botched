@@ -58,6 +58,18 @@ SubmitResult Match::submit_program(int player, int round, int revision, const st
         auto it = request_cache_.find(key);
         if (it != request_cache_.end()) return it->second;
     }
+    auto remember = [&](int pl, const std::string& id, const SubmitResult& r) {
+        if (id.empty() || pl < 1 || pl > cfg_.player_count) return;  // never cache for non-existent players
+        if (request_order_.size() < static_cast<std::size_t>(cfg_.player_count))
+            request_order_.resize(static_cast<std::size_t>(cfg_.player_count));
+        auto& order = request_order_[static_cast<std::size_t>(pl - 1)];
+        request_cache_[std::make_pair(pl, id)] = r;
+        order.push_back(id);
+        while (order.size() > kRequestCachePerPlayer) {
+            request_cache_.erase(std::make_pair(pl, order.front()));
+            order.pop_front();
+        }
+    };
     auto reply = [&](bool ok, const char* code, const char* msg) {
         SubmitResult r;
         r.ok = ok;
@@ -66,7 +78,7 @@ SubmitResult Match::submit_program(int player, int round, int revision, const st
         r.round = state_.round;
         r.revision = revision;
         r.state_version = version_;
-        if (!request_id.empty()) request_cache_[key] = r;
+        remember(player, request_id, r);
         return r;
     };
 
@@ -422,6 +434,7 @@ std::optional<Match> Match::restore(MatchConfig cfg, const Json& saved, std::str
     m.trimmed_below_ = version;  // earlier events are not part of a save
     m.events_.clear();
     m.request_cache_.clear();
+    m.request_order_.clear();
     m.log_.take();
     m.log_.restore_cursor(cur_round, cur_tick, cur_seq);
     m.deadline_utc_ = std::move(deadline);

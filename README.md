@@ -49,6 +49,11 @@ ctest --test-dir build --output-on-failure     # or ./build/botched_tests
 `CREATE_MATCH`, `JOIN_MATCH`, `START_MATCH` are lobby operations outside the spec's section 9.2
 list. Session tokens here are reference-grade; real authentication belongs to NIO infrastructure.
 
+## Untrusted input
+
+Request size, JSON shape, field types/ranges, identifier alphabets and memory bounds are
+explicit and documented in [`docs/protocol-limits.md`](docs/protocol-limits.md).
+
 ## Checkpoints
 
 `Match::save()` / `Match::restore()` serialise a match including secret programmes. `restore()`

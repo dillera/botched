@@ -1,6 +1,7 @@
 #include "botched/json.hpp"
 
 #include <cctype>
+#include <unordered_set>
 
 namespace botched {
 
@@ -75,8 +76,10 @@ void write_string(std::string& out, const std::string& s) {
 
 struct Parser {
     std::string_view s;
+    const ParseLimits& lim;
     std::size_t i = 0;
     int depth = 0;
+    std::size_t nodes = 0;
 
     void ws() { while (i < s.size() && (s[i] == ' ' || s[i] == '\t' || s[i] == '\n' || s[i] == '\r')) ++i; }
     bool eat(char c) { ws(); if (i < s.size() && s[i] == c) { ++i; return true; } return false; }
@@ -84,14 +87,16 @@ struct Parser {
         if (s.substr(i, w.size()) == w) { i += w.size(); return true; }
         return false;
     }
+    bool node() { return ++nodes <= lim.max_nodes; }
 
     std::optional<std::string> str() {
         if (i >= s.size() || s[i] != '"') return std::nullopt;
         ++i;
         std::string out;
         while (i < s.size()) {
-            char c = s[i++];
+            unsigned char c = static_cast<unsigned char>(s[i++]);
             if (c == '"') return out;
+            if (out.size() >= lim.max_string) return std::nullopt;
             if (c == '\\') {
                 if (i >= s.size()) return std::nullopt;
                 char e = s[i++];
@@ -110,9 +115,9 @@ struct Parser {
                         for (int k = 0; k < 4; ++k) {
                             char h = s[i++];
                             v <<= 4;
-                            if (h >= '0' && h <= '9') v |= h - '0';
-                            else if (h >= 'a' && h <= 'f') v |= h - 'a' + 10;
-                            else if (h >= 'A' && h <= 'F') v |= h - 'A' + 10;
+                            if (h >= '0' && h <= '9') v |= static_cast<unsigned>(h - '0');
+                            else if (h >= 'a' && h <= 'f') v |= static_cast<unsigned>(h - 'a' + 10);
+                            else if (h >= 'A' && h <= 'F') v |= static_cast<unsigned>(h - 'A' + 10);
                             else return std::nullopt;
                         }
                         if (v > 0x7f) return std::nullopt;  // protocol identifiers are ASCII
@@ -121,8 +126,10 @@ struct Parser {
                     }
                     default: return std::nullopt;
                 }
+            } else if (c < 0x20 || c > 0x7e) {
+                return std::nullopt;  // raw control bytes, DEL and non-ASCII must not appear
             } else {
-                out += c;
+                out += static_cast<char>(c);
             }
         }
         return std::nullopt;
@@ -130,19 +137,22 @@ struct Parser {
 
     std::optional<Json> value() {
         ws();
-        if (i >= s.size() || depth > 64) return std::nullopt;
+        if (i >= s.size() || !node()) return std::nullopt;
         char c = s[i];
+        if ((c == '{' || c == '[') && depth >= lim.max_depth) return std::nullopt;  // max_depth = nested containers
         if (c == '{') {
             ++i; ++depth;
             Json o = Json::object();
+            std::unordered_set<std::string> seen;
             if (eat('}')) { --depth; return o; }
             for (;;) {
                 ws();
                 auto k = str();
                 if (!k || !eat(':')) return std::nullopt;
+                if (seen.size() >= lim.max_members || !seen.insert(*k).second) return std::nullopt;  // limit / duplicate
                 auto v = value();
                 if (!v) return std::nullopt;
-                o.set(std::move(*k), std::move(*v));
+                o.members().emplace_back(std::move(*k), std::move(*v));
                 if (eat(',')) continue;
                 if (eat('}')) break;
                 return std::nullopt;
@@ -155,6 +165,7 @@ struct Parser {
             Json a = Json::array();
             if (eat(']')) { --depth; return a; }
             for (;;) {
+                if (a.items().size() >= lim.max_array) return std::nullopt;
                 auto v = value();
                 if (!v) return std::nullopt;
                 a.push(std::move(*v));
@@ -173,14 +184,15 @@ struct Parser {
         if (lit("true")) return Json(true);
         if (lit("false")) return Json(false);
         if (lit("null")) return Json(nullptr);
-        if (c == '-' || std::isdigit(static_cast<unsigned char>(c))) {
+        if (c == '-' || (c >= '0' && c <= '9')) {
             bool neg = c == '-';
             if (neg) ++i;
-            if (i >= s.size() || !std::isdigit(static_cast<unsigned char>(s[i]))) return std::nullopt;
+            if (i >= s.size() || s[i] < '0' || s[i] > '9') return std::nullopt;
+            if (s[i] == '0' && i + 1 < s.size() && s[i + 1] >= '0' && s[i + 1] <= '9') return std::nullopt;  // leading zero
             std::int64_t v = 0;
-            while (i < s.size() && std::isdigit(static_cast<unsigned char>(s[i]))) {
+            while (i < s.size() && s[i] >= '0' && s[i] <= '9') {
                 v = v * 10 + (s[i++] - '0');
-                if (v > (std::int64_t{1} << 53)) return std::nullopt;
+                if (v > (std::int64_t{1} << 53)) return std::nullopt;  // beyond exact-integer range
             }
             if (i < s.size() && (s[i] == '.' || s[i] == 'e' || s[i] == 'E')) return std::nullopt;
             return Json(neg ? -v : v);
@@ -226,8 +238,9 @@ std::string Json::dump() const {
     return out;
 }
 
-std::optional<Json> Json::parse(std::string_view text) {
-    Parser p{text};
+std::optional<Json> Json::parse(std::string_view text, const ParseLimits& limits) {
+    if (text.size() > limits.max_bytes) return std::nullopt;
+    Parser p{text, limits};
     auto v = p.value();
     if (!v) return std::nullopt;
     p.ws();

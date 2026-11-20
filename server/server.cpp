@@ -37,6 +37,77 @@ std::string format_utc(std::int64_t unix_ms) {
     return buf;
 }
 
+ParseLimits request_parse_limits() {
+    ParseLimits l;
+    l.max_bytes = kMaxRequestBytes;
+    l.max_depth = 4;
+    l.max_string = 256;
+    l.max_array = 8;
+    l.max_members = 16;
+    l.max_nodes = 64;
+    return l;
+}
+
+namespace {
+
+// Identifier alphabet: letters, digits and . _ : - (all ASCII, no spaces or controls).
+bool token_ok(const std::string& s, std::size_t max_len) {
+    if (s.empty() || s.size() > max_len) return false;
+    for (unsigned char c : s) {
+        bool ok = (c >= '0' && c <= '9') || (c >= 'a' && c <= 'z') || (c >= 'A' && c <= 'Z') || c == '.' ||
+                  c == '_' || c == ':' || c == '-';
+        if (!ok) return false;
+    }
+    return true;
+}
+
+constexpr std::int64_t kInt32Min = -2147483647LL - 1;
+constexpr std::int64_t kInt32Max = 2147483647LL;
+
+// Field readers. A field that is present must have the right type and range: it is never
+// silently replaced by a default, and a 64-bit value is never narrowed into a valid-looking
+// 32-bit one. On failure they fill `err` with a BAD_REQUEST and return false.
+bool int_field(const Json& req, const char* key, std::int64_t lo, std::int64_t hi, bool required,
+               std::int64_t fallback, std::int64_t& out, Json& err) {
+    const Json* j = req.find(key);
+    if (!j) {
+        if (required) { err = make_error("BAD_REQUEST", std::string(key) + " is required", &req); return false; }
+        out = fallback;
+        return true;
+    }
+    if (!j->is_int() || j->as_int() < lo || j->as_int() > hi) {
+        err = make_error("BAD_REQUEST",
+                         std::string(key) + " must be an integer in [" + std::to_string(lo) + "," + std::to_string(hi) + "]", &req);
+        return false;
+    }
+    out = j->as_int();
+    return true;
+}
+
+bool bool_field(const Json& req, const char* key, bool fallback, bool& out, Json& err) {
+    const Json* j = req.find(key);
+    if (!j) { out = fallback; return true; }
+    if (!j->is_bool()) { err = make_error("BAD_REQUEST", std::string(key) + " must be a boolean", &req); return false; }
+    out = j->as_bool();
+    return true;
+}
+
+// Optional token-shaped string. `allow_empty` lets "" through (request_id: no idempotency key).
+bool token_field(const Json& req, const char* key, std::size_t max_len, bool allow_empty, const std::string& fallback,
+                 std::string& out, Json& err) {
+    const Json* j = req.find(key);
+    if (!j) { out = fallback; return true; }
+    if (!j->is_string() || !((allow_empty && j->as_string().empty()) || token_ok(j->as_string(), max_len))) {
+        err = make_error("BAD_REQUEST",
+                         std::string(key) + " must be 1-" + std::to_string(max_len) + " characters of [A-Za-z0-9._:-]", &req);
+        return false;
+    }
+    out = j->as_string();
+    return true;
+}
+
+}  // namespace
+
 Json make_error(std::string code, std::string message, const Json* request) {
     Json j = Json::object();
     j.set("type", "ERROR");
@@ -44,8 +115,9 @@ Json make_error(std::string code, std::string message, const Json* request) {
     j.set("code", std::move(code));
     j.set("message", std::move(message));
     if (request) {
-        if (auto t = request->get_string("type")) j.set("request_type", *t);
-        if (auto id = request->get_string("request_id")) j.set("request_id", *id);
+        // Echo only well-formed identifiers: never reflect arbitrary or oversized client text.
+        if (auto t = request->get_string("type"); t && token_ok(*t, kMaxNameLength)) j.set("request_type", *t);
+        if (auto id = request->get_string("request_id"); id && token_ok(*id, kMaxIdLength)) j.set("request_id", *id);
     }
     return j;
 }
@@ -62,15 +134,17 @@ const Match* GameServer::find_match(const std::string& id) const {
 }
 
 Json GameServer::handle_text(std::string_view line) {
-    auto j = Json::parse(line);
-    if (!j || !j->is_object()) return make_error("BAD_REQUEST", "request is not a JSON object");
+    if (line.size() > kMaxRequestBytes)
+        return make_error("REQUEST_TOO_LARGE", "request exceeds " + std::to_string(kMaxRequestBytes) + " bytes");
+    auto j = Json::parse(line, request_parse_limits());
+    if (!j || !j->is_object()) return make_error("BAD_REQUEST", "request is not a valid JSON object within limits");
     return handle(*j);
 }
 
 Json GameServer::handle(const Json& req) {
     poll();
     auto type = req.get_string("type");
-    if (!type) return make_error("BAD_REQUEST", "missing request type", &req);
+    if (!type || !token_ok(*type, kMaxNameLength)) return make_error("BAD_REQUEST", "missing or malformed request type", &req);
     Json out;
     if (*type == "CREATE_MATCH") out = create(req);
     else if (*type == "JOIN_MATCH") out = join(req);
@@ -80,14 +154,18 @@ Json GameServer::handle(const Json& req) {
     else if (*type == "GET_EVENTS") out = get_events(req);
     else if (*type == "GET_MAP") out = get_map(req);
     else if (*type == "GET_MATCH_STATUS") out = get_status(req);
-    else return make_error("UNKNOWN_REQUEST", "unknown request type " + *type, &req);
+    else return make_error("UNKNOWN_REQUEST", "unknown request type", &req);
     poll();  // a request may have changed deadlines or completed planning
     return out;
 }
 
 GameServer::Room* GameServer::room_for(const Json& req, Json& err) {
-    auto id = req.get_string("match_id");
-    if (!id) { err = make_error("BAD_REQUEST", "missing match_id", &req); return nullptr; }
+    const Json* mj = req.find("match_id");
+    if (!mj || !mj->is_string() || !token_ok(mj->as_string(), kMaxMatchIdLength)) {
+        err = make_error("BAD_REQUEST", "match_id is required: 1-16 characters of [A-Za-z0-9._:-]", &req);
+        return nullptr;
+    }
+    const std::string* id = &mj->as_string();
     auto it = rooms_.find(*id);
     if (it == rooms_.end()) { err = make_error("UNKNOWN_MATCH", "no such match", &req); return nullptr; }
     return &it->second;
@@ -96,26 +174,29 @@ GameServer::Room* GameServer::room_for(const Json& req, Json& err) {
 // ------------------------------------------------------------------ lobby
 
 Json GameServer::create(const Json& req) {
-    std::string map_id = req.get_string("map_id").value_or("training-01");
+    Json err;
+    std::string map_id;
+    std::int64_t players = 0, rounds = 0, secs = 0;
+    if (!token_field(req, "map_id", kMaxNameLength, false, "training-01", map_id, err)) return err;
+    if (!int_field(req, "player_count", 2, kMaxPlayers, false, kMaxPlayers, players, err)) return err;
+    if (!int_field(req, "rounds", 1, 99, false, kDefaultRounds, rounds, err)) return err;
+    if (!int_field(req, "planning_seconds", 0, kMaxPlanningSeconds, false, cfg_.default_planning_seconds, secs, err))
+        return err;
     auto mit = maps_.find(map_id);
     if (mit == maps_.end()) return make_error("UNKNOWN_MAP", "no such map", &req);
-    int players = static_cast<int>(req.get_int("player_count").value_or(kMaxPlayers));
-    if (players < 2 || players > kMaxPlayers) return make_error("BAD_REQUEST", "player_count must be 2-4", &req);
-    int rounds = static_cast<int>(req.get_int("rounds").value_or(kDefaultRounds));
-    if (rounds < 1 || rounds > 99) return make_error("BAD_REQUEST", "rounds must be 1-99", &req);
-    int secs = static_cast<int>(req.get_int("planning_seconds").value_or(cfg_.default_planning_seconds));
-    if (secs < 0) return make_error("BAD_REQUEST", "planning_seconds must be >= 0", &req);
+    if (static_cast<int>(rooms_.size()) >= cfg_.max_matches)
+        return make_error("TOO_MANY_MATCHES", "this server hosts at most " + std::to_string(cfg_.max_matches) + " matches", &req);
     ValidationOptions vo;
-    vo.player_count = players;
+    vo.player_count = static_cast<int>(players);
     auto errors = validate_map(*mit->second, vo);
     if (!errors.empty()) return make_error("INVALID_MAP", errors.front(), &req);
 
     Room r;
     r.id = "m" + std::to_string(next_room_++);
     r.map = mit->second;
-    r.capacity = players;
-    r.rounds = rounds;
-    r.planning_seconds = secs;
+    r.capacity = static_cast<int>(players);
+    r.rounds = static_cast<int>(rounds);
+    r.planning_seconds = static_cast<int>(secs);
     std::string id = r.id;
     rooms_.emplace(id, std::move(r));
     Json out = Json::object();
@@ -241,36 +322,41 @@ Json GameServer::submit(const Json& req) {
     Room* r = room_for(req, err);
     if (!r) return err;
     if (!r->match) return make_error("NOT_STARTED", "match has not started", &req);
-    auto player = req.get_int("player_id");
-    auto round = req.get_int("round");
-    auto revision = req.get_int("revision");
+    Json err2;
+    std::int64_t player = 0, round = 0, revision = 0;
+    if (!int_field(req, "player_id", kInt32Min, kInt32Max, true, 0, player, err2)) return err2;
+    if (!int_field(req, "round", kInt32Min, kInt32Max, true, 0, round, err2)) return err2;
+    if (!int_field(req, "revision", kInt32Min, kInt32Max, true, 0, revision, err2)) return err2;
+    bool ready = false;
+    std::string request_id;
+    if (!bool_field(req, "ready", false, ready, err2)) return err2;
+    if (!token_field(req, "request_id", kMaxIdLength, true, "", request_id, err2)) return err2;
     const Json* orders = req.find("orders");
-    auto session = req.get_string("session");
-    if (!player || !round || !revision || !orders || !orders->is_array())
-        return make_error("BAD_REQUEST", "SUBMIT_PROGRAM needs player_id, round, revision, orders", &req);
-    if (*player < 1 || *player > r->match->config().player_count)
+    if (!orders || !orders->is_array()) return make_error("BAD_REQUEST", "orders must be an array", &req);
+    if (player < 1 || player > r->match->config().player_count)
         return make_error("UNKNOWN_PLAYER", "no such player slot", &req);
-    if (!session || !token_equal(*session, r->tokens[static_cast<std::size_t>(*player - 1)]))
+    const Json* sj = req.find("session");
+    if (!sj || !sj->is_string() || !token_equal(sj->as_string(), r->tokens[static_cast<std::size_t>(player - 1)]))
         return make_error("UNAUTHORIZED", "session does not own this player slot", &req);
+    if (static_cast<int>(orders->items().size()) != kRegisters)
+        return make_error("INVALID_ORDERS", "exactly 3 orders required", &req);
     std::vector<std::string> toks;
     for (const auto& o : orders->items()) {
         if (!o.is_string()) return make_error("INVALID_ORDERS", "orders must be strings", &req);
         toks.push_back(o.as_string());
     }
-    bool ready = req.get_bool("ready").value_or(false);
-    std::string request_id = req.get_string("request_id").value_or("");
 
-    SubmitResult res = r->match->submit_program(static_cast<int>(*player), static_cast<int>(*round),
-                                                static_cast<int>(*revision), toks, ready, request_id);
+    SubmitResult res = r->match->submit_program(static_cast<int>(player), static_cast<int>(round),
+                                                static_cast<int>(revision), toks, ready, request_id);
     Json out = Json::object();
     out.set("type", "SUBMIT_PROGRAM");
     out.set("ok", res.ok);
     out.set("code", res.code);
     out.set("message", res.message);
     out.set("match_id", r->id);
-    out.set("player_id", *player);
-    out.set("round", *round);
-    out.set("revision", *revision);
+    out.set("player_id", static_cast<int>(player));
+    out.set("round", static_cast<int>(round));
+    out.set("revision", static_cast<int>(revision));
     out.set("state_version", res.state_version);
     if (!request_id.empty()) out.set("request_id", request_id);
     if (res.ok && r->match->all_ready()) advance(*r);
@@ -294,9 +380,10 @@ Json GameServer::get_events(const Json& req) {
     Room* r = room_for(req, err);
     if (!r) return err;
     if (!r->match) return make_error("NOT_STARTED", "match has not started", &req);
-    auto since = req.get_int("since_version");
-    if (!since) return make_error("BAD_REQUEST", "missing since_version", &req);
-    auto ev = r->match->events_since(static_cast<int>(*since));
+    Json err2;
+    std::int64_t since = 0;
+    if (!int_field(req, "since_version", kInt32Min, kInt32Max, true, 0, since, err2)) return err2;
+    auto ev = r->match->events_since(static_cast<int>(since));
     if (!ev) return make_error("SNAPSHOT_REQUIRED", "requested events are no longer retained", &req);
     Json arr = Json::array();
     for (const auto& e : *ev) arr.push(event_to_json(e, r->id));
