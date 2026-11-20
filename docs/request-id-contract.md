@@ -1,8 +1,9 @@
-# Request-ID idempotency contract — proposal for approval (M0-H3)
+# Request-ID idempotency contract (botched/1) — APPROVED
 
-**Status:** PROPOSAL. Nothing in this document is implemented. `botched/1` rules and wire
-format are unchanged; the code still behaves as described in "Observed today".
-**Authority:** spec section 9.2 (quoted below), `docs/protocol-limits.md`, `docs/rules-interpretations.md` #17-18.
+**Status:** APPROVED (decisions D1-D8, 2026-11-20); implemented under M0-H3.
+**Authority:** spec section 9.2, `docs/protocol-limits.md`, `docs/rules-interpretations.md` #17-18.
+**Scope:** `botched/1` gameplay and wire schema are unchanged. Every tightening or clarification
+is listed in section 6.
 
 ## 1. What the spec requires
 
@@ -12,188 +13,147 @@ format are unchanged; the code still behaves as described in "Observed today".
 > MUST be rejected; equal revision with different contents MUST be rejected. **Commands
 > received after planning closes MUST be rejected without changing results.**
 
-Also (section 10): clients must "submit/retry safely"; section 1: no persistent connection or
-synchronised clocks are assumed. Retry policy and transport belong to NIO infrastructure.
+Section 10 adds that clients must "submit/retry safely" and need neither a persistent connection nor
+synchronised clocks. Retry policy and transport belong to NIO infrastructure.
 
-Two readings need a decision, because the spec is silent or ambiguous:
+## 2. Why H2's 64-entry cache was replaced (measured)
 
-* **"identical `request_id`"**: does a retry mean *same id*, or *same id and same payload*?
-* **Retry after planning closes**: is a retry of an *accepted* request a "command received after
-  planning closes" (reject), or a replay of the original answer?
+Scenarios run against the H2 `Match`:
 
-## 2. Observed today (H2 state, measured)
-
-Scenarios run against the current `Match` (scratch program; results reproduced verbatim):
-
-| # | Scenario | Result today | Verdict |
+| # | Scenario | H2 result | Verdict |
 |---|---|---|---|
-| S1 | Retry, same id and payload | original response | correct |
-| S2 | **Same id, different payload** (client bug) | original response returned; the new payload is **silently not applied**, client believes it was accepted | dangerous |
-| S3 | Retry after planning closed (id still cached) | original `OK`; a *new* id gets `PLANNING_CLOSED` | correct (see 4.3) |
-| S4 | Retry after the round advanced (id still cached) | original `OK`; a new id gets `WRONG_ROUND` | correct |
-| S5 | **Retry after >64 later ids** from the same player | `PROGRAM_LOCKED` — an *accepted* command is now reported as *failed* | **violates the MUST** |
-| S5b | Same, original accepted unready, round advanced | `WRONG_ROUND` | **violates the MUST** |
-| S7 | Rejected "too early" (round+1), retried with the same id once the round is open | stale `WRONG_ROUND` forever; only a fresh id works | spec-literal, needs documenting |
+| S1 | Retry, same id and payload | original | correct |
+| S2 | Same id, **different payload** | original response; the new payload **silently not applied** while the client believes it was | dangerous |
+| S3 | Retry after planning closed | original `OK` (new id: `PLANNING_CLOSED`) | correct |
+| S4 | Retry after the round advanced | original `OK` (new id: `WRONG_ROUND`) | correct |
+| S5 | **Retry after >64 later ids** | `PROGRAM_LOCKED`: an *accepted* command reported as *failed* | **violated the MUST** |
+| S5b | Same, accepted unready, round advanced | `WRONG_ROUND` | **violated the MUST** |
+| S7 | "Too early" rejection retried with the same id | the stale rejection forever | spec-literal; now documented |
 
-Why S5 is not just an abuse case:
+Eviction was reachable by cheap rejected junk and by a conforming client (one revision per slot
+edit is about 48 ids/player/match against a cap of 64). Eviction means the guarantee fails *silently*.
 
-* The evicting entries can be **cheap rejected requests** (S5 used `WRONG_ROUND`/`LOCKED` junk),
-  so a buggy client evicts its own valid history.
-* A *conforming* client can reach 64: one revision per slot edit is about 4 ids a round, 48
-  over 12 rounds, plus any additional retries under fresh ids. 64 is not a comfortable margin.
-* The harm is the worst kind: the server tells a client that a command which **succeeded**
-  failed, so the client may re-plan against a wrong belief.
+## 3. Decision record
 
-Cost today: `SubmitResult` is 88 B; a cache node is 128 B payload plus about 32 B of tree
-header, about 160-190 B per entry. The cap of 64/player is about 49 KB worst case per 4-player match.
+| # | Decision | Rationale and trade-off |
+|---|---|---|
+| **D1** | Replace the LRU with **match-lifetime records and a per-player, per-round budget of new ids** | The spec's MUST cannot be kept with eviction. Converting "forget an old id" into "refuse a new id" makes the failure explicit and harmless. Cost: a buggy or hostile client can exhaust *its own slot's* budget for one round (its robot then WAITs); it cannot touch other players or memory. |
+| **D2** | **Same id, different payload -> `REQUEST_ID_REUSED`**, nothing applied, original record untouched | The spec says "identical `request_id`" but a retry means resending the same command. Replaying an unrelated response (S2) silently loses a programme. Conforming clients never see it. |
+| **D3** | **Identical retries always replay the original**, including after planning closes, after the round advances and after the programme is locked | A retry is not a new command; replay changes no state, so "rejected without changing results" still holds. Rejecting it would tell a client whose `ready` acknowledgement was lost that its (applied) programme failed. Clients should read `GET_SNAPSHOT` after any `PLANNING_CLOSED`. |
+| **D4** | **Accepted and rejected outcomes are both recorded**, for requests with a valid session, an existing slot, a non-empty valid `request_id` and valid fields (section 4.1) | Spec-literal ("the original response"). Cost: rejections consume budget. A client that regenerates an id per retry burns its own budget; a retry must reuse the id. |
+| **D5** | **Budget N = 32 new ids per player per round**, configurable **8-128** (`MatchConfig::request_budget_per_round`, `ServerConfig::request_budget_per_round`; out-of-range values are clamped) | 32 is >=6x a conforming client (about 5 ids/round). 8 still allows one revision per slot edit plus `ready`; 128 is the memory ceiling in section 5. Not a wire field: clients cannot raise it. |
+| **D6** | **Exact records: the `request_id` is stored verbatim and the payload fields exactly.** No digest comparison | See 3.1. Digest-only cannot guarantee that distinct requests are never conflated. Cost: about 56 B/record (+ id heap only for ids > 15 chars) instead of 32 B. |
+| **D7** | New error codes **`REQUEST_ID_REUSED`**, **`REQUEST_LIMIT`** | Lets clients react (re-key / wait for the next round). They refuse input outside the conforming set. |
+| **D8** | **Records are not checkpointed**; persistence deferred to **M1-02** | `Match::save()/restore()` stays a single-match checkpoint. After a restore the store is empty and budgets start fresh; documented limitation, see 6. |
 
-## 3. Requirements for a FujiNet-appropriate model
+### 3.1 D6: why digests are not enough
 
-1. **Never break the MUST for a request the server accepted for processing.** If the server
-   cannot honour the guarantee it must *refuse the new id up front*, never *forget an old one*.
-2. **Memory has an absolute, small, configuration-derived bound**; independent of how many
-   requests an attacker sends. Unauthenticated or malformed traffic must not touch the store.
-3. **Cheap for constrained hosts.** Match lifetime is at most `rounds` rounds (default 12, max 99).
-4. **No `botched/1` change.** Conforming clients must see exactly the same behaviour as today.
-5. **A client bug must fail loudly, not silently drop a programme** (S2).
+The proposal stored 64-bit digests of the id and the payload. The requirement is that distinct
+requests are never silently treated as identical:
 
-## 4. Alternatives
+* A digest collision between two ids of one player makes the second request answer with the first's
+  stored response (or, if the payload digests also collide, pass the conflict check).
+  Probability for n <= 4096 ids/player is about n^2 / 2^65 = 4.5e-13 per match. Negligible, but
+  *non-zero and undetectable*, so the guarantee would be probabilistic.
+* An unkeyed 64-bit hash (FNV) can be forged on purpose. This could only confuse the forger's own
+  slot (the key includes the authenticated player), but a guarantee that depends on "only the
+  attacker is hurt" is weaker than one that is simply true.
+* The payload is tiny: `round`, `revision`, `ready` and three order slots are 12 exact bytes. Digesting
+  them saves nothing.
+* A safe bounded alternative therefore exists: **store the id verbatim (<= 64 B, already bounded by
+  H2) and the payload exactly.** Memory stays bounded by the same budget; only the constant changes.
+* Keyed hashes or longer digests (128 bit) make collisions cryptographically unlikely but still not
+  impossible, and add a key to manage; exact storage removes the question.
 
-Memory columns assume 4 players; "legit" is a conforming client using 2-5 ids/round
-(about 100-240 entries per match); "worst" is a hostile or buggy client of its own slot.
+A lossy corner remains by design, and it is safe: an order token the rules do not recognise is
+stored as a single "invalid" value. Two *different unrecognised* payloads are therefore equivalent
+for idempotency. That is correct because the rules answer every such payload with the identical
+rejection and no effect. For every payload that can have an effect, comparison is exact.
 
-| | Model | Late retry guarantee | Memory worst (12 rounds / 99 rounds) | `botched/1` compatible | Abuse resistance | Verdict |
-|---|---|---|---|---|---|---|
-| **A** | LRU, 64 per player (H2, current) | **broken** after 64 ids | ~49 KB (fixed) | yes | memory ok; evicts valid entries | rejected: violates MUST (S5) |
-| **B** | Unbounded full-response cache (pre-H2) | absolute | unbounded | yes | **none** (memory DoS) | rejected |
-| **C** | LRU, larger (e.g. 1024 per player) | broken after 1024; practically unreachable by conforming clients | ~780 KB per match | yes | ok but still a silent failure mode | fallback only |
-| **D** | **No eviction; per-player *per-round* budget of new ids; compact records** | **absolute for the match** | **~48 KB / ~400 KB** at N=32 (24 / 200 KB at N=16); legit about 6 KB | yes (additive refusal) | memory bound is a constant of `players x rounds x N`; a spammer only locks out *its own slot for the rest of that round* | **recommended** |
-| **E** | Retain only the last K rounds | only for K rounds, then fresh processing (`WRONG_ROUND`) or an `EXPIRED` code | ~8 KB (K=2) | yes (new code) | good | acceptable if memory is critical; guarantee weaker |
-| **F** | Cache successes only (D, but rejections are not recorded or budgeted) | absolute for accepted commands; rejected ones re-evaluated | smaller than D | **deviates** from "original response" for rejections | rejection spam is free | alternative to D, see 5.4 |
-| **G** | Replace ids by per-player sequence numbers | strongest | tiny | **no: changes the contract** (botched/2 material) | best | out of scope |
+## 4. The contract (normative)
 
-### 4.1 Why D beats the others
+Applies to `SUBMIT_PROGRAM`. All other requests are reads or lobby operations and keep no history.
 
-* A, C: eviction is inherently a silent failure. D converts it into an explicit, harmless refusal
-  (`REQUEST_LIMIT`), which a client can see and handle, *before* the id is accepted.
-* B: D is B with a hard cap, expressed as a budget instead of a cache size.
-* E, F: weaker guarantee for little memory saved; both remain available if the budget/memory
-  trade-off in 6 is rejected.
+1. **Keyed request.** Non-empty `request_id` (H2 alphabet, <= 64), valid session for an existing
+   slot, fields valid (H2). Only keyed requests read or write the store. Unkeyed, unauthenticated,
+   unknown-player and malformed requests (`BAD_REQUEST`, structural `INVALID_ORDERS`) never do.
+2. **Single-use ids.** The key is `(player, request_id)` and identifies one command. A retry
+   resends the same command (same `round`, `revision`, `orders`, `ready`). A **new** command, including
+   re-sending after a rejection or for a later round, uses a **fresh** id.
+3. **Decision order for a keyed request:**
+   1. record found, payload equal -> **replay** the original response (D3); no budget, state or event effect;
+   2. record found, payload different -> `REQUEST_ID_REUSED` (D2); not recorded, no budget;
+   3. no record and the player has used N new ids this round -> `REQUEST_LIMIT`; not recorded, no state change;
+   4. otherwise decide by the rules (`PLANNING_CLOSED`, `WRONG_ROUND`, `PROGRAM_LOCKED`, `INVALID_ORDERS`,
+      `INVALID_REVISION`, `STALE_REVISION`, `REVISION_CONFLICT`, or accept), **record the outcome** (D4)
+      and count one id against the budget of the round in which it was first seen.
+4. **Replay fidelity.** The replayed `ok`, `code`, `message`, `revision` and `state_version` are
+   identical to the original; the server's JSON for a retry is byte-identical.
+5. **Budget round.** The `Match` round at first sight. After the match finishes, round `rounds` keeps being
+   charged, so memory stays bounded.
+6. **No eviction.** Records live until the match ends (or the room is discarded).
+7. **`REQUEST_LIMIT` is not a command outcome.** It is a refusal to process; the same id may be presented
+   in a later round and is then processed as new.
+8. **Persistence.** Not part of `save()`; `restore()` yields an empty store and fresh budgets (D8).
 
-### 4.2 Compact records (what makes D cheap)
+### 4.1 Budget bypass analysis
 
-A replay is fully reconstructable from a small record because the server response is a pure
-function of `(outcome code, accepted-vs-unchanged flag, revision, state_version)` plus the retry's
-own echoed fields:
-
-| Field | Bytes |
+| Attempt | Outcome |
 |---|---|
-| key digest (64-bit hash of `request_id`; per player) | 8 |
-| payload digest (64-bit hash of canonical `round,revision,orders,ready`) | 8 |
-| `state_version` of the original response | 4 |
-| `revision` | 4 |
-| outcome code + flag | 2 |
-| padding | 6 |
-| **Total** | **32** |
+| Malformed requests (bad JSON, wrong types, oversize, bad session, unknown player, structural order errors) | rejected at the server boundary before `Match`; consume nothing and **cannot refill** anything |
+| Repeating the same rejected submission | replay, free; cannot grow the store or burn budget |
+| Rejected submissions with **fresh** ids | each costs one budget unit and one record; stops at N per round, then `REQUEST_LIMIT` (no record) |
+| Same id with varying payloads | `REQUEST_ID_REUSED`: allocation-free, budget-free, original untouched |
+| Ids differing only in spelling/case | distinct ids (exact comparison); each is charged |
+| Another player's session or id | key includes the authenticated player: no sharing or interference |
+| Arrival order | replay results never depend on order; which ids fit within N depends only on the order of *first sights by the same player*, a deterministic function of the call sequence, never of time or hash order. Players' budgets are independent |
+| Forcing a budget refill | only by the round advancing (a game-state transition) |
 
-vs about 160-190 B today. Verbatim ids (+up to 64 B each) are possible if collision-proofing is
-preferred: 3x cost. A 64-bit digest collision can only confuse requests *within one authenticated
-slot*, i.e. harm the colliding client itself, never another player.
+## 5. Memory bounds
 
-### 4.3 The "after planning closes" question
+`Record` is 56 B (`id` 32 B incl. SSO for <= 15 characters, plus 24 B of exact payload and response
+fields). An id over 15 characters adds one heap block (<= ~80 B). Bound = players x rounds x N x record.
+"Short" = ids <= 15 chars (what a conforming client uses); "long" = hostile 64-char ids.
 
-Recommended reading: a retry of an *already-accepted* request is **not a new command**; it is a
-replay of an answer, with no state change, events or version bump. It therefore satisfies
-"rejected without changing results" *and* the idempotency MUST. A **new** id after close is
-rejected `PLANNING_CLOSED` exactly as today.
+| Players | Rounds | N | Short ids | Long ids (hostile worst case) |
+|---|---|---|---|---|
+| 4 | 12 | 32 (default) | 86 KB | 209 KB |
+| 4 | 12 | 8 (min) | 21 KB | 52 KB |
+| 4 | 12 | 128 (max) | 344 KB | 836 KB |
+| 4 | 99 | 32 | 710 KB | 1.7 MB |
+| 4 | 12 | conforming client, ~5 ids/round | 11 KB | - |
 
-The alternative reading (a retry after close also gets `PLANNING_CLOSED`) makes a client whose
-`ready=true` acknowledgement was lost conclude its programme failed. It was in fact applied (S3).
-Both readings leave the game state identical; the recommended one avoids the false failure. The
-guidance for clients in either case: after `PLANNING_CLOSED`, fetch `GET_SNAPSHOT` for the truth.
+The H2 cache (64/player, ~160-190 B each) cost up to ~49 KB per match *with the guarantee broken*. Hosts
+for which these numbers are too large lower `request_budget_per_round` or `rounds`. Lookup is a linear
+scan of one player's records (<= N x rounds = 3 168 at the extremes): microseconds.
 
-## 5. Recommended contract (for approval)
+## 6. Protocol clarifications and tightenings (botched/1)
 
-Normative text if approved (applies to `SUBMIT_PROGRAM`; other requests are naturally idempotent
-reads or lobby operations and keep no history):
+* New codes `REQUEST_ID_REUSED` and `REQUEST_LIMIT` (additive; refusals of input outside the conforming set).
+* A reused id with a **different** payload used to replay the original; it is now refused (D2).
+* A retry older than 64 ids is no longer processed afresh: it replays the original.
+* Retry-after-close replays rather than `PLANNING_CLOSED` (this is today's behaviour while cached; now unconditional).
+* New ids are rationed: at most N per player per round.
+* A rejection is replayed too, including a stale "too early" `WRONG_ROUND`; the client must use a fresh id.
+* After a checkpoint restore the store is empty (D8).
+* Gameplay, resolution order, events, `state_version` and state hashes are unchanged. Replays emit nothing and bump nothing.
 
-1. **Scope.** A request is *keyed* if it has a non-empty `request_id`, a valid session for an
-   existing slot, and passes the H2 field validation. Unkeyed, unauthenticated or malformed
-   requests never read or write the idempotency store.
-2. **Single-use ids.** The key is `(player, request_id)`. An id identifies one command. A retry
-   resends the same command; a *new* command (including re-sending after a rejection, or for a
-   later round) uses a **fresh** id.
-3. **First sight.** The command is decided by the rules. Its outcome, accepted or rejected, is
-   recorded for the rest of the match.
-4. **Retry** (same key, same payload digest): returns the **original** response, byte-for-byte
-   (`ok`, `code`, `message`, `revision`, `state_version`). No state change. Checked *before*
-   the phase, round and lock rules, so it holds after planning closes, after the round advances
-   and after the programme is locked.
-5. **Same id, different payload** -> `REQUEST_ID_REUSED`, `ok:false`, no state change; the
-   original record is untouched and still replayable. *(Decision D2 below.)*
-6. **Budget.** At most **N = 32** new keys per player per round (the round in which the key was
-   first seen). A 33rd new key in a round -> `REQUEST_LIMIT`, `ok:false`, **not recorded**, no
-   state change; the same id may be presented again in a later round and is then processed
-   as new. Replays and rejections 4/5 do not consume budget.
-7. **No eviction.** Records live until the match ends. Absolute bound: `players x rounds x N x 32 B`
-   (48 KB default, 396 KB at the 99-round maximum).
-8. **Persistence.** The store is not part of `Match::save()` yet. After a host restart a retry
-   is processed as a new command (still safe: identical content is an accepted no-op while
-   planning, a `PROGRAM_LOCKED`/`WRONG_ROUND` answer otherwise). Recording the compact store in the
-   checkpoint is cheap (32 B entries) and belongs to M1-02.
+## 7. Alternatives considered (summary)
 
-### 5.1 Behaviour delta from H2 state, and compatibility
+| Model | Late-retry guarantee | Memory | Verdict |
+|---|---|---|---|
+| LRU 64/player (H2) | broken after 64 | ~49 KB | rejected: violates the MUST (S5) |
+| Unbounded cache | absolute | unbounded | rejected: memory DoS |
+| Larger LRU (1024) | broken after 1024 | ~780 KB | fallback only |
+| **No eviction + per-round budget + exact records** | **absolute** | **bounded constant (section 5)** | **adopted** |
+| Keep only last K rounds | K rounds | small | weaker guarantee; not adopted |
+| Success-only recording | absolute for accepted | smaller | deviates for rejections; not adopted (D4) |
+| Per-player sequence numbers | strongest | tiny | changes the contract (botched/2); see `docs/binary-protocol-requirements.md` |
 
-| Case | H2 today | Proposed |
-|---|---|---|
-| retry within the cache | original | original |
-| retry after eviction (S5) | **wrong failure** | original (no eviction) |
-| same id, new payload (S2) | original, new payload silently dropped | `REQUEST_ID_REUSED` |
-| flood of unique ids | oldest evicted | refused beyond 32/round; nothing forgotten |
-| new codes | none | `REQUEST_ID_REUSED`, `REQUEST_LIMIT` |
+## 8. Relationship to the M1 binary protocol
 
-`botched/1` compatibility: a client that follows 9.2 (unique ids, retries with an unchanged
-payload) sees **no difference** except that the S5 defect disappears. The two new codes are
-refusals of input outside that conforming set. If new codes are unwelcome, both can be reported
-as `BAD_REQUEST` with distinct messages.
-
-### 5.2 Test plan on approval
-
-Verify the replay is byte-identical to the original for every outcome code; retry after
-close/advance/lock/finish; 10 000 unique ids -> memory flat after the budget; eviction can no
-longer happen (the S5 test inverted); budget resets next round; `REQUEST_LIMIT` leaves state
-and records unchanged; digest sensitivity (each of round/revision/orders/ready differing -> `REQUEST_ID_REUSED`);
-rejections recorded and replayed; unauthenticated/malformed traffic leaves the store untouched;
-cross-player isolation of identical ids; a seeded fuzz that every retry equals its original.
-Update `protocol-limits.md` (the 64/player row) and `rules-interpretations.md` #17.
-
-### 5.3 Size of the change
-
-Small and local: `Match` request store (replace the map+deque), response reconstruction,
-two codes, server mapping and docs. No rules, engine, wire-schema or state-hash change.
-
-### 5.4 Variant F (success-only recording), for comparison
-
-Recording only accepted outcomes makes rejection spam free and lets a client retry a "too early"
-rejection (S7) with the same id. The cost is a literal deviation: a retry of a *rejected* request
-could return something different from its original response. Given the spec's unconditional
-wording, D (record everything) is the safer reading; F is the fallback if lock-out of a buggy
-client's own slot (budget exhaustion) is considered worse than the deviation.
-
-## 6. Decisions requested
-
-| # | Decision | Recommendation |
-|---|---|---|
-| **D1** | Adopt model D (no eviction, per-round budget, compact records) in place of the H2 LRU | **Yes** |
-| **D2** | Reused id with a different payload: reject (`REQUEST_ID_REUSED`) or return the original | **Reject**: fail loudly (S2) |
-| **D3** | Retry of an accepted request after planning closes: replay the original, or `PLANNING_CLOSED` | **Replay** (4.3) |
-| **D4** | Record rejections as well as acceptances | **Yes** (spec-literal); F is the fallback |
-| **D5** | Budget N per player per round | **32** (>=6x a conforming client); a `MatchConfig` setting |
-| **D6** | 64-bit digests (32 B records) vs verbatim ids (about 96 B) | **Digests**; collisions can only affect the colliding slot |
-| **D7** | New codes `REQUEST_ID_REUSED`, `REQUEST_LIMIT` vs reuse `BAD_REQUEST` | **New codes** (clients can react) |
-| **D8** | Checkpoint the store | **Defer to M1-02**; documented limitation |
-
-## 7. Out of scope here
-
-Anything in H4 (interpretations freeze) or M1 (host recovery, transport, rate limiting beyond
-this budget); changing `request_id` to sequence numbers (botched/2).
+The binary protocol may offer a compact per-player request sequence number instead of an ASCII id
+(`docs/binary-protocol-requirements.md`). This contract is **not** changed to anticipate it: the
+idempotency store keys on `(player, request_id)` and a binary adapter must map its sequence number to
+the same keyspace (same single-use, replay, `REQUEST_ID_REUSED` and budget semantics). How that mapping
+is spelled is an open M1 design choice.
