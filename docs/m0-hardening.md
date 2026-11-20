@@ -50,7 +50,7 @@ Review JSON parsing and `GameServer` request handling for input/depth/collection
 
 Verify that identical `(player, request_id)` retries return their original response. A reused ID with different payload currently returns that original response; assess the trade-off of rejecting it as a conflict. **Document the recommended contract first and seek approval if this changes `botched/1` behaviour.** Add/adjust regression tests only for approved semantics.
 
-**Evidence:** Commit: _pending (proposal only; no code changed)_ · Tests: _none yet — added after approval_ · Notes: **Proposal awaiting approval:** `docs/request-id-contract.md` (commit `PROPOSAL_SHA`). Measured finding: the H2 64-entry LRU breaks the spec §9.2 MUST (a retry of an accepted+locked programme returns `PROGRAM_LOCKED`) and is reachable by conforming clients (~48 ids/player/match). Recommended: no eviction + per-player per-round budget (32) + 32-byte compact records + reject id reuse with a different payload; decisions D1-D8 listed in the document.
+**Evidence:** Commit: _pending (proposal only; no code changed)_ · Tests: _none yet — added after approval_ · Notes: **Proposal awaiting approval:** `docs/request-id-contract.md` (commit `a0fcd19b`). Measured finding: the H2 64-entry LRU breaks the spec §9.2 MUST (a retry of an accepted+locked programme returns `PROGRAM_LOCKED`) and is reachable by conforming clients (~48 ids/player/match). Recommended: no eviction + per-player per-round budget (32) + 32-byte compact records + reject id reuse with a different payload; decisions D1-D8 listed in the document.
 
 ### [ ] M0-H4 — Freeze and test rules interpretations
 
