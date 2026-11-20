@@ -297,25 +297,39 @@ TEST_CASE("14. reconnect: a saved match resumes mid-planning exactly, then plays
     CHECK(restored->snapshot().dump().find("TURN_AROUND") == std::string::npos);
 }
 
-TEST_CASE("14. restoring mid-execution keeps the pending phase, tick and toggled group") {
+TEST_CASE("14. restoring mid-execution keeps the pending phase, tick, carried crate and toggled group") {
     auto live = make_match(2);
-    submit(*live, 1, 1, {"FORWARD_2", "FORWARD_1", "WAIT"}, true);
+    // Round 1: P1 turns south and walks to (1,5).  Round 2: turns east, collects the G3 crate at (3,5) and
+    // stops next to the console at (5,5).  Round 3, tick 1: TOGGLE reverses conveyor group A.
+    submit(*live, 1, 1, {"TURN_RIGHT", "FORWARD_2", "FORWARD_2"}, true);
+    live->run_round();
+    submit(*live, 1, 1, {"TURN_LEFT", "FORWARD_2", "FORWARD_1"}, true);
+    live->run_round();
+    submit(*live, 1, 1, {"TOGGLE", "WAIT", "WAIT"}, true);
     live->close_planning();
-    live->run_next_tick();  // tick 1 done
-    CHECK(live->state().phase == Phase::Executing);
-    CHECK(live->state().tick == 1);
-    live->save();
+    live->run_next_tick();  // tick 1 done, mid-round
+    REQUIRE(live->state().phase == Phase::Executing);
+    REQUIRE(live->state().tick == 1);
+    REQUIRE(live->state().robot(1).pos == Pos{4, 5});
+    REQUIRE(live->state().robot(1).carrying == 3);
+    REQUIRE(live->state().group('A')->reversed);
+
     std::string err;
     auto r = Match::restore(live->config(), live->save(), err);
     REQUIRE_MESSAGE(r.has_value(), err);
     CHECK(r->state().phase == Phase::Executing);
     CHECK(r->state().tick == 1);
-    live->run_next_tick();
-    r->run_next_tick();
-    live->run_next_tick();
-    r->run_next_tick();
+    CHECK(r->state().robot(1).carrying == 3);        // carried crate survives
+    CHECK(r->state().group('A')->reversed);          // toggled group survives
+    CHECK(r->snapshot().dump() == live->snapshot().dump());
+    // Both finish the round and play the next one identically.
+    for (Match* m : {live.get(), &*r}) {
+        m->run_next_tick();
+        m->run_next_tick();
+        CHECK(m->state().round == 4);
+        CHECK(m->state().group('A')->reversed);      // state persists across the round boundary
+    }
     CHECK(live->state_hash() == r->state_hash());
-    CHECK(live->state().round == 2);
 }
 
 TEST_CASE("14. restore rejects malformed saves") {

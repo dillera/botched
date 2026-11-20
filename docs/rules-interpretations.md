@@ -32,7 +32,7 @@ Each row names the test that pins the behaviour.
 | 21 | Map validation | section 8 | "Blocked-terrain objects/conveyors facing out of bounds" is implemented as *conveyors facing out of bounds* (strict mode, default on). Spawn/dock/path checks apply to slots 1..N only; extra docks and spawns are allowed. | validator tests |
 | 22 | Doors | v1.1 optional | Not implemented; no door token exists, so v1 maps cannot contain them. | - |
 | 23 | Optional +1 bonus | OFF in v1 | Not implemented. | - |
-| 24 | Planning timer | 60 s suggested, configurable | A server concern (`planning_seconds`, 0 = none). The rules library has no clock. | `server: deadline` |
+| 24 | Planning timer | 60 s suggested, configurable | A server concern (`planning_seconds`, 0 = none). The rules library has no clock. | `server: the planning deadline applies WAIT...` |
 
 ## Open question for the rules owner
 

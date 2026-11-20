@@ -61,17 +61,55 @@ Verify that identical `(player, request_id)` retries return their original respo
 - **Test-hygiene fix:** the H2 fuzz fixture used random session tokens, making its assertion count vary run to run; it now uses the deterministic-token option so failures are reproducible.
 - **Binary protocol requirements recorded (not implemented):** `docs/binary-protocol-requirements.md` (M1, normative). JSON baseline sizes in it are measured from this build.
 
-### [ ] M0-H4 — Freeze and test rules interpretations
+### [x] M0-H4 — Freeze and test rules interpretations
 
 Cross-check all entries in `docs/rules-interpretations.md` against the authoritative spec, implementation and fixtures. Pay particular attention to conveyor displacement, robot/crate conveyor interactions, cumulative damage tie-breaks and pit-disable crate drops. Fill test gaps without changing gameplay; flag any normative disagreement for decision.
 
-**Evidence:** Commit: _pending_ · Tests: _pending_ · Notes: _pending_
+**Evidence:** Commit: `H45_SHA` (closeout together with H5) · Tests: one existing test corrected (below); no new suites · Notes:
 
-### [ ] M0-H5 — Final M0 acceptance
+- **Result: no gameplay contradictions found.** All 24 interpretations were re-read against spec sections 3, 5, 6 and 9 and against the tests that pin them. Conveyor displacement (#5, #6), robot/crate conveyor interaction (#7), the damage tie-break (#11) and pit-disable crate drops (#12) are each pinned by a named test that exercises the behaviour, and none contradicts the spec text; they remain the four readings a rules owner may wish to confirm (changing any is a rules-version bump).
+- **Spec vs implementation, mechanically:** the 22 event types in spec 9.3 equal the 22 the engine emits (none missing, none extra). Random play produces 20 of them; `CRATE_DESTROYED` and `RESPAWN_REDIRECTED` are covered by direct unit tests.
+- **One genuine coverage gap, fixed:** spec 11 item 14 names *group states*, but random play leaves a group reversed in only 1 of 360 round-end states and the H1 test titled "...and toggled group" never toggled anything, so restoring a reversed group was not really exercised. That test now plays a real route (walk to the console, collect a crate on the way, `TOGGLE`), restores **mid-round** with a reversed group, a carried crate and a pending phase, and continues both copies to an identical state. It replaced the mislabelled test; it is not an additional suite.
+- **Not blockers (recorded, nothing started):** #8 (failed crate conveyor move emits no event) and #19 (a respawn onto a loose crate does not pick it up) have no pinning test; the spec is silent and neither affects score, safety or determinism. One loose reference (`server: deadline`) was corrected to the real test name.
+
+### [x] M0-H5 — Final M0 acceptance
 
 Run complete tests, ASan/UBSan and deterministic full-match simulations (2–4 players, multiple seeds, missed submissions/retries and save/restore). Check all 14 acceptance categories in spec §11 and invariants beyond hash equality. Summarise pass/fail evidence, known M0 blockers versus deferred work, rules compatibility and whether M0 can be accepted. Update README/status documentation accurately.
 
-**Evidence:** Commit: _pending_ · Tests: _pending_ · Verdict: _pending_
+**Evidence:** Commit: `H45_SHA` · Tests: 149 cases / 28 082 assertions · **Verdict: M0 ACCEPTED, no blockers.** Details:
+
+| Check | Result |
+|---|---|
+| Full suite, Debug | 149/149 cases, 28 082 assertions pass; `ctest` passes |
+| ASan + UBSan (`-fno-sanitize-recover`) | 149/149, clean |
+| Release `-O2 -Werror` | builds without warnings; 149/149 |
+| Deterministic simulations | 2, 3 and 4 players x seeds 1, 7, 42, each run twice by `botched-sim --check`: identical state and event hashes; with 25% missed submissions (13 timeouts) also identical |
+| Debug vs Release | identical state/event hashes (default seed and the missed-submission run) |
+| `botched/1` behaviour | simulator hashes unchanged since before H1 (`e846c1c016b36358` / `5d9ebce915bed1f8`, pinned by a test) |
+| Invariants beyond hash equality | per-seed simulation checks (25 seeds, incl. missed submissions): score = 5 x deliveries, every carried crate has exactly one carrier, damage in range; H1 validator enforces ~25 structural invariants on every checkpoint |
+
+Spec 11 acceptance categories (each pinned by named tests in `tests/`):
+
+| # | Category | Tests |
+|---|---|---|
+| 1 | rotation, forward/back, wall/border | `test_movement` "1." |
+| 2 | `FORWARD_2` | "2." |
+| 3 | push chains, blocked chains, pit pushes | "3." |
+| 4 | rotating priority | "4." |
+| 5 | pickup, own/rival dock, capacity | `test_crates` "5.", e2e in `test_match` |
+| 6 | drop, conveyor movement and contention | "6." |
+| 7 | conveyor snapshot (no double move) | "7." |
+| 8 | console before conveyors, toggles cancel | `test_machinery` "8." |
+| 9 | lasers: wall, several robots, overlap | "9." |
+| 10 | third-damage disable, pit, crate drop/destroy, skipped orders, respawn tie-break | "10." |
+| 11 | missing programme, idempotency, stale revisions | `test_match` "11.", `test_idempotency` |
+| 12 | arrival-order and pacing independence | "12.", `test_idempotency` determinism |
+| 13 | round-12 end, tie-breaks | "13." |
+| 14 | reconnect: carried crates, group state, pending phase | "14.", `test_restore` (now with a real reversed-group restore) |
+
+M0 acceptance criteria (spec 12 "M0 - Pure rules engine" plus the original task priorities 1-5): map parser/validator, robots, orders, pushing, pickup/delivery, turn priority, snapshot, deterministic replay, unit tests, no network/rendering; deterministic headless library; grid/objects/orders/collisions/round lifecycle; canonical state and structured events; section 11 tests; POSIX reference app completing a 4-player match. **All met.** Priority 6 (NIO transport and platform clients) is M1 by design.
+
+**Known non-blocking items** (recorded, nothing started): rules-owner confirmation of interpretations #5/#7/#11/#12; #8/#19 unpinned (H4); determinism verified only with GCC 16 on x86-64 Linux, so cross-compiler/target checks belong in M1 CI; simulated bots are weak and random so ties/shared wins are common in simulation (balance is a playtest criterion per spec 7, not an M0 criterion); lobby operations unauthenticated, no rate limiting, rooms never reclaimed, stdio host only checks deadlines when a request arrives, no host-level persistence (M1-01/M1-02/M1-03).
 
 ## Deferred — M1 (do not implement under this tracker)
 
@@ -87,5 +125,5 @@ Run complete tests, ASan/UBSan and deterministic full-match simulations (2–4 p
 | H1 | `159f7047` | 111 cases / 6109 assertions; ASan+UBSan clean; sim hashes unchanged | None blocking. Reachability and authentication are out of scope (see notes). |
 | H2 | `e91271c8` | 129 cases / 17924 assertions; ASan+UBSan clean; sim hashes unchanged; 50 MB hostile stream at ~12 MB RSS | None blocking. New error codes and request-id memory window flagged for review (see H2 notes / H3). |
 | H3 | `eacfb2c8` (contract `bc034136`, binary requirements `8c941c2f`) | 149 cases / 28073 assertions; ASan+UBSan clean; sim hashes unchanged and pinned; mutation-checked | None blocking. D6 resolved to exact records. Budget lock-out of a slot for one round and store-not-checkpointed are by design (D1, D8/M1-02). |
-| H4 | | | |
-| H5 | | | |
+| H4 | `H45_SHA` | 24 interpretations re-checked; 22/22 spec event types match; one real coverage gap (reversed-group restore) fixed | None blocking. #8/#19 unpinned, non-critical. |
+| H5 | `H45_SHA` | 149 cases / 28 082 assertions; ASan+UBSan and Release -Werror clean; 2/3/4 players x 3 seeds + missed submissions deterministic; Debug==Release hashes | **M0 accepted.** GO for the playable MVP (M1). |

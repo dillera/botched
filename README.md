@@ -4,6 +4,16 @@ Server-authoritative, deterministic multiplayer factory game for FujiNet-NIO cli
 Rules: [`docs/botched-game-spec-v1.md`](docs/botched-game-spec-v1.md) (authoritative).
 Where the spec was silent: [`docs/rules-interpretations.md`](docs/rules-interpretations.md).
 
+## Status
+
+**M0 (pure rules engine) is complete and accepted** (see `docs/m0-hardening.md`). A deterministic,
+headless C++20 rules library, a transport-agnostic `GameServer`, a stdio JSON host and a POSIX
+reference simulator complete full 2-4 player matches with no clients connected. 149 test cases cover
+all 14 acceptance categories of the spec (clean under ASan/UBSan; identical results in Debug and
+Release). **Not built yet (M1):** the networked playable MVP: a NIO transport adapter, an
+interactive ASCII client, unattended planning timers, host-level recovery and the binary wire
+protocol for retro clients (`docs/binary-protocol-requirements.md`).
+
 ## Layout
 
 | Path | Layer | Depends on |
