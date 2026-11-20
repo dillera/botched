@@ -65,7 +65,7 @@ Verify that identical `(player, request_id)` retries return their original respo
 
 Cross-check all entries in `docs/rules-interpretations.md` against the authoritative spec, implementation and fixtures. Pay particular attention to conveyor displacement, robot/crate conveyor interactions, cumulative damage tie-breaks and pit-disable crate drops. Fill test gaps without changing gameplay; flag any normative disagreement for decision.
 
-**Evidence:** Commit: `H45_SHA` (closeout together with H5) · Tests: one existing test corrected (below); no new suites · Notes:
+**Evidence:** Commit: `92909d2b` (closeout together with H5) · Tests: one existing test corrected (below); no new suites · Notes:
 
 - **Result: no gameplay contradictions found.** All 24 interpretations were re-read against spec sections 3, 5, 6 and 9 and against the tests that pin them. Conveyor displacement (#5, #6), robot/crate conveyor interaction (#7), the damage tie-break (#11) and pit-disable crate drops (#12) are each pinned by a named test that exercises the behaviour, and none contradicts the spec text; they remain the four readings a rules owner may wish to confirm (changing any is a rules-version bump).
 - **Spec vs implementation, mechanically:** the 22 event types in spec 9.3 equal the 22 the engine emits (none missing, none extra). Random play produces 20 of them; `CRATE_DESTROYED` and `RESPAWN_REDIRECTED` are covered by direct unit tests.
@@ -76,7 +76,7 @@ Cross-check all entries in `docs/rules-interpretations.md` against the authorita
 
 Run complete tests, ASan/UBSan and deterministic full-match simulations (2–4 players, multiple seeds, missed submissions/retries and save/restore). Check all 14 acceptance categories in spec §11 and invariants beyond hash equality. Summarise pass/fail evidence, known M0 blockers versus deferred work, rules compatibility and whether M0 can be accepted. Update README/status documentation accurately.
 
-**Evidence:** Commit: `H45_SHA` · Tests: 149 cases / 28 082 assertions · **Verdict: M0 ACCEPTED, no blockers.** Details:
+**Evidence:** Commit: `92909d2b` · Tests: 149 cases / 28 082 assertions · **Verdict: M0 ACCEPTED, no blockers.** Details:
 
 | Check | Result |
 |---|---|
@@ -125,5 +125,5 @@ M0 acceptance criteria (spec 12 "M0 - Pure rules engine" plus the original task 
 | H1 | `159f7047` | 111 cases / 6109 assertions; ASan+UBSan clean; sim hashes unchanged | None blocking. Reachability and authentication are out of scope (see notes). |
 | H2 | `e91271c8` | 129 cases / 17924 assertions; ASan+UBSan clean; sim hashes unchanged; 50 MB hostile stream at ~12 MB RSS | None blocking. New error codes and request-id memory window flagged for review (see H2 notes / H3). |
 | H3 | `eacfb2c8` (contract `bc034136`, binary requirements `8c941c2f`) | 149 cases / 28073 assertions; ASan+UBSan clean; sim hashes unchanged and pinned; mutation-checked | None blocking. D6 resolved to exact records. Budget lock-out of a slot for one round and store-not-checkpointed are by design (D1, D8/M1-02). |
-| H4 | `H45_SHA` | 24 interpretations re-checked; 22/22 spec event types match; one real coverage gap (reversed-group restore) fixed | None blocking. #8/#19 unpinned, non-critical. |
-| H5 | `H45_SHA` | 149 cases / 28 082 assertions; ASan+UBSan and Release -Werror clean; 2/3/4 players x 3 seeds + missed submissions deterministic; Debug==Release hashes | **M0 accepted.** GO for the playable MVP (M1). |
+| H4 | `92909d2b` | 24 interpretations re-checked; 22/22 spec event types match; one real coverage gap (reversed-group restore) fixed | None blocking. #8/#19 unpinned, non-critical. |
+| H5 | `92909d2b` | 149 cases / 28 082 assertions; ASan+UBSan and Release -Werror clean; 2/3/4 players x 3 seeds + missed submissions deterministic; Debug==Release hashes | **M0 accepted.** GO for the playable MVP (M1). |
