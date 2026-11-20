@@ -82,7 +82,7 @@ private:
     struct Entry {
         bool has = false;
         int revision = 0;
-        Programme orders{};
+        Programme orders{Order::Wait, Order::Wait, Order::Wait};  // canonical for "no programme"
         bool ready = false;
     };
 

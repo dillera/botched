@@ -1,6 +1,7 @@
 #include "botched/serialize.hpp"
 
 #include <cstdio>
+#include <optional>
 
 namespace botched {
 
@@ -50,85 +51,129 @@ void write_world(const GameState& s, Json& out) {
 }
 
 namespace {
-bool fail(std::string& error, const char* what) {
+
+constexpr std::int64_t kMaxField = 1'000'000;  // far above any legal value; prevents int narrowing
+
+bool fail(std::string& error, const std::string& what) {
     error = what;
     return false;
 }
+
+// Required integer field in [lo, hi]. Wrong type, missing or out of range -> error.
+bool need_int(const Json& o, const char* key, std::int64_t lo, std::int64_t hi, int& out, const std::string& ctx,
+              std::string& error) {
+    const Json* j = o.find(key);
+    if (!j || !j->is_int()) return fail(error, ctx + "." + key + " must be an integer");
+    if (j->as_int() < lo || j->as_int() > hi)
+        return fail(error, ctx + "." + key + " out of range [" + std::to_string(lo) + "," + std::to_string(hi) + "]");
+    out = static_cast<int>(j->as_int());
+    return true;
+}
+
+bool need_bool(const Json& o, const char* key, bool& out, const std::string& ctx, std::string& error) {
+    const Json* j = o.find(key);
+    if (!j || !j->is_bool()) return fail(error, ctx + "." + key + " must be a boolean");
+    out = j->as_bool();
+    return true;
+}
+
+// Optional integer: null -> absent. Any other non-integer is an error (never silently ignored).
+bool opt_int(const Json& o, const char* key, std::int64_t lo, std::int64_t hi, std::optional<int>& out,
+             const std::string& ctx, std::string& error) {
+    const Json* j = o.find(key);
+    if (!j) return fail(error, ctx + "." + key + " is missing");
+    if (j->is_null()) { out.reset(); return true; }
+    int v = 0;
+    if (!need_int(o, key, lo, hi, v, ctx, error)) return false;
+    out = v;
+    return true;
+}
+
 }  // namespace
 
 bool read_world(const Json& in, GameState& s, std::string& error) {
+    if (!in.is_object()) return fail(error, "world must be a JSON object");
     GameState g;
     auto phase = in.get_string("phase");
-    auto round = in.get_int("round");
-    auto tick = in.get_int("tick");
-    auto total = in.get_int("rounds_total");
-    auto next = in.get_int("next_crate_id");
-    if (!phase || !round || !tick || !total || !next) return fail(error, "missing world header field");
+    if (!phase) return fail(error, "phase must be a string");
     auto ph = parse_phase(*phase);
-    if (!ph) return fail(error, "bad phase");
+    if (!ph) return fail(error, "phase has an unknown value");
     g.phase = *ph;
-    g.round = static_cast<int>(*round);
-    g.tick = static_cast<int>(*tick);
-    g.rounds_total = static_cast<int>(*total);
-    g.next_crate_id = static_cast<int>(*next);
+    if (!need_int(in, "round", 0, kMaxField, g.round, "world", error)) return false;
+    if (!need_int(in, "tick", 0, kRegisters, g.tick, "world", error)) return false;
+    if (!need_int(in, "rounds_total", 1, 99, g.rounds_total, "world", error)) return false;
+    if (!need_int(in, "next_crate_id", 1, kMaxField, g.next_crate_id, "world", error)) return false;
 
     const Json* players = in.find("players");
     const Json* crates = in.find("crates");
     const Json* groups = in.find("groups");
-    if (!players || !players->is_array() || !crates || !crates->is_array() || !groups || !groups->is_array())
-        return fail(error, "missing players/crates/groups");
+    if (!players || !players->is_array()) return fail(error, "players must be an array");
+    if (!crates || !crates->is_array()) return fail(error, "crates must be an array");
+    if (!groups || !groups->is_array()) return fail(error, "groups must be an array");
+    if (players->items().size() < 2 || players->items().size() > static_cast<std::size_t>(kMaxPlayers))
+        return fail(error, "players must hold 2-4 records");
+    if (crates->items().size() > 20 * 16 + kMaxPlayers) return fail(error, "too many crates");
+    if (groups->items().size() > 26) return fail(error, "too many groups");
 
-    for (const auto& pj : players->items()) {
+    for (std::size_t i = 0; i < players->items().size(); ++i) {
+        const Json& pj = players->items()[i];
+        const std::string ctx = "players[" + std::to_string(i) + "]";
+        if (!pj.is_object()) return fail(error, ctx + " must be an object");
         Robot r;
-        auto id = pj.get_int("id");
+        if (!need_int(pj, "id", 0, kMaxField, r.id, ctx, error)) return false;
+        if (r.id != static_cast<int>(i) + 1) return fail(error, ctx + ".id must be " + std::to_string(i + 1));
         auto heading = pj.get_string("heading");
-        auto damage = pj.get_int("damage");
-        auto score = pj.get_int("score");
-        auto deliveries = pj.get_int("deliveries");
-        auto taken = pj.get_int("damage_taken");
-        auto pending = pj.get_bool("respawn_pending");
-        if (!id || !heading || !damage || !score || !deliveries || !taken || !pending)
-            return fail(error, "bad player record");
-        auto d = parse_dir(*heading);
-        if (!d) return fail(error, "bad player heading");
-        r.id = static_cast<int>(*id);
+        auto d = heading ? parse_dir(*heading) : std::nullopt;
+        if (!d) return fail(error, ctx + ".heading must be N, E, S or W");
         r.heading = *d;
-        r.damage = static_cast<int>(*damage);
-        r.score = static_cast<int>(*score);
-        r.deliveries = static_cast<int>(*deliveries);
-        r.damage_taken = static_cast<int>(*taken);
-        r.respawn_pending = *pending;
-        if (!r.respawn_pending) {
-            auto x = pj.get_int("x");
-            auto y = pj.get_int("y");
-            if (!x || !y) return fail(error, "active player without position");
-            r.pos = {static_cast<int>(*x), static_cast<int>(*y)};
+        if (!need_int(pj, "damage", 0, kMaxHealth, r.damage, ctx, error)) return false;
+        if (!need_int(pj, "score", 0, kMaxField, r.score, ctx, error)) return false;
+        if (!need_int(pj, "deliveries", 0, kMaxField, r.deliveries, ctx, error)) return false;
+        if (!need_int(pj, "damage_taken", 0, kMaxField, r.damage_taken, ctx, error)) return false;
+        if (!need_bool(pj, "respawn_pending", r.respawn_pending, ctx, error)) return false;
+        std::optional<int> x, y, carrying;
+        if (!opt_int(pj, "x", 0, kMaxField, x, ctx, error)) return false;
+        if (!opt_int(pj, "y", 0, kMaxField, y, ctx, error)) return false;
+        if (!opt_int(pj, "carrying", 1, kMaxField, carrying, ctx, error)) return false;
+        if (r.respawn_pending) {
+            if (x || y) return fail(error, ctx + " is pending respawn and must have no position");
+        } else {
+            if (!x || !y) return fail(error, ctx + " is active and needs a position");
+            r.pos = {*x, *y};
         }
-        if (auto c = pj.get_int("carrying")) r.carrying = static_cast<int>(*c);
-        if (r.id != static_cast<int>(g.robots.size()) + 1) return fail(error, "player ids must be 1..N in order");
+        r.carrying = carrying.value_or(0);
         g.robots.push_back(r);
     }
-    for (const auto& cj : crates->items()) {
+    for (std::size_t i = 0; i < crates->items().size(); ++i) {
+        const Json& cj = crates->items()[i];
+        const std::string ctx = "crates[" + std::to_string(i) + "]";
+        if (!cj.is_object()) return fail(error, ctx + " must be an object");
         Crate c;
-        auto id = cj.get_int("id");
-        if (!id) return fail(error, "bad crate record");
-        c.id = static_cast<int>(*id);
-        if (auto carrier = cj.get_int("carrier_player_id")) {
+        if (!need_int(cj, "id", 1, kMaxField, c.id, ctx, error)) return false;
+        std::optional<int> x, y, carrier;
+        if (!opt_int(cj, "x", 0, kMaxField, x, ctx, error)) return false;
+        if (!opt_int(cj, "y", 0, kMaxField, y, ctx, error)) return false;
+        if (!opt_int(cj, "carrier_player_id", 1, kMaxPlayers, carrier, ctx, error)) return false;
+        if (carrier) {
+            if (x || y) return fail(error, ctx + " is carried and must have no position");
             c.carried = true;
-            c.carrier = static_cast<int>(*carrier);
+            c.carrier = *carrier;
         } else {
-            auto x = cj.get_int("x");
-            auto y = cj.get_int("y");
-            if (!x || !y) return fail(error, "loose crate without position");
-            c.pos = {static_cast<int>(*x), static_cast<int>(*y)};
+            if (!x || !y) return fail(error, ctx + " is loose and needs a position");
+            c.pos = {*x, *y};
         }
         g.crates.push_back(c);
     }
-    for (const auto& gj : groups->items()) {
+    for (std::size_t i = 0; i < groups->items().size(); ++i) {
+        const Json& gj = groups->items()[i];
+        const std::string ctx = "groups[" + std::to_string(i) + "]";
+        if (!gj.is_object()) return fail(error, ctx + " must be an object");
         auto id = gj.get_string("id");
-        auto rev = gj.get_bool("reversed");
-        if (!id || id->size() != 1 || !rev) return fail(error, "bad group record");
-        g.groups.push_back({(*id)[0], *rev});
+        if (!id || id->size() != 1 || (*id)[0] < 'A' || (*id)[0] > 'Z')
+            return fail(error, ctx + ".id must be one letter A-Z");
+        bool rev = false;
+        if (!need_bool(gj, "reversed", rev, ctx, error)) return false;
+        g.groups.push_back({(*id)[0], rev});
     }
     s = std::move(g);
     return true;

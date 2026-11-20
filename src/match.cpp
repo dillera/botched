@@ -3,6 +3,7 @@
 #include <algorithm>
 
 #include "botched/serialize.hpp"
+#include "botched/validate.hpp"
 
 namespace botched {
 
@@ -228,48 +229,202 @@ Json Match::save() const {
     return j;
 }
 
+namespace {
+
+bool bad(std::string& error, std::string msg) {
+    error = std::move(msg);
+    return false;
+}
+
+bool int_in(const Json& o, const char* key, std::int64_t lo, std::int64_t hi, int& out, const std::string& ctx,
+            std::string& error) {
+    const Json* j = o.find(key);
+    if (!j || !j->is_int()) return bad(error, ctx + "." + key + " must be an integer");
+    if (j->as_int() < lo || j->as_int() > hi) return bad(error, ctx + "." + key + " is out of range");
+    out = static_cast<int>(j->as_int());
+    return true;
+}
+
+bool bool_of(const Json& o, const char* key, bool& out, const std::string& ctx, std::string& error) {
+    const Json* j = o.find(key);
+    if (!j || !j->is_bool()) return bad(error, ctx + "." + key + " must be a boolean");
+    out = j->as_bool();
+    return true;
+}
+
+// "YYYY-MM-DDTHH:MM:SSZ" (what server::format_utc writes); only the shape is checked.
+bool utc_shape(const std::string& t) {
+    if (t.size() != 20) return false;
+    for (std::size_t i = 0; i < t.size(); ++i) {
+        char c = t[i];
+        bool digit = c >= '0' && c <= '9';
+        switch (i) {
+            case 4: case 7: if (c != '-') return false; break;
+            case 10: if (c != 'T') return false; break;
+            case 13: case 16: if (c != ':') return false; break;
+            case 19: if (c != 'Z') return false; break;
+            default: if (!digit) return false;
+        }
+    }
+    return true;
+}
+
+}  // namespace
+
+// Restoration is staged: configuration, header, world, programmes, version, cursor and
+// deadline are all parsed and validated into locals first. Only when every check has passed
+// is a Match constructed and filled, and that last step has no failure path. A rejected
+// checkpoint therefore builds nothing and touches nothing (no half-restored Match exists).
 std::optional<Match> Match::restore(MatchConfig cfg, const Json& saved, std::string& error) {
-    Match m(std::move(cfg));
-    GameState s;
-    if (!read_world(saved, s, error)) return std::nullopt;
-    if (s.player_count() != m.cfg_.player_count) { error = "player count mismatch"; return std::nullopt; }
-    auto ver = saved.get_int("state_version");
+    error.clear();
+
+    // 1. Configuration the checkpoint will be bound to.
+    if (!cfg.map) { bad(error, "configuration has no map"); return std::nullopt; }
+    if (cfg.player_count < 2 || cfg.player_count > kMaxPlayers) {
+        bad(error, "configured player_count must be 2-4");
+        return std::nullopt;
+    }
+    if (cfg.rounds < 1 || cfg.rounds > 99) { bad(error, "configured rounds must be 1-99"); return std::nullopt; }
+    {
+        ValidationOptions vo;
+        vo.player_count = cfg.player_count;
+        auto errs = validate_map(*cfg.map, vo);
+        if (!errs.empty()) { bad(error, "configured map is invalid: " + errs.front()); return std::nullopt; }
+    }
+
+    // 2. Header: protocol, rules version, identity and board.
+    if (!saved.is_object()) { bad(error, "checkpoint must be a JSON object"); return std::nullopt; }
+    auto proto = saved.get_string("protocol");
+    if (!proto || *proto != kProtocol) { bad(error, std::string("protocol must be ") + kProtocol); return std::nullopt; }
+    auto rules = saved.get_string("rules_version");
+    if (!rules || *rules != kRulesVersion) {
+        bad(error, std::string("rules_version must be ") + kRulesVersion + " (incompatible checkpoint)");
+        return std::nullopt;
+    }
+    auto mid = saved.get_string("match_id");
+    if (!mid || *mid != cfg.match_id) { bad(error, "match_id does not match the configuration"); return std::nullopt; }
+    const Json* board = saved.find("board");
+    if (!board || !board->is_object()) { bad(error, "board must be an object"); return std::nullopt; }
+    auto bmap = board->get_string("map_id");
+    if (!bmap || *bmap != cfg.map->id) { bad(error, "board.map_id does not match the configured map"); return std::nullopt; }
+    auto bw = board->get_int("width");
+    auto bh = board->get_int("height");
+    if (!bw || !bh || *bw != cfg.map->width || *bh != cfg.map->height) {
+        bad(error, "board dimensions differ from the configured map");
+        return std::nullopt;
+    }
+
+    // 3. World (strict parse, then semantic validation against the map).
+    GameState world;
+    if (!read_world(saved, world, error)) return std::nullopt;
+    if (!validate_world(world, *cfg.map, cfg.player_count, cfg.rounds, error)) return std::nullopt;
+
+    // 4. Programmes (secret planning data) and their consistency with the phase.
     const Json* progs = saved.find("programs");
-    const Json* cur = saved.find("event_cursor");
-    if (!ver || !progs || !progs->is_array() || !cur) { error = "missing save fields"; return std::nullopt; }
-    if (progs->items().size() != m.entries_.size()) { error = "programs size mismatch"; return std::nullopt; }
-    for (std::size_t i = 0; i < m.entries_.size(); ++i) {
+    if (!progs || !progs->is_array() || static_cast<int>(progs->items().size()) != cfg.player_count) {
+        bad(error, "programs must be an array with one record per player");
+        return std::nullopt;
+    }
+    std::vector<Entry> entries(static_cast<std::size_t>(cfg.player_count));
+    for (std::size_t i = 0; i < entries.size(); ++i) {
         const Json& p = progs->items()[i];
-        Entry e;
-        auto has = p.get_bool("has");
-        auto rev = p.get_int("revision");
-        auto ready = p.get_bool("ready");
+        const std::string ctx = "programs[" + std::to_string(i) + "]";
+        if (!p.is_object()) { bad(error, ctx + " must be an object"); return std::nullopt; }
+        Entry& e = entries[i];
+        if (!bool_of(p, "has", e.has, ctx, error)) return std::nullopt;
+        if (!int_in(p, "revision", 0, 1'000'000, e.revision, ctx, error)) return std::nullopt;
+        if (!bool_of(p, "ready", e.ready, ctx, error)) return std::nullopt;
         const Json* orders = p.find("orders");
-        if (!has || !rev || !ready || !orders || !orders->is_array() ||
-            static_cast<int>(orders->items().size()) != kRegisters) {
-            error = "bad programme record";
+        if (!orders || !orders->is_array() || static_cast<int>(orders->items().size()) != kRegisters) {
+            bad(error, ctx + ".orders must be an array of exactly 3 order tokens");
             return std::nullopt;
         }
-        e.has = *has;
-        e.revision = static_cast<int>(*rev);
-        e.ready = *ready;
+        bool all_wait = true;
         for (std::size_t k = 0; k < orders->items().size(); ++k) {
             const Json& o = orders->items()[k];
             auto parsed = o.is_string() ? parse_order(o.as_string()) : std::nullopt;
-            if (!parsed) { error = "bad order token in save"; return std::nullopt; }
+            if (!parsed) { bad(error, ctx + ".orders holds an invalid order token"); return std::nullopt; }
             e.orders[k] = *parsed;
+            all_wait = all_wait && *parsed == Order::Wait;
         }
-        m.entries_[i] = e;
+        if (!e.has) {
+            if (e.revision != 0 || e.ready || !all_wait) {
+                bad(error, ctx + ": a player without a programme must have revision 0, not ready, orders WAIT");
+                return std::nullopt;
+            }
+        } else {
+            if (world.phase == Phase::Planning && e.revision < 1) {
+                bad(error, ctx + ": a submitted programme needs revision >= 1");
+                return std::nullopt;
+            }
+            if (e.revision == 0 && !all_wait) {
+                bad(error, ctx + ": revision 0 is reserved for the server's WAIT fill-in orders");
+                return std::nullopt;
+            }
+        }
+        if (world.phase != Phase::Planning && !(e.has && e.ready)) {
+            bad(error, ctx + ": programme must be locked once planning has closed");
+            return std::nullopt;
+        }
     }
-    m.state_ = std::move(s);
-    m.version_ = static_cast<int>(*ver);
-    m.trimmed_below_ = m.version_;  // earlier events are not part of a save
+
+    // The save also carries the derived public sets; they must agree with the programme records.
+    for (const char* key : {"submitted_players", "ready_players"}) {
+        const bool want_ready = std::string(key) == "ready_players";
+        const Json* arr = saved.find(key);
+        if (!arr || !arr->is_array()) { bad(error, std::string(key) + " must be an array"); return std::nullopt; }
+        Json expected = Json::array();
+        for (std::size_t i = 0; i < entries.size(); ++i)
+            if (entries[i].has && (!want_ready || entries[i].ready)) expected.push(static_cast<int>(i) + 1);
+        if (!(*arr == expected)) { bad(error, std::string(key) + " does not match the programme records"); return std::nullopt; }
+    }
+
+    // 5. Version, event cursor, deadline.
+    int version = 0;
+    if (!int_in(saved, "state_version", 1, 1'000'000'000, version, "checkpoint", error)) return std::nullopt;
+    {
+        // Publications so far: 1 for round 1's start, then close + 3 ticks + next start per round.
+        const int base = 1 + 5 * (world.round - 1);
+        int min_version = base;
+        if (world.phase == Phase::Executing) min_version = base + 1 + world.tick;
+        if (world.phase == Phase::Finished) min_version = base + 4;
+        if (version < min_version) {
+            bad(error, "state_version is lower than the match history implies");
+            return std::nullopt;
+        }
+    }
+    const Json* cur = saved.find("event_cursor");
+    if (!cur || !cur->is_object()) { bad(error, "event_cursor must be an object"); return std::nullopt; }
+    int cur_round = 0, cur_tick = 0, cur_seq = 0;
+    if (!int_in(*cur, "round", 0, 1'000'000, cur_round, "event_cursor", error)) return std::nullopt;
+    if (!int_in(*cur, "tick", 0, kRegisters, cur_tick, "event_cursor", error)) return std::nullopt;
+    if (!int_in(*cur, "sequence", 0, 1'000'000'000, cur_seq, "event_cursor", error)) return std::nullopt;
+    if (cur_round != world.round || cur_tick != world.tick) {
+        bad(error, "event_cursor does not match the world's round and tick");
+        return std::nullopt;
+    }
+    std::string deadline;
+    const Json* dl = saved.find("planning_deadline_utc");
+    if (!dl || !(dl->is_null() || dl->is_string())) {
+        bad(error, "planning_deadline_utc must be a string or null");
+        return std::nullopt;
+    }
+    if (dl->is_string()) {
+        if (!utc_shape(dl->as_string())) { bad(error, "planning_deadline_utc is not a UTC timestamp"); return std::nullopt; }
+        deadline = dl->as_string();
+    }
+
+    // 6. Commit. Everything above passed; nothing below can reject.
+    Match m(std::move(cfg));
+    m.state_ = std::move(world);
+    m.entries_ = std::move(entries);
+    m.version_ = version;
+    m.trimmed_below_ = version;  // earlier events are not part of a save
     m.events_.clear();
+    m.request_cache_.clear();
     m.log_.take();
-    m.log_.restore_cursor(static_cast<int>(cur->get_int("round").value_or(0)),
-                          static_cast<int>(cur->get_int("tick").value_or(0)),
-                          static_cast<int>(cur->get_int("sequence").value_or(0)));
-    if (auto d = saved.get_string("planning_deadline_utc")) m.deadline_utc_ = *d;
+    m.log_.restore_cursor(cur_round, cur_tick, cur_seq);
+    m.deadline_utc_ = std::move(deadline);
     return m;
 }
 

@@ -21,6 +21,7 @@ add_library(botched_core STATIC
   src/state.cpp
   src/engine.cpp
   src/serialize.cpp
+  src/validate.cpp
   src/match.cpp
 )
 target_include_directories(botched_core PUBLIC include)

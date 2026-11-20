@@ -49,6 +49,16 @@ ctest --test-dir build --output-on-failure     # or ./build/botched_tests
 `CREATE_MATCH`, `JOIN_MATCH`, `START_MATCH` are lobby operations outside the spec's section 9.2
 list. Session tokens here are reference-grade; real authentication belongs to NIO infrastructure.
 
+## Checkpoints
+
+`Match::save()` / `Match::restore()` serialise a match including secret programmes. `restore()`
+treats the checkpoint as untrusted: it validates the configuration, header (`protocol`,
+`rules_version`, `match_id`, board), the world (identities, positions/occupancy, carrying
+relationships, groups, phase/round/tick), programme records, version and event cursor, all
+*before* building anything, and rejects with a reason on any failure. A rejected checkpoint
+leaves no partially restored `Match`. This is a single-match checkpoint, not host persistence
+(rooms, sessions, deadlines and request-id history are M1).
+
 ## Determinism contract
 
 `Match` takes commands and produces canonical state plus events; nothing in it reads a clock or

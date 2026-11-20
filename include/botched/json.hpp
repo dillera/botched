@@ -45,6 +45,7 @@ public:
     const Array& items() const { return arr_; }
     Array& items() { return arr_; }
     const Object& members() const { return obj_; }
+    Object& members() { return obj_; }
 
     // Object helpers. set() replaces an existing key in place (keeps position).
     Json& set(std::string key, Json value);
