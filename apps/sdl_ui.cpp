@@ -1,0 +1,1093 @@
+#include "sdl_ui.hpp"
+
+#include <SDL.h>
+#include <SDL_ttf.h>
+
+#include <algorithm>
+#include <chrono>
+#include <cmath>
+#include <cstdio>
+#include <cstdlib>
+#include <memory>
+#include <optional>
+#include <unordered_map>
+
+#include "ascii_render.hpp"
+#include "bot.hpp"
+#include "botched/map.hpp"
+#include "ui_model.hpp"
+
+namespace botched::ui {
+
+namespace {
+
+using client::order_code;
+
+// ------------------------------------------------------------------ palette
+
+constexpr SDL_Color C(int r, int g, int b, int a = 255) {
+    return SDL_Color{static_cast<Uint8>(r), static_cast<Uint8>(g), static_cast<Uint8>(b), static_cast<Uint8>(a)};
+}
+constexpr SDL_Color kBg = C(12, 16, 24), kPanel = C(22, 29, 41), kPanelEdge = C(52, 66, 88), kInk = C(224, 232, 242),
+                    kMuted = C(130, 146, 168), kGold = C(255, 205, 80), kGreen = C(110, 220, 140), kRed = C(240, 96, 96),
+                    kCyan = C(90, 220, 230), kAmber = C(255, 170, 80), kViolet = C(190, 150, 255);
+
+SDL_Color player_color(int id) {
+    static const SDL_Color c[] = {C(150, 150, 150), C(236, 84, 84), C(84, 148, 244), C(96, 206, 116), C(206, 108, 236)};
+    return c[id >= 1 && id <= 4 ? id : 0];
+}
+SDL_Color group_color(char g) {
+    static const SDL_Color c[] = {C(80, 220, 230), C(226, 96, 206), C(240, 214, 90), C(120, 220, 120), C(110, 150, 250)};
+    return c[((g - 'A') % 5 + 5) % 5];
+}
+SDL_Color shade(SDL_Color c, float f) {
+    auto k = [&](Uint8 v) { return static_cast<Uint8>(std::clamp(static_cast<int>(v * f), 0, 255)); };
+    return SDL_Color{k(c.r), k(c.g), k(c.b), c.a};
+}
+SDL_Color mix(SDL_Color a, SDL_Color b, float t) {
+    auto k = [&](Uint8 x, Uint8 y) { return static_cast<Uint8>(x + (y - x) * t); };
+    return SDL_Color{k(a.r, b.r), k(a.g, b.g), k(a.b, b.b), 255};
+}
+
+SDL_Color kind_color(ScrollLog::Kind k) {
+    switch (k) {
+        case ScrollLog::Header: return kCyan;
+        case ScrollLog::Belt: return kAmber;
+        case ScrollLog::Push: return kViolet;
+        case ScrollLog::Good: return kGreen;
+        case ScrollLog::Bad: return kRed;
+        case ScrollLog::Notice: return kGold;
+        default: return kInk;
+    }
+}
+
+// ------------------------------------------------------------------ drawing toolkit
+
+struct Gfx {
+    SDL_Renderer* r = nullptr;
+    TTF_Font* small = nullptr;
+    TTF_Font* body = nullptr;
+    TTF_Font* big = nullptr;
+    TTF_Font* title = nullptr;
+    struct Tex { SDL_Texture* t; int w, h; };
+    std::unordered_map<std::string, Tex> cache;
+
+    void color(SDL_Color c) { SDL_SetRenderDrawColor(r, c.r, c.g, c.b, c.a); }
+    void fill(Rect q, SDL_Color c) { color(c); SDL_Rect s{q.x, q.y, q.w, q.h}; SDL_RenderFillRect(r, &s); }
+    void frame(Rect q, SDL_Color c, int t = 1) {
+        for (int i = 0; i < t; ++i) { color(c); SDL_Rect s{q.x + i, q.y + i, q.w - 2 * i, q.h - 2 * i}; SDL_RenderDrawRect(r, &s); }
+    }
+    void poly(const SDL_FPoint* p, int n, SDL_Color c) {  // convex fan
+        std::vector<SDL_Vertex> v(static_cast<std::size_t>(n));
+        for (int i = 0; i < n; ++i) v[static_cast<std::size_t>(i)] = SDL_Vertex{p[i], c, {0, 0}};
+        std::vector<int> idx;
+        for (int i = 1; i + 1 < n; ++i) { idx.push_back(0); idx.push_back(i); idx.push_back(i + 1); }
+        SDL_RenderGeometry(r, nullptr, v.data(), n, idx.data(), static_cast<int>(idx.size()));
+    }
+    void tri(float x1, float y1, float x2, float y2, float x3, float y3, SDL_Color c) {
+        SDL_FPoint p[3] = {{x1, y1}, {x2, y2}, {x3, y3}};
+        poly(p, 3, c);
+    }
+    void line(float x1, float y1, float x2, float y2, float w, SDL_Color c) {
+        float dx = x2 - x1, dy = y2 - y1, len = std::sqrt(dx * dx + dy * dy);
+        if (len < 0.001f) return;
+        float nx = -dy / len * w / 2, ny = dx / len * w / 2;
+        SDL_FPoint p[4] = {{x1 + nx, y1 + ny}, {x2 + nx, y2 + ny}, {x2 - nx, y2 - ny}, {x1 - nx, y1 - ny}};
+        poly(p, 4, c);
+    }
+    void disc(float cx, float cy, float rad, SDL_Color c, int seg = 28) {
+        std::vector<SDL_FPoint> p(static_cast<std::size_t>(seg));
+        for (int i = 0; i < seg; ++i) {
+            float a = 6.2831853f * static_cast<float>(i) / static_cast<float>(seg);
+            p[static_cast<std::size_t>(i)] = {cx + std::cos(a) * rad, cy + std::sin(a) * rad};
+        }
+        poly(p.data(), seg, c);
+    }
+    void ring(float cx, float cy, float rad, float w, SDL_Color c, int seg = 32) {
+        for (int i = 0; i < seg; ++i) {
+            float a0 = 6.2831853f * static_cast<float>(i) / static_cast<float>(seg), a1 = 6.2831853f * static_cast<float>(i + 1) / static_cast<float>(seg);
+            line(cx + std::cos(a0) * rad, cy + std::sin(a0) * rad, cx + std::cos(a1) * rad, cy + std::sin(a1) * rad, w, c);
+        }
+    }
+
+    Tex tex(const std::string& s, SDL_Color c, TTF_Font* f) {
+        char key[64];
+        std::snprintf(key, sizeof key, "%p|%02x%02x%02x|", static_cast<void*>(f), c.r, c.g, c.b);
+        std::string k = std::string(key) + s;
+        auto it = cache.find(k);
+        if (it != cache.end()) return it->second;
+        if (cache.size() > 700) clear_cache();
+        SDL_Surface* surf = TTF_RenderUTF8_Blended(f, s.c_str(), c);
+        if (!surf) return {nullptr, 0, 0};
+        Tex t{SDL_CreateTextureFromSurface(r, surf), surf->w, surf->h};
+        SDL_FreeSurface(surf);
+        cache[k] = t;
+        return t;
+    }
+    void clear_cache() {
+        for (auto& kv : cache) if (kv.second.t) SDL_DestroyTexture(kv.second.t);
+        cache.clear();
+    }
+    // align: 0 left, 1 centre, 2 right (about x). Returns the drawn width.
+    int text(int x, int y, const std::string& s, SDL_Color c, TTF_Font* f, int align = 0) {
+        if (s.empty()) return 0;
+        Tex t = tex(s, c, f);
+        if (!t.t) return 0;
+        SDL_Rect d{align == 1 ? x - t.w / 2 : align == 2 ? x - t.w : x, y, t.w, t.h};
+        SDL_RenderCopy(r, t.t, nullptr, &d);
+        return t.w;
+    }
+    int text_w(const std::string& s, TTF_Font* f) { int w = 0, h = 0; TTF_SizeUTF8(f, s.c_str(), &w, &h); return w; }
+    int line_h(TTF_Font* f) { return TTF_FontLineSkip(f); }
+};
+
+TTF_Font* open_font(const char* const* names, int size) {
+    if (const char* o = std::getenv("BOTCHED_FONT")) if (*o) if (TTF_Font* f = TTF_OpenFont(o, size)) return f;
+    static const char* const dirs[] = {"/usr/share/fonts/TTF/", "/usr/share/fonts/truetype/dejavu/", "/usr/share/fonts/dejavu-sans-fonts/",
+                                       "/usr/share/fonts/dejavu/", "/usr/share/fonts/liberation/", "/usr/share/fonts/truetype/liberation/"};
+    for (const char* const* n = names; *n; ++n)
+        for (const char* d : dirs)
+            if (TTF_Font* f = TTF_OpenFont((std::string(d) + *n).c_str(), size)) return f;
+    return nullptr;
+}
+
+// ------------------------------------------------------------------ directional helpers
+
+struct V2 { float x, y; };
+V2 fwd(Dir d) {
+    switch (d) { case Dir::N: return {0, -1}; case Dir::E: return {1, 0}; case Dir::S: return {0, 1}; case Dir::W: return {-1, 0}; }
+    return {0, -1};
+}
+
+// Local frame: u along `d`, v to the side, in units of the cell size, about the cell centre.
+struct Frame {
+    float cx, cy, s;
+    V2 f;
+    SDL_FPoint at(float u, float v) const { return {cx + (f.x * u - f.y * v) * s, cy + (f.y * u + f.x * v) * s}; }
+};
+
+void quad_local(Gfx& g, const Frame& fr, float u0, float u1, float v0, float v1, SDL_Color c) {
+    SDL_FPoint p[4] = {fr.at(u0, v0), fr.at(u1, v0), fr.at(u1, v1), fr.at(u0, v1)};
+    g.poly(p, 4, c);
+}
+
+// ------------------------------------------------------------------ sprites
+
+void draw_crate(Gfx& g, float cx, float cy, float size) {
+    const float h = size / 2;
+    g.fill({static_cast<int>(cx - h - 1), static_cast<int>(cy - h - 1), static_cast<int>(size + 2), static_cast<int>(size + 2)}, C(60, 36, 12));
+    g.fill({static_cast<int>(cx - h), static_cast<int>(cy - h), static_cast<int>(size), static_cast<int>(size)}, C(186, 128, 58));
+    g.line(cx - h, cy - h, cx + h, cy + h, std::max(1.f, size * 0.09f), C(128, 82, 34));
+    g.line(cx + h, cy - h, cx - h, cy + h, std::max(1.f, size * 0.09f), C(128, 82, 34));
+    g.fill({static_cast<int>(cx - h), static_cast<int>(cy - h), static_cast<int>(size), std::max(1, static_cast<int>(size * 0.1f))}, C(226, 178, 104));
+    g.frame({static_cast<int>(cx - h), static_cast<int>(cy - h), static_cast<int>(size), static_cast<int>(size)}, C(104, 66, 26), std::max(1, static_cast<int>(size * 0.07f)));
+}
+
+void draw_robot(Gfx& g, float cx, float cy, float s, int id, Dir heading, bool carrying, int damage, bool mine, Uint32 ticks) {
+    Frame fr{cx, cy, s, fwd(heading)};
+    SDL_Color body = player_color(id), dark = shade(body, 0.45f), light = mix(body, C(255, 255, 255), 0.45f);
+    if (mine) {
+        float pulse = 0.5f + 0.5f * std::sin(static_cast<float>(ticks) * 0.006f);
+        g.ring(cx, cy, s * 0.47f, 2.5f, mix(C(255, 255, 255), body, 0.4f + 0.5f * pulse), 36);
+    }
+    g.disc(cx + s * 0.03f, cy + s * 0.05f, s * 0.36f, C(0, 0, 0, 90));  // shadow
+    for (float side : {-1.f, 1.f}) {  // treads
+        quad_local(g, fr, -0.38f, 0.38f, side * 0.40f - 0.09f, side * 0.40f + 0.09f, C(24, 26, 32));
+        for (int i = 0; i < 5; ++i) {
+            float u = -0.32f + 0.16f * static_cast<float>(i);
+            quad_local(g, fr, u, u + 0.05f, side * 0.40f - 0.09f, side * 0.40f + 0.09f, C(70, 74, 86));
+        }
+    }
+    quad_local(g, fr, -0.32f, 0.32f, -0.30f, 0.30f, dark);
+    quad_local(g, fr, -0.29f, 0.29f, -0.27f, 0.27f, body);
+    quad_local(g, fr, 0.10f, 0.29f, -0.27f, 0.27f, light);  // brighter front plate
+    SDL_FPoint nose[3] = {fr.at(0.46f, 0), fr.at(0.30f, -0.15f), fr.at(0.30f, 0.15f)};
+    g.poly(nose, 3, C(250, 250, 250));
+    g.disc(cx, cy, s * 0.15f, C(18, 20, 28));
+    g.disc(cx, cy, s * 0.13f, C(236, 240, 246));
+    char n[4];
+    std::snprintf(n, sizeof n, "%d", id);
+    int tw = g.text_w(n, g.body), th = g.line_h(g.body);
+    g.text(static_cast<int>(cx) - tw / 2, static_cast<int>(cy) - th / 2, n, C(20, 24, 34), g.body);
+    if (damage >= 1) {  // scorch marks
+        g.line(fr.at(-0.15f, -0.2f).x, fr.at(-0.15f, -0.2f).y, fr.at(0.0f, -0.05f).x, fr.at(0.0f, -0.05f).y, 2, C(30, 20, 14));
+        g.line(fr.at(0.0f, -0.05f).x, fr.at(0.0f, -0.05f).y, fr.at(-0.08f, 0.1f).x, fr.at(-0.08f, 0.1f).y, 2, C(30, 20, 14));
+        g.disc(fr.at(-0.2f, 0.18f).x, fr.at(-0.2f, 0.18f).y, s * 0.06f, C(40, 28, 20));
+    }
+    if (carrying) draw_crate(g, cx + s * 0.27f, cy - s * 0.27f, s * 0.32f);
+}
+
+void draw_wall(Gfx& g, int x, int y, int s) {
+    g.fill({x, y, s, s}, C(86, 94, 110));
+    const SDL_Color mortar = C(50, 56, 70);
+    for (int row = 0; row < 3; ++row) {
+        int y0 = y + row * s / 3;
+        if (row) g.fill({x, y0, s, 2}, mortar);
+        int off = (row == 1) ? s / 4 : s / 2;
+        for (int bx : {off, off + (row == 1 ? s / 2 : 0)})
+            if (bx > 0 && bx < s) g.fill({x + bx, y0, 2, s / 3}, mortar);
+    }
+    g.fill({x, y, s, 2}, C(132, 142, 160));
+    g.fill({x, y, 2, s}, C(120, 130, 148));
+    g.fill({x, y + s - 2, s, 2}, C(40, 46, 58));
+    g.fill({x + s - 2, y, 2, s}, C(40, 46, 58));
+}
+
+void draw_pit(Gfx& g, int x, int y, int s) {
+    g.fill({x, y, s, s}, C(8, 8, 12));
+    float cx = x + s / 2.f, cy = y + s / 2.f;
+    g.disc(cx, cy, s * 0.46f, C(70, 14, 18));
+    g.disc(cx, cy, s * 0.36f, C(34, 6, 8));
+    g.disc(cx, cy, s * 0.24f, C(10, 2, 3));
+    g.disc(cx, cy, s * 0.12f, C(0, 0, 0));
+    g.frame({x, y, s, s}, C(150, 34, 34), 2);
+}
+
+void draw_conveyor(Gfx& g, int x, int y, int s, Dir eff, char group, Uint32 ticks) {
+    g.fill({x, y, s, s}, C(38, 44, 56));
+    SDL_Color gc = group_color(group);
+    Frame fr{x + s / 2.f, y + s / 2.f, static_cast<float>(s), fwd(eff)};
+    quad_local(g, fr, -0.5f, 0.5f, -0.46f, -0.38f, shade(gc, 0.75f));  // rails
+    quad_local(g, fr, -0.5f, 0.5f, 0.38f, 0.46f, shade(gc, 0.75f));
+    float phase = std::fmod(static_cast<float>(ticks) / 900.f, 1.f);
+    for (int i = -1; i < 3; ++i) {
+        float u = -0.5f + (static_cast<float>(i) + phase) / 3.f * 1.0f + 0.1f;
+        if (u < -0.42f || u > 0.42f) continue;
+        SDL_FPoint a = fr.at(u - 0.12f, -0.26f), m = fr.at(u + 0.1f, 0), b = fr.at(u - 0.12f, 0.26f);
+        g.line(a.x, a.y, m.x, m.y, s * 0.11f, gc);
+        g.line(b.x, b.y, m.x, m.y, s * 0.11f, gc);
+    }
+}
+
+void draw_console(Gfx& g, int x, int y, int s, char group) {
+    SDL_Color gc = group_color(group);
+    g.fill({x, y, s, s}, C(30, 38, 48));
+    int in = s / 8;
+    g.fill({x + in, y + in, s - 2 * in, s - 2 * in}, C(70, 78, 98));
+    g.frame({x + in, y + in, s - 2 * in, s - 2 * in}, C(110, 120, 144), 2);
+    int sx = x + in * 2, sy = y + in * 2, sw = s - 4 * in, sh = s * 38 / 100;
+    g.fill({sx, sy, sw, sh}, C(6, 24, 22));
+    g.frame({sx, sy, sw, sh}, gc, 1);
+    char t[2] = {group, 0};
+    g.text(x + s / 2, sy + (sh - g.line_h(g.small)) / 2, t, gc, g.small, 1);
+    for (int i = 0; i < 3; ++i) g.disc(static_cast<float>(sx + sw * (2 * i + 1) / 6), static_cast<float>(sy + sh + s * 0.17f), s * 0.07f, i == 1 ? gc : shade(gc, 0.5f), 14);
+    // lever
+    g.line(x + s * 0.5f, y + s * 0.88f, x + s * 0.66f, y + s * 0.70f, 3, C(200, 204, 214));
+    g.disc(x + s * 0.66f, y + s * 0.70f, s * 0.05f, C(235, 70, 70), 12);
+}
+
+void draw_spawn(Gfx& g, int x, int y, int s, int owner) {
+    SDL_Color pc = player_color(owner);
+    g.fill({x, y, s, s}, C(26, 32, 42));
+    float cx = x + s / 2.f, cy = y + s / 2.f;
+    g.ring(cx, cy, s * 0.34f, s * 0.07f, pc, 36);
+    g.ring(cx, cy, s * 0.20f, s * 0.04f, shade(pc, 0.7f), 28);
+    char t[4];
+    std::snprintf(t, sizeof t, "S%d", owner);
+    g.text(static_cast<int>(cx), static_cast<int>(cy) - g.line_h(g.small) / 2, t, pc, g.small, 1);
+}
+
+void draw_dock(Gfx& g, int x, int y, int s, int owner) {
+    SDL_Color pc = player_color(owner);
+    g.fill({x, y, s, s}, shade(pc, 0.22f));
+    int b = std::max(3, s / 12);
+    g.frame({x, y, s, s}, pc, b);
+    // hazard stripes along the inside edge
+    SDL_Color stripe = shade(pc, 0.6f);
+    int step = std::max(4, s / 8);
+    for (int i = b; i < s - b - step; i += step * 2) {
+        g.fill({x + i, y + b, step, std::max(2, s / 24)}, stripe);
+        g.fill({x + i, y + s - b - std::max(2, s / 24), step, std::max(2, s / 24)}, stripe);
+    }
+    float cx = x + s / 2.f, cy = y + s / 2.f;
+    g.fill({static_cast<int>(cx - s * 0.2f), static_cast<int>(cy - s * 0.04f), static_cast<int>(s * 0.4f), static_cast<int>(s * 0.24f)}, C(18, 22, 30));
+    g.frame({static_cast<int>(cx - s * 0.2f), static_cast<int>(cy - s * 0.04f), static_cast<int>(s * 0.4f), static_cast<int>(s * 0.24f)}, pc, 2);
+    g.line(cx, cy - s * 0.28f, cx, cy + s * 0.02f, s * 0.07f, pc);
+    g.tri(cx - s * 0.13f, cy - s * 0.04f, cx + s * 0.13f, cy - s * 0.04f, cx, cy + s * 0.1f, pc);
+    char t[4];
+    std::snprintf(t, sizeof t, "D%d", owner);
+    g.text(x + s - 4, y + s - g.line_h(g.small) - 2, t, pc, g.small, 2);
+}
+
+void draw_dispenser(Gfx& g, int x, int y, int s, int id, bool loaded) {
+    g.fill({x, y, s, s}, C(34, 38, 40));
+    int in = s / 10;
+    g.fill({x + in, y + in, s - 2 * in, s - 2 * in}, C(150, 118, 40));
+    g.frame({x + in, y + in, s - 2 * in, s - 2 * in}, C(214, 176, 70), 2);
+    int wx = x + s * 22 / 100, wy = y + s * 20 / 100, ww = s * 56 / 100, wh = s * 44 / 100;
+    g.fill({wx, wy, ww, wh}, loaded ? C(70, 52, 20) : C(16, 14, 10));
+    g.frame({wx, wy, ww, wh}, C(80, 60, 20), 2);
+    if (loaded) draw_crate(g, wx + ww / 2.f, wy + wh / 2.f, wh * 0.78f);
+    else {  // empty: faint cross in the window
+        g.line(static_cast<float>(wx + ww / 4), static_cast<float>(wy + wh / 4), static_cast<float>(wx + ww * 3 / 4), static_cast<float>(wy + wh * 3 / 4), 2, C(70, 58, 30));
+        g.line(static_cast<float>(wx + ww * 3 / 4), static_cast<float>(wy + wh / 4), static_cast<float>(wx + ww / 4), static_cast<float>(wy + wh * 3 / 4), 2, C(70, 58, 30));
+    }
+    g.fill({x + s * 30 / 100, y + s * 72 / 100, s * 40 / 100, s * 12 / 100}, C(20, 18, 14));  // chute
+    char t[4];
+    std::snprintf(t, sizeof t, "G%d", id);
+    g.text(x + s / 2, y + s - g.line_h(g.small) - 1, t, C(255, 232, 160), g.small, 1);
+}
+
+void draw_laser(Gfx& g, int x, int y, int s, Dir d) {
+    g.fill({x, y, s, s}, C(40, 26, 30));
+    float cx = x + s / 2.f, cy = y + s / 2.f;
+    Frame fr{cx, cy, static_cast<float>(s), fwd(d)};
+    g.disc(cx, cy, s * 0.30f, C(96, 40, 44));
+    quad_local(g, fr, 0.0f, 0.46f, -0.08f, 0.08f, C(210, 220, 230));
+    g.disc(cx, cy, s * 0.14f, C(255, 90, 90));
+}
+
+void draw_floor(Gfx& g, int x, int y, int s, bool alt) {
+    g.fill({x, y, s, s}, alt ? C(34, 42, 54) : C(30, 37, 48));
+    g.frame({x, y, s, s}, C(24, 30, 40), 1);
+}
+
+// ------------------------------------------------------------------ order icons
+
+void draw_order_icon(Gfx& g, int order, float cx, float cy, float s, SDL_Color c) {
+    const float w = s * 0.11f;
+    auto arrow = [&](float x1, float y1, float x2, float y2) {  // shaft + head, in cell fractions about centre
+        float dx = x2 - x1, dy = y2 - y1, len = std::sqrt(dx * dx + dy * dy);
+        float ux = dx / len, uy = dy / len, hs = 0.15f;
+        g.line(cx + x1 * s, cy + y1 * s, cx + (x2 - ux * hs) * s, cy + (y2 - uy * hs) * s, w, c);
+        g.tri(cx + x2 * s, cy + y2 * s, cx + (x2 - ux * hs - uy * hs) * s, cy + (y2 - uy * hs + ux * hs) * s,
+              cx + (x2 - ux * hs + uy * hs) * s, cy + (y2 - uy * hs - ux * hs) * s, c);
+    };
+    auto seg = [&](float x1, float y1, float x2, float y2) { g.line(cx + x1 * s, cy + y1 * s, cx + x2 * s, cy + y2 * s, w, c); };
+    switch (order) {
+        case 0: arrow(0, 0.32f, 0, -0.34f); break;                                       // F
+        case 1: arrow(-0.14f, 0.34f, -0.14f, -0.34f); arrow(0.16f, 0.34f, 0.16f, -0.34f); break;  // F2
+        case 2: arrow(0, -0.32f, 0, 0.34f); break;                                       // B
+        case 3: seg(0.1f, 0.34f, 0.1f, -0.12f); arrow(0.1f, -0.12f, -0.36f, -0.12f); break;       // L
+        case 4: seg(-0.1f, 0.34f, -0.1f, -0.12f); arrow(-0.1f, -0.12f, 0.36f, -0.12f); break;     // R
+        case 5:  // U-turn
+            seg(-0.2f, 0.34f, -0.2f, -0.06f); seg(-0.2f, -0.06f, -0.1f, -0.26f); seg(-0.1f, -0.26f, 0.1f, -0.26f);
+            seg(0.1f, -0.26f, 0.2f, -0.06f); arrow(0.2f, -0.06f, 0.2f, 0.34f);
+            break;
+        case 6:  // drop: crate with arrow below
+            g.fill({static_cast<int>(cx - s * 0.16f), static_cast<int>(cy - s * 0.36f), static_cast<int>(s * 0.32f), static_cast<int>(s * 0.28f)}, C(186, 128, 58));
+            arrow(0, -0.02f, 0, 0.38f);
+            break;
+        case 7:  // toggle: lever
+            g.fill({static_cast<int>(cx - s * 0.3f), static_cast<int>(cy + s * 0.14f), static_cast<int>(s * 0.6f), static_cast<int>(s * 0.16f)}, c);
+            seg(0, 0.14f, 0.24f, -0.28f);
+            g.disc(cx + s * 0.24f, cy - s * 0.28f, s * 0.09f, c, 14);
+            break;
+        case 8:  // wait: pause bars
+            g.fill({static_cast<int>(cx - s * 0.22f), static_cast<int>(cy - s * 0.28f), static_cast<int>(s * 0.14f), static_cast<int>(s * 0.56f)}, c);
+            g.fill({static_cast<int>(cx + s * 0.08f), static_cast<int>(cy - s * 0.28f), static_cast<int>(s * 0.14f), static_cast<int>(s * 0.56f)}, c);
+            break;
+    }
+}
+
+struct OrderKind { const char* token; SDL_Keycode key; const char* keyname; };
+constexpr OrderKind kKinds[kOrderKinds] = {
+    {"FORWARD_1", SDLK_f, "F"}, {"FORWARD_2", SDLK_2, "2"}, {"BACK_1", SDLK_b, "B"},
+    {"TURN_LEFT", SDLK_l, "L"}, {"TURN_RIGHT", SDLK_r, "R"}, {"TURN_AROUND", SDLK_u, "U"},
+    {"DROP", SDLK_d, "D"},      {"TOGGLE", SDLK_t, "T"},     {"WAIT", SDLK_w, "W"},
+};
+int kind_of(const std::string& token) {
+    for (int i = 0; i < kOrderKinds; ++i) if (token == kKinds[i].token) return i;
+    return -1;
+}
+
+// ------------------------------------------------------------------ the application
+
+struct App {
+    client::ClientOptions opt;
+    client::ClientResult res;
+    client::Connection conn;
+    std::string err;       // last network error
+    std::string fatal;     // set when the session cannot continue
+    std::string match_id, session;
+    int me = 0;
+
+    std::shared_ptr<const Map> map;
+    std::unique_ptr<sim::Bot> bot;
+    Layout lay = compute_layout(12, 10);
+
+    std::string phase = "LOBBY";
+    Json snap, status;
+    int joined = 0, capacity = 0;
+    bool finished_logged = false;
+    std::vector<int> winners;
+
+    int last_round = 0, revision = 0, events_version = -1;
+    bool locked = false;
+    std::array<std::string, 3> program{};
+    std::string notice;
+    ScrollLog log;
+    bool dragging_scroll = false;
+    int mouse_x = -1, mouse_y = -1;
+    bool dismissed_result = false;
+    Uint32 bot_due = 0;
+
+    static Json make(const char* type) { Json j = Json::object(); j.set("type", type); return j; }
+    bool call(const Json& req, Json& resp) {
+        auto r = conn.request(req, err, 4000);
+        if (!r) { fatal = err; return false; }
+        resp = std::move(*r);
+        return true;
+    }
+    void say(const std::string& t, ScrollLog::Kind k = ScrollLog::Notice) { log.add(t, k); notice = t; }
+
+    bool connect() {
+        bool ok = false;
+        for (int i = 0; i < 20 && !ok; ++i) {
+            ok = conn.open(opt.host, opt.port, err);
+            if (!ok) SDL_Delay(100);
+        }
+        if (!ok) { res.error = err; return false; }
+        Json resp;
+        match_id = opt.match_id;
+        if (opt.create) {
+            Json c = make("CREATE_MATCH");
+            c.set("player_count", opt.players);
+            c.set("rounds", opt.rounds);
+            c.set("planning_seconds", opt.planning_seconds);
+            if (!call(c, resp)) { res.error = err; return false; }
+            if (!resp.get_bool("ok").value_or(false)) { res.error = "cannot create match: " + resp.get_string("message").value_or("?"); return false; }
+            match_id = *resp.get_string("match_id");
+            std::printf("Match %s created. Others join with:  botched-client --ui --join %s --port %d\n", match_id.c_str(), match_id.c_str(), opt.port);
+            std::fflush(stdout);
+        }
+        if (match_id.empty()) { res.error = "no match to join (use --create or --join ID)"; return false; }
+        Json j = make("JOIN_MATCH");
+        j.set("match_id", match_id);
+        if (!call(j, resp)) { res.error = err; return false; }
+        if (!resp.get_bool("ok").value_or(false)) {
+            res.error = "cannot join " + match_id + ": " + resp.get_string("message").value_or(resp.get_string("code").value_or("?"));
+            return false;
+        }
+        me = static_cast<int>(*resp.get_int("player_id"));
+        session = *resp.get_string("session");
+        res.player_id = me;
+        res.match_id = match_id;
+        say("Joined " + match_id + " as player P" + std::to_string(me) + ".");
+        return true;
+    }
+
+    bool load_map() {
+        Json q = make("GET_MAP"), r;
+        q.set("match_id", match_id);
+        if (!call(q, r)) return false;
+        const Json* mj = r.find("map");
+        MapLoad ml = mj ? map_from_json(*mj) : MapLoad{};
+        if (!ml.map) { fatal = "could not read the map from the server"; return false; }
+        map = std::make_shared<const Map>(std::move(*ml.map));
+        lay = compute_layout(map->width, map->height);
+        bot = std::make_unique<sim::Bot>(me, *map, opt.seed * 1000003ULL + static_cast<std::uint64_t>(me));
+        return true;
+    }
+
+    bool refresh_status() {
+        Json q = make("GET_MATCH_STATUS"), r;
+        q.set("match_id", match_id);
+        if (!call(q, r)) return false;
+        if (const Json* s = r.find("status")) {
+            status = *s;
+            joined = static_cast<int>(s->get_int("joined").value_or(0));
+            capacity = static_cast<int>(s->get_int("capacity").value_or(0));
+            phase = s->get_string("phase").value_or(phase);
+        }
+        return true;
+    }
+
+    bool submit(bool ready) {
+        ++revision;
+        Json s = make("SUBMIT_PROGRAM");
+        s.set("match_id", match_id);
+        s.set("player_id", me);
+        s.set("session", session);
+        s.set("round", last_round);
+        s.set("revision", revision);
+        Json a = Json::array();
+        for (const auto& o : program) a.push(o);
+        s.set("orders", std::move(a));
+        s.set("ready", ready);
+        s.set("request_id", "p" + std::to_string(me) + "r" + std::to_string(last_round) + "v" + std::to_string(revision));
+        Json r;
+        if (!call(s, r)) return false;
+        if (r.get_bool("ok").value_or(false)) {
+            if (ready) { locked = true; say("Locked in. Waiting for the other players..."); }
+            else notice = "Orders saved. Press ENTER or click LOCK IN to commit them.";
+        } else {
+            const std::string code = r.get_string("code").value_or("?");
+            if (code == "PLANNING_CLOSED" || code == "WRONG_ROUND") say("Too late: planning has closed for this round.", ScrollLog::Bad);
+            else if (code == "PROGRAM_LOCKED") { locked = true; notice = "Already locked in this round."; }
+            else say("Rejected: " + r.get_string("message").value_or(code), ScrollLog::Bad);
+        }
+        return true;
+    }
+
+    bool program_complete() const { return !program[0].empty() && !program[1].empty() && !program[2].empty(); }
+
+    // Network poll: runs a few times a second, never blocks for long on a local server.
+    void poll() {
+        if (!fatal.empty() || phase == "FINISHED") { if (phase == "FINISHED" && !finished_logged) finish_up(); return; }
+        if (!map) {
+            if (!refresh_status()) return;
+            if (phase == "LOBBY") return;
+            if (!load_map()) return;
+        }
+        Json q = make("GET_SNAPSHOT"), r;
+        q.set("match_id", match_id);
+        if (!call(q, r)) return;
+        const Json* sj = r.find("snapshot");
+        if (!sj) { fatal = "bad snapshot response"; return; }
+        snap = *sj;
+        phase = snap.get_string("phase").value_or("?");
+        const int round = static_cast<int>(snap.get_int("round").value_or(0));
+        const int version = static_cast<int>(snap.get_int("state_version").value_or(0));
+        if (events_version < 0) events_version = version;
+        if (version != events_version) {
+            Json eq = make("GET_EVENTS"), er;
+            eq.set("match_id", match_id);
+            eq.set("since_version", events_version);
+            if (!call(eq, er)) return;
+            if (er.get_bool("ok").value_or(false))
+                if (const Json* ev = er.find("events"))
+                    for (auto& l : client::summarize_events(*ev)) log.add(l, classify_line(l));
+            events_version = version;
+        }
+        if (round != last_round) {
+            last_round = round;
+            revision = 0;
+            locked = false;
+            program = {};
+            if (phase != "FINISHED") say(round == 1 ? "Round 1: plan three orders, then lock in." : "Round " + std::to_string(round) + ": plan your three orders.");
+        }
+        res.final_round = round;
+        if (phase == "FINISHED") { finish_up(); return; }
+        if (opt.bot && phase == "PLANNING" && !locked) {
+            const Uint32 now = SDL_GetTicks();
+            if (opt.bot_think_ms > 0) {  // demo pacing without blocking the window
+                if (bot_due == 0) bot_due = now + static_cast<Uint32>(opt.bot_think_ms);
+                if (now < bot_due) return;
+            }
+            bot_due = 0;
+            program = bot->plan(snap);
+            submit(true);
+        }
+    }
+
+    void finish_up() {
+        if (finished_logged) return;
+        Json st;
+        Json q = make("GET_MATCH_STATUS"), r;
+        q.set("match_id", match_id);
+        if (!call(q, r)) return;
+        if (const Json* s = r.find("status")) {
+            st = *s;
+            if (const Json* w = st.find("winners"))
+                for (const auto& v : w->items()) winners.push_back(static_cast<int>(v.as_int()));
+        }
+        res.winners = winners;
+        res.ok = true;
+        finished_logged = true;
+        std::string names;
+        for (int w : winners) names += (names.empty() ? "P" : " P") + std::to_string(w);
+        say(winners.size() == 1 ? "MATCH OVER - winner: " + names : "MATCH OVER - shared victory: " + names, ScrollLog::Good);
+    }
+
+    void start_match() {
+        Json s = make("START_MATCH"), r;
+        s.set("match_id", match_id);
+        if (!call(s, r)) return;
+        if (!r.get_bool("ok").value_or(false)) say("Cannot start yet: " + r.get_string("message").value_or("?"), ScrollLog::Bad);
+    }
+
+    // ---- order entry ----
+    bool can_edit() const { return phase == "PLANNING" && !locked && fatal.empty(); }
+    void push_order(int kind) {
+        if (!can_edit()) return;
+        for (auto& slot : program) if (slot.empty()) { slot = kKinds[kind].token; break; }
+        if (program_complete()) submit(false);
+    }
+    void clear_slot(int i) { if (can_edit()) program[static_cast<std::size_t>(i)].clear(); }
+    void pop_order() {
+        if (!can_edit()) return;
+        for (int i = 2; i >= 0; --i) if (!program[static_cast<std::size_t>(i)].empty()) { program[static_cast<std::size_t>(i)].clear(); break; }
+    }
+    void lock_in() {
+        if (phase != "PLANNING") { notice = "Planning is not open right now."; return; }
+        if (locked) { notice = "Already locked in."; return; }
+        if (!program_complete()) { notice = "Choose three orders first."; return; }
+        submit(true);
+    }
+
+    // ---- events ----
+    void to_logical(int wx, int wy, SDL_Renderer* rd, int& lx, int& ly) {
+        float fx = 0, fy = 0;
+        SDL_RenderWindowToLogical(rd, wx, wy, &fx, &fy);
+        lx = static_cast<int>(fx);
+        ly = static_cast<int>(fy);
+    }
+    void set_scroll_from_y(int y) {
+        const Rect& sb = lay.scrollbar;
+        if (log.max_offset() == 0) return;
+        float t = std::clamp(static_cast<float>(y - sb.y) / static_cast<float>(sb.h), 0.f, 1.f);  // 0 top .. 1 bottom
+        int target = static_cast<int>(std::lround((1.f - t) * static_cast<float>(log.max_offset())));
+        log.scroll(target - log.offset());
+    }
+    // returns false to quit
+    bool handle(const SDL_Event& e, SDL_Renderer* rd) {
+        switch (e.type) {
+            case SDL_QUIT: return false;
+            case SDL_MOUSEMOTION: {
+                to_logical(e.motion.x, e.motion.y, rd, mouse_x, mouse_y);
+                if (dragging_scroll) set_scroll_from_y(mouse_y);
+                break;
+            }
+            case SDL_MOUSEBUTTONUP: dragging_scroll = false; break;
+            case SDL_MOUSEWHEEL: {
+                int mx = mouse_x, my = mouse_y;
+                if (lay.messages.contains(mx, my)) log.scroll(e.wheel.y * 3);
+                break;
+            }
+            case SDL_MOUSEBUTTONDOWN: {
+                if (e.button.button != SDL_BUTTON_LEFT) break;
+                int mx, my;
+                to_logical(e.button.x, e.button.y, rd, mx, my);
+                click(mx, my);
+                break;
+            }
+            case SDL_KEYDOWN: {
+                const SDL_Keycode k = e.key.keysym.sym;
+                if (k == SDLK_ESCAPE) return false;
+                if (k == SDLK_PAGEUP) log.scroll(log.viewport() - 1);
+                else if (k == SDLK_PAGEDOWN) log.scroll(-(log.viewport() - 1));
+                else if (k == SDLK_HOME) log.to_top();
+                else if (k == SDLK_END) log.to_bottom();
+                else if (k == SDLK_RETURN || k == SDLK_KP_ENTER) { if (phase == "LOBBY" && joined >= 2) start_match(); else lock_in(); }
+                else if (k == SDLK_BACKSPACE || k == SDLK_DELETE) pop_order();
+                else if (!(e.key.keysym.mod & (KMOD_CTRL | KMOD_ALT)))
+                    for (int i = 0; i < kOrderKinds; ++i) if (k == kKinds[i].key) push_order(i);
+                break;
+            }
+            default: break;
+        }
+        return true;
+    }
+    void click(int mx, int my) {
+        if (lay.scrollbar.contains(mx, my)) { dragging_scroll = true; set_scroll_from_y(my); return; }
+        if (phase == "LOBBY") { if (lay.start_button.contains(mx, my) && joined >= 2) start_match(); return; }
+        if (phase == "FINISHED") { if (finished_logged) dismissed_result = true; return; }
+        for (int i = 0; i < kOrderKinds; ++i) if (lay.palette[static_cast<std::size_t>(i)].contains(mx, my)) { push_order(i); return; }
+        for (int i = 0; i < 3; ++i) if (lay.slots[static_cast<std::size_t>(i)].contains(mx, my)) { clear_slot(i); return; }
+        if (lay.lock_button.contains(mx, my)) lock_in();
+        else if (lay.clear_button.contains(mx, my) && can_edit()) program = {};
+    }
+};
+
+// ------------------------------------------------------------------ rendering
+
+void panel(Gfx& g, Rect r, const char* caption, SDL_Color accent = kCyan) {
+    g.fill(r, kPanel);
+    g.frame(r, kPanelEdge, 1);
+    g.fill({r.x, r.y, r.w, 3}, accent);
+    if (caption && *caption) g.text(r.x + 12, r.y + 7, caption, kMuted, g.small);
+}
+
+struct SnapView {
+    struct Robot { int id = 0; bool active = false; int x = 0, y = 0; Dir heading = Dir::N; bool carrying = false; int damage = 0, score = 0, deliveries = 0; bool disabled = false; };
+    std::vector<Robot> robots;
+    std::vector<std::pair<int, int>> crates;  // loose crates
+    std::vector<bool> reversed = std::vector<bool>(26, false);
+    bool crate_at(int x, int y) const { for (auto& c : crates) if (c.first == x && c.second == y) return true; return false; }
+    const Robot* robot_at(int x, int y) const { for (auto& r : robots) if (r.active && r.x == x && r.y == y) return &r; return nullptr; }
+    bool rev(char g) const { return g >= 'A' && g <= 'Z' && reversed[static_cast<std::size_t>(g - 'A')]; }
+};
+
+SnapView read_snapshot(const Json& snap) {
+    SnapView v;
+    if (const Json* ps = snap.find("players"))
+        for (const auto& p : ps->items()) {
+            SnapView::Robot r;
+            r.id = static_cast<int>(p.get_int("id").value_or(0));
+            auto x = p.get_int("x"), y = p.get_int("y");
+            r.active = x && y;
+            r.x = static_cast<int>(x.value_or(0));
+            r.y = static_cast<int>(y.value_or(0));
+            r.heading = parse_dir(p.get_string("heading").value_or("N")).value_or(Dir::N);
+            const Json* c = p.find("carrying");
+            r.carrying = c && !c->is_null();
+            r.damage = static_cast<int>(p.get_int("damage").value_or(0));
+            r.score = static_cast<int>(p.get_int("score").value_or(0));
+            r.deliveries = static_cast<int>(p.get_int("deliveries").value_or(0));
+            r.disabled = p.get_bool("respawn_pending").value_or(false);
+            v.robots.push_back(r);
+        }
+    if (const Json* cs = snap.find("crates"))
+        for (const auto& c : cs->items()) {
+            auto x = c.get_int("x"), y = c.get_int("y");
+            if (x && y) v.crates.emplace_back(static_cast<int>(*x), static_cast<int>(*y));
+        }
+    if (const Json* gs = snap.find("groups"))
+        for (const auto& gj : gs->items()) {
+            auto id = gj.get_string("id");
+            if (id && id->size() == 1 && (*id)[0] >= 'A' && (*id)[0] <= 'Z')
+                v.reversed[static_cast<std::size_t>((*id)[0] - 'A')] = gj.get_bool("reversed").value_or(false);
+        }
+    return v;
+}
+
+void draw_title(App& a, Gfx& g, Uint32 now) {
+    const Layout& L = a.lay;
+    g.fill(L.title, C(18, 24, 36));
+    g.frame(L.title, kPanelEdge, 1);
+    g.text(L.title.x + 16, L.title.y + 2, "BOTCHED!", kGold, g.title);
+    std::string mid;
+    if (a.phase == "LOBBY") mid = "Lobby   " + std::to_string(a.joined) + "/" + std::to_string(a.capacity) + " players";
+    else if (a.phase == "FINISHED") mid = "MATCH OVER";
+    else {
+        const int total = static_cast<int>(a.snap.get_int("rounds_total").value_or(0));
+        mid = "Round " + std::to_string(a.last_round) + " / " + std::to_string(total) + "     " + (a.phase == "PLANNING" ? "PLANNING" : "EXECUTING");
+    }
+    g.text(L.title.x + 250, L.title.y + 10, mid, kInk, g.big);
+    g.text(L.title.x + L.title.w - 16, L.title.y + 6, "match " + a.match_id + "   -   you are P" + std::to_string(a.me), player_color(a.me), g.body, 2);
+    if (a.phase == "PLANNING") {
+        std::string t = "waiting";
+        const Json* dl = a.snap.find("planning_deadline_utc");
+        if (dl && dl->is_string())
+            if (auto ms = client::parse_utc_ms(dl->as_string())) {
+                auto nowms = std::chrono::duration_cast<std::chrono::milliseconds>(std::chrono::system_clock::now().time_since_epoch()).count();
+                t = "closes in " + std::to_string(std::max<std::int64_t>(0, (*ms - nowms + 999) / 1000)) + "s";
+            }
+        g.text(L.title.x + L.title.w - 16, L.title.y + 26, t, kAmber, g.small, 2);
+    }
+    (void)now;
+}
+
+void draw_board(App& a, Gfx& g, Uint32 now) {
+    const Layout& L = a.lay;
+    panel(g, L.board_panel, "FACTORY FLOOR");
+    if (!a.map || a.snap.is_null()) {
+        std::string head = a.phase == "LOBBY" ? "WAITING FOR PLAYERS" : "CONNECTING";
+        g.text(L.board_panel.x + L.board_panel.w / 2, L.board_panel.y + L.board_panel.h / 2 - 70, head, kInk, g.title, 1);
+        if (a.phase == "LOBBY") {
+            g.text(L.board_panel.x + L.board_panel.w / 2, L.board_panel.y + L.board_panel.h / 2 - 20,
+                   std::to_string(a.joined) + " of " + std::to_string(a.capacity) + " seats filled", kMuted, g.big, 1);
+            const bool ok = a.joined >= 2;
+            g.fill(L.start_button, ok ? C(40, 130, 80) : C(48, 54, 66));
+            g.frame(L.start_button, ok ? kGreen : kPanelEdge, 2);
+            g.text(L.start_button.x + L.start_button.w / 2, L.start_button.y + 13, "START MATCH", ok ? kInk : kMuted, g.big, 1);
+            g.text(L.board_panel.x + L.board_panel.w / 2, L.start_button.y + 66, "the match also starts automatically when every seat is filled", kMuted, g.small, 1);
+        }
+        return;
+    }
+    const Map& m = *a.map;
+    const SnapView sv = read_snapshot(a.snap);
+    const int s = L.cell;
+    // clip so oversized sprites never leak out of the panel
+    SDL_Rect clip{L.board.x, L.board.y, L.board.w, L.board.h};
+    SDL_RenderSetClipRect(g.r, &clip);
+    for (int y = 0; y < m.height; ++y)
+        for (int x = 0; x < m.width; ++x) {
+            const Tile& t = m.tile({x, y});
+            const int px = L.board.x + x * s, py = L.board.y + y * s;
+            switch (t.terrain) {
+                case Terrain::Wall: draw_wall(g, px, py, s); break;
+                case Terrain::Floor: draw_floor(g, px, py, s, (x + y) & 1); break;
+                case Terrain::Pit: draw_pit(g, px, py, s); break;
+                case Terrain::Spawn: draw_spawn(g, px, py, s, t.owner); break;
+                case Terrain::Dock: draw_dock(g, px, py, s, t.owner); break;
+                case Terrain::Dispenser: draw_dispenser(g, px, py, s, t.owner, sv.crate_at(x, y)); break;
+                case Terrain::Console: draw_console(g, px, py, s, t.group); break;
+                case Terrain::LaserEmitter: draw_laser(g, px, py, s, t.dir); break;
+                case Terrain::Conveyor: draw_conveyor(g, px, py, s, sv.rev(t.group) ? opposite(t.dir) : t.dir, t.group, now); break;
+            }
+        }
+    // laser beams
+    for (const Pos& e : m.lasers) {
+        Dir d = m.tile(e).dir;
+        V2 f = fwd(d);
+        Pos p{e.x + static_cast<int>(f.x), e.y + static_cast<int>(f.y)};
+        int n = 0;
+        while (!m.blocked(p)) { ++n; p = {p.x + static_cast<int>(f.x), p.y + static_cast<int>(f.y)}; }
+        float cx = L.board.x + (e.x + 0.5f) * s, cy = L.board.y + (e.y + 0.5f) * s;
+        g.line(cx, cy, cx + f.x * (n + 0.5f) * s, cy + f.y * (n + 0.5f) * s, std::max(2.f, s * 0.06f), C(255, 80, 80, 110));
+    }
+    for (const auto& c : sv.crates) {
+        if (m.tile({c.first, c.second}).terrain == Terrain::Dispenser) continue;  // drawn in the machine
+        draw_crate(g, L.board.x + (c.first + 0.5f) * s, L.board.y + (c.second + 0.5f) * s, s * 0.52f);
+    }
+    for (const auto& r : sv.robots)
+        if (r.active) draw_robot(g, L.board.x + (r.x + 0.5f) * s, L.board.y + (r.y + 0.5f) * s, static_cast<float>(s), r.id, r.heading, r.carrying, r.damage, r.id == a.me, now);
+    SDL_RenderSetClipRect(g.r, nullptr);
+    g.frame({L.board.x - 1, L.board.y - 1, L.board.w + 2, L.board.h + 2}, kPanelEdge, 1);
+    // axis labels
+    for (int x = 0; x < m.width; ++x) g.text(L.board.x + x * s + s / 2, L.board.y - 15, std::to_string(x), kMuted, g.small, 1);
+    // hover read-out in the caption row
+    const int hx = (a.mouse_x - L.board.x), hy = (a.mouse_y - L.board.y);
+    if (hx >= 0 && hy >= 0 && hx < L.board.w && hy < L.board.h) {
+        const int cx = hx / s, cy = hy / s;
+        std::string d = "(" + std::to_string(cx) + "," + std::to_string(cy) + ")  " + sim::describe_tile(m, a.snap, {cx, cy}, a.me);
+        if (const auto* r = sv.robot_at(cx, cy)) d += "   |   robot P" + std::to_string(r->id);
+        else if (sv.crate_at(cx, cy) && m.tile({cx, cy}).terrain != Terrain::Dispenser) d += "   |   loose crate";
+        g.text(L.board_panel.x + L.board_panel.w - 12, L.board_panel.y + 7, d, kInk, g.small, 2);
+    } else {
+        g.text(L.board_panel.x + L.board_panel.w - 12, L.board_panel.y + 7, "hover a tile for details", kMuted, g.small, 2);
+    }
+}
+
+void draw_scores(App& a, Gfx& g) {
+    const Layout& L = a.lay;
+    panel(g, L.scores, "SCOREBOARD", kGold);
+    if (a.snap.is_null()) { g.text(L.scores.x + 14, L.scores.y + 40, "match not started", kMuted, g.body); return; }
+    const SnapView sv = read_snapshot(a.snap);
+    int best = 0;
+    for (auto& r : sv.robots) best = std::max(best, r.score);
+    std::vector<int> ready;
+    if (const Json* rp = a.snap.find("ready_players")) for (const auto& v : rp->items()) ready.push_back(static_cast<int>(v.as_int()));
+    int y = L.scores.y + 30;
+    for (const auto& r : sv.robots) {
+        Rect card{L.scores.x + 8, y, L.scores.w - 16, 48};
+        SDL_Color pc = player_color(r.id);
+        g.fill(card, shade(pc, 0.18f));
+        g.frame(card, r.id == a.me ? pc : shade(pc, 0.5f), r.id == a.me ? 2 : 1);
+        g.fill({card.x, card.y, 8, card.h}, pc);
+        g.text(card.x + 18, card.y + 4, "P" + std::to_string(r.id) + (r.id == a.me ? "  (you)" : ""), pc, g.body);
+        const bool lead = r.score == best && best > 0;
+        g.text(card.x + 18, card.y + 26, "deliveries " + std::to_string(r.deliveries), kMuted, g.small);
+        g.text(card.x + 190, card.y + 2, std::to_string(r.score), lead ? kGold : kInk, g.big, 2);
+        g.text(card.x + 190 + 8, card.y + 14, "pts", kMuted, g.small);
+        // damage pips (two hits disable)
+        for (int i = 0; i < 2; ++i) {
+            float px = static_cast<float>(card.x + 236 + i * 20), py = static_cast<float>(card.y + 24);
+            g.disc(px, py, 7, i < r.damage ? kRed : C(40, 46, 58), 14);
+            g.ring(px, py, 7, 1.5f, kPanelEdge, 14);
+        }
+        g.text(card.x + 232, card.y + 4, "damage", kMuted, g.small);
+        if (r.carrying) draw_crate(g, static_cast<float>(card.x + 322), static_cast<float>(card.y + 24), 22);
+        std::string chip;
+        SDL_Color cc = kMuted;
+        if (r.disabled) { chip = "DISABLED"; cc = kRed; }
+        else if (a.phase == "PLANNING" && std::find(ready.begin(), ready.end(), r.id) != ready.end()) { chip = "READY"; cc = kGreen; }
+        else if (a.phase == "PLANNING") { chip = "planning"; cc = kAmber; }
+        if (lead && chip.empty()) { chip = "leading"; cc = kGold; }
+        g.text(card.x + card.w - 10, card.y + 28, chip, cc, g.small, 2);
+        y += 52;
+    }
+}
+
+void draw_robot_panel(App& a, Gfx& g) {
+    const Layout& L = a.lay;
+    panel(g, L.robot, "YOUR ROBOT & THE FACTORY", player_color(a.me));
+    if (a.snap.is_null() || !a.map) return;
+    const SnapView sv = read_snapshot(a.snap);
+    int y = L.robot.y + 28;
+    for (const auto& r : sv.robots) {
+        if (r.id != a.me) continue;
+        if (r.disabled) { g.text(L.robot.x + 12, y, "Disabled - respawning at the end of the round", kRed, g.small); break; }
+        g.text(L.robot.x + 12, y, "At (" + std::to_string(r.x) + "," + std::to_string(r.y) + ") facing " + to_string(r.heading) +
+                                      (r.carrying ? "  carrying a crate" : "  empty-handed"), kInk, g.small);
+        std::string on = sim::describe_tile(*a.map, a.snap, {r.x, r.y}, a.me);
+        g.text(L.robot.x + 12, y + 18, "On: " + on, a.map->tile({r.x, r.y}).terrain == Terrain::Conveyor ? kAmber : kMuted, g.small);
+        break;
+    }
+    std::string belts = "Belts:";
+    for (char gr : a.map->groups) {
+        bool belt = false;
+        for (const auto& t : a.map->tiles) if (t.group == gr && t.terrain == Terrain::Conveyor) belt = true;
+        if (belt) belts += std::string("  ") + gr + (sv.rev(gr) ? " REVERSED" : " normal");
+    }
+    g.text(L.robot.x + 12, y + 36, belts, kCyan, g.small);
+    std::string disp = "Dispensers:";
+    for (const auto& d : a.map->dispensers) disp += "  G" + std::to_string(d.id) + (sv.crate_at(d.pos.x, d.pos.y) ? " loaded" : " empty");
+    g.text(L.robot.x + 12, y + 54, disp, kGold, g.small);
+}
+
+void draw_orders(App& a, Gfx& g) {
+    const Layout& L = a.lay;
+    const bool editable = a.can_edit();
+    panel(g, L.orders, a.phase == "PLANNING" ? (a.locked ? "YOUR ORDERS - LOCKED IN" : "YOUR ORDERS - PLANNING") : "YOUR ORDERS", a.locked ? kGreen : kAmber);
+    g.text(L.orders.x + 14, L.orders.y + 28, a.notice, a.fatal.empty() ? kInk : kRed, g.small);
+    if (!a.fatal.empty()) g.text(L.orders.x + 14, L.orders.y + 44, "Connection problem: " + a.fatal, kRed, g.small);
+    for (int i = 0; i < 3; ++i) {
+        Rect s = L.slots[static_cast<std::size_t>(i)];
+        const std::string& tok = a.program[static_cast<std::size_t>(i)];
+        g.fill(s, a.locked ? C(24, 50, 36) : C(14, 18, 28));
+        g.frame(s, tok.empty() ? kPanelEdge : (a.locked ? kGreen : kAmber), 2);
+        g.text(s.x + 6, s.y + 3, std::to_string(i + 1), kMuted, g.small);
+        int k = kind_of(tok);
+        if (k >= 0) {
+            draw_order_icon(g, k, s.x + s.w / 2.f, s.y + s.h / 2.f - 4, 46, kInk);
+            g.text(s.x + s.w / 2, s.y + s.h - 20, order_code(tok), kGold, g.small, 1);
+        } else {
+            g.text(s.x + s.w / 2, s.y + s.h / 2 - 9, "-", kPanelEdge, g.big, 1);
+        }
+    }
+    const bool can_lock = editable && a.program_complete();
+    g.fill(L.lock_button, a.locked ? C(30, 90, 60) : can_lock ? C(40, 130, 80) : C(40, 46, 58));
+    g.frame(L.lock_button, a.locked ? kGreen : can_lock ? kGreen : kPanelEdge, 2);
+    g.text(L.lock_button.x + L.lock_button.w / 2, L.lock_button.y + 12, a.locked ? "LOCKED" : "LOCK IN", can_lock || a.locked ? kInk : kMuted, g.body, 1);
+    g.text(L.lock_button.x + L.lock_button.w / 2, L.lock_button.y + 31, "ENTER", kMuted, g.small, 1);
+    g.fill(L.clear_button, C(34, 40, 52));
+    g.frame(L.clear_button, kPanelEdge, 1);
+    g.text(L.clear_button.x + L.clear_button.w / 2, L.clear_button.y + 4, "clear (Backspace)", editable ? kMuted : C(70, 78, 92), g.small, 1);
+    g.text(L.orders.x + 14, L.orders.y + 152, "Click an order (or press its key) - slots fill left to right", kMuted, g.small);
+    for (int i = 0; i < kOrderKinds; ++i) {
+        Rect b = L.palette[static_cast<std::size_t>(i)];
+        const bool hot = b.contains(a.mouse_x, a.mouse_y) && editable;
+        g.fill(b, hot ? C(52, 66, 92) : C(30, 38, 54));
+        g.frame(b, hot ? kCyan : kPanelEdge, 1);
+        draw_order_icon(g, i, b.x + b.w / 2.f, b.y + 22, 28, editable ? kInk : C(90, 98, 112));
+        g.text(b.x + b.w / 2, b.y + b.h - 16, kKinds[i].keyname, editable ? kGold : C(90, 98, 112), g.small, 1);
+    }
+}
+
+void draw_messages(App& a, Gfx& g) {
+    const Layout& L = a.lay;
+    panel(g, L.messages, "WHAT HAPPENED", kViolet);
+    g.text(L.messages.x + L.messages.w - 14, L.messages.y + 7, "mouse wheel / PgUp PgDn / drag the bar to scroll   -   End = jump to newest", kMuted, g.small, 2);
+    const int lh = g.line_h(g.small) + 1;
+    a.log.set_viewport(L.log_text.h / lh);
+    SDL_Rect clip{L.log_text.x, L.log_text.y, L.log_text.w, L.log_text.h};
+    SDL_RenderSetClipRect(g.r, &clip);
+    const std::size_t first = a.log.first_visible(), n = a.log.visible_count();
+    for (std::size_t i = 0; i < n; ++i) {
+        const auto& ln = a.log.at(first + i);
+        int y = L.log_text.y + static_cast<int>(i) * lh;
+        if (ln.kind == ScrollLog::Header) g.fill({L.log_text.x, y, L.log_text.w, lh}, C(30, 44, 62));
+        g.text(L.log_text.x + 6, y, ln.text, kind_color(ln.kind), g.small);
+    }
+    SDL_RenderSetClipRect(g.r, nullptr);
+    // scrollbar
+    g.fill(L.scrollbar, C(14, 18, 26));
+    if (a.log.size() > static_cast<std::size_t>(a.log.viewport())) {
+        const float total = static_cast<float>(a.log.size()), vp = static_cast<float>(a.log.viewport());
+        const int th = std::max(24, static_cast<int>(L.scrollbar.h * vp / total));
+        const float pos = static_cast<float>(a.log.first_visible()) / (total - vp);
+        const int ty = L.scrollbar.y + static_cast<int>((L.scrollbar.h - th) * pos);
+        g.fill({L.scrollbar.x, ty, L.scrollbar.w, th}, a.dragging_scroll ? kCyan : C(96, 112, 140));
+    }
+    if (!a.log.following() && a.log.unseen() > 0) {
+        std::string t = "  " + std::to_string(a.log.unseen()) + " newer lines - press End  ";
+        int w = g.text_w(t, g.small);
+        Rect pill{L.log_text.x + L.log_text.w - w - 6, L.log_text.y + L.log_text.h - 22, w, 20};
+        g.fill(pill, C(60, 40, 110));
+        g.frame(pill, kViolet, 1);
+        g.text(pill.x, pill.y + 1, t, kInk, g.small);
+    }
+}
+
+void draw_result(App& a, Gfx& g) {
+    if (a.phase != "FINISHED" || !a.finished_logged || a.dismissed_result) return;
+    g.fill({0, 0, kScreenW, kScreenH}, C(0, 0, 0, 170));
+    Rect box{kScreenW / 2 - 300, 220, 600, 330};
+    g.fill(box, kPanel);
+    g.frame(box, kGold, 3);
+    g.text(box.x + box.w / 2, box.y + 14, "MATCH OVER", kGold, g.title, 1);
+    std::string names;
+    for (int w : a.winners) names += (names.empty() ? "P" : " & P") + std::to_string(w);
+    const bool mine = std::find(a.winners.begin(), a.winners.end(), a.me) != a.winners.end();
+    g.text(box.x + box.w / 2, box.y + 64, (a.winners.size() == 1 ? "Winner: " : "Shared victory: ") + names, mine ? kGreen : kInk, g.big, 1);
+    if (mine) g.text(box.x + box.w / 2, box.y + 98, "That's you!", kGreen, g.body, 1);
+    const SnapView sv = read_snapshot(a.snap);
+    int y = box.y + 140;
+    for (const auto& r : sv.robots) {
+        g.fill({box.x + 60, y, 480, 34}, shade(player_color(r.id), 0.25f));
+        g.fill({box.x + 60, y, 8, 34}, player_color(r.id));
+        g.text(box.x + 80, y + 5, "P" + std::to_string(r.id) + (r.id == a.me ? " (you)" : ""), player_color(r.id), g.body);
+        g.text(box.x + 530, y + 3, std::to_string(r.score) + " pts   " + std::to_string(r.deliveries) + " deliveries", kInk, g.body, 2);
+        y += 40;
+    }
+    g.text(box.x + box.w / 2, box.y + box.h - 28, "click to see the board - Esc to quit", kMuted, g.small, 1);
+}
+
+bool screenshot(SDL_Renderer* r, const char* path) {
+    int w, h;
+    SDL_GetRendererOutputSize(r, &w, &h);
+    SDL_Surface* s = SDL_CreateRGBSurfaceWithFormat(0, w, h, 32, SDL_PIXELFORMAT_ARGB8888);
+    if (!s) return false;
+    bool ok = SDL_RenderReadPixels(r, nullptr, s->format->format, s->pixels, s->pitch) == 0 && SDL_SaveBMP(s, path) == 0;
+    SDL_FreeSurface(s);
+    return ok;
+}
+
+}  // namespace
+
+client::ClientResult run_ui(const client::ClientOptions& opt) {
+    App app;
+    app.opt = opt;
+    auto fail = [&](const std::string& m) { app.res.ok = false; app.res.error = m; return app.res; };
+    if (SDL_Init(SDL_INIT_VIDEO | SDL_INIT_TIMER) < 0) return fail(std::string("SDL: ") + SDL_GetError());
+    if (TTF_Init() < 0) { SDL_Quit(); return fail("SDL_ttf could not start"); }
+    SDL_Window* win = SDL_CreateWindow("Botched!", SDL_WINDOWPOS_CENTERED, SDL_WINDOWPOS_CENTERED, kScreenW, kScreenH,
+                                       SDL_WINDOW_RESIZABLE | SDL_WINDOW_ALLOW_HIGHDPI);
+    SDL_Renderer* rd = win ? SDL_CreateRenderer(win, -1, SDL_RENDERER_ACCELERATED | SDL_RENDERER_PRESENTVSYNC) : nullptr;
+    if (win && !rd) rd = SDL_CreateRenderer(win, -1, SDL_RENDERER_SOFTWARE);
+    Gfx g;
+    client::ClientResult out;
+    bool fonts_ok = false;
+    if (rd) {
+        SDL_SetWindowMinimumSize(win, 960, 640);
+        SDL_SetHint(SDL_HINT_RENDER_SCALE_QUALITY, "1");
+        SDL_RenderSetLogicalSize(rd, kScreenW, kScreenH);
+        SDL_SetRenderDrawBlendMode(rd, SDL_BLENDMODE_BLEND);
+        static const char* const sans[] = {"DejaVuSans.ttf", "LiberationSans-Regular.ttf", nullptr};
+        static const char* const bold[] = {"DejaVuSans-Bold.ttf", "LiberationSans-Bold.ttf", nullptr};
+        g.r = rd;
+        g.small = open_font(sans, 14);
+        g.body = open_font(bold, 17);
+        g.big = open_font(bold, 26);
+        g.title = open_font(bold, 34);
+        fonts_ok = g.small && g.body && g.big && g.title;
+    }
+    if (!rd || !fonts_ok) {
+        std::string m = !rd ? std::string("SDL: ") + SDL_GetError() : "cannot load a font (install DejaVu Sans or set BOTCHED_FONT=/path/to.ttf)";
+        if (rd) SDL_DestroyRenderer(rd);
+        if (win) SDL_DestroyWindow(win);
+        TTF_Quit();
+        SDL_Quit();
+        return fail(m);
+    }
+
+    if (!app.connect()) {
+        out = app.res;
+    } else {
+        SDL_Delay(1);
+        bool running = true;
+        Uint32 last_poll = 0;
+        int frames = 0;
+        while (running) {
+            const Uint32 t0 = SDL_GetTicks();
+            SDL_Event e;
+            while (SDL_PollEvent(&e)) if (!app.handle(e, rd)) running = false;
+            if (t0 - last_poll >= (opt.bot ? 150u : 250u) || last_poll == 0) { app.poll(); last_poll = t0; }
+            if (app.opt.ui_exit_on_finish && app.finished_logged) running = false;
+
+            g.color(kBg);
+            SDL_RenderClear(rd);
+            draw_title(app, g, t0);
+            draw_board(app, g, t0);
+            draw_scores(app, g);
+            draw_robot_panel(app, g);
+            draw_orders(app, g);
+            draw_messages(app, g);
+            draw_result(app, g);
+            ++frames;
+            if (opt.ui_frames > 0 && frames >= opt.ui_frames) {
+                if (!opt.ui_screenshot.empty() && !screenshot(rd, opt.ui_screenshot.c_str()))
+                    std::fprintf(stderr, "screenshot failed: %s\n", SDL_GetError());
+                running = false;
+            }
+            SDL_RenderPresent(rd);
+            const Uint32 spent = SDL_GetTicks() - t0;
+            if (spent < 16) SDL_Delay(16 - spent);
+        }
+        out = app.res;
+        if (!app.fatal.empty() && !out.ok) out.error = app.fatal;
+        else if (!out.ok && out.error.empty()) out.error = "left the match";
+    }
+    g.clear_cache();
+    TTF_CloseFont(g.small); TTF_CloseFont(g.body); TTF_CloseFont(g.big); TTF_CloseFont(g.title);
+    SDL_DestroyRenderer(rd);
+    SDL_DestroyWindow(win);
+    TTF_Quit();
+    SDL_Quit();
+    return out;
+}
+
+}  // namespace botched::ui

@@ -7,6 +7,9 @@
 #include <string>
 
 #include "client_core.hpp"
+#ifdef BOTCHED_HAVE_SDL
+#include "sdl_ui.hpp"
+#endif
 
 namespace {
 void usage() {
@@ -22,6 +25,8 @@ void usage() {
         "  --bot                 auto-play instead of using the keyboard (testing/demos)\n"
         "    --seed N            bot seed          --think-ms N   bot pause before submitting\n"
         "  --plain               no ANSI screen control (default when output is not a terminal)\n"
+        "  --ui                  graphical SDL window (board sprites, panels, scrollable log)\n"
+        "    --frames N --screenshot FILE.bmp   ui: render N frames, save the last one, exit (testing)\n"
         "  --ascii               plain ASCII board (default unless the locale is UTF-8)\n"
         "  --no-color            no colours (also honours NO_COLOR)\n";
 }
@@ -56,6 +61,9 @@ int main(int argc, char** argv) {
         else if (a == "--seed") opt.seed = std::strtoull(next(), nullptr, 10);
         else if (a == "--think-ms") opt.bot_think_ms = std::atoi(next());
         else if (a == "--plain") opt.tty = false;
+        else if (a == "--ui") opt.ui = true;
+        else if (a == "--frames") opt.ui_frames = std::atoi(next());
+        else if (a == "--screenshot") opt.ui_screenshot = next();
         else if (a == "--ascii") ascii = true;
         else if (a == "--no-color") no_color = true;
         else { usage(); return 2; }
@@ -64,7 +72,18 @@ int main(int argc, char** argv) {
     opt.unicode = opt.tty && !ascii;
     opt.color = opt.tty && !no_color;
     if (opt.bot) opt.refresh_ms = 200;
-    botched::client::ClientResult r = botched::client::run_client(opt, std::cout);
+    botched::client::ClientResult r;
+    if (opt.ui) {
+#ifdef BOTCHED_HAVE_SDL
+        r = botched::ui::run_ui(opt);
+        if (!r.ok && r.error == "left the match") return 0;  // window closed by the player
+#else
+        std::cerr << "botched-client: this build has no SDL support (install SDL2 and SDL2_ttf development packages and rebuild)\n";
+        return 2;
+#endif
+    } else {
+        r = botched::client::run_client(opt, std::cout);
+    }
     if (!r.ok) {
         std::cerr << "botched-client: " << r.error << '\n';
         return 1;

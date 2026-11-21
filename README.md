@@ -67,6 +67,20 @@ which dispensers hold a crate. The "what happened" log narrates each tick in the
 terminal; `--ascii` forces the plain ASCII board (the default when the locale is not UTF-8) and
 `--no-color` (or `NO_COLOR`) disables colour.
 
+### Graphical client (SDL2)
+
+`botched-client --ui ...` takes the same `--create` / `--join` arguments as the terminal client but opens a
+window: the factory board with drawn sprites (player-coloured robots, docks and spawn pads; animated belts
+coloured by group; dispensers that show whether they hold a crate; consoles, pits, walls), a scoreboard,
+a "your robot" panel, order entry and a **scrollable** "what happened" log, each in its own panel so a long
+log never pushes the board off screen. Click an order (or press `F` `2`=F2 `B` `L` `R` `U` `D` `T` `W`) to
+fill the three slots; they save when complete; `Enter` or LOCK IN commits. Hover a tile for its description.
+Scroll the log with the mouse wheel, `PgUp`/`PgDn`, `Home`/`End` or by dragging its bar; `Esc` quits.
+`--bot` makes the window play automatically (`--think-ms N` slows it down for demos). It needs SDL2 and
+SDL2_ttf at build time (found automatically; disable with `-DBOTCHED_SDL=OFF`) and a TrueType font
+(DejaVu Sans, or set `BOTCHED_FONT`). Headless check: `SDL_VIDEODRIVER=dummy botched-client --ui --frames 300
+--screenshot out.bmp ...`.
+
 **Limits of this MVP:** there is no authentication beyond the per-seat session token, so keep the
 server on `127.0.0.1` or a trusted LAN; a client that quits or crashes cannot rejoin (its robot waits
 every round); one server hosts up to 16 matches; no TLS.

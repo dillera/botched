@@ -29,6 +29,10 @@ struct ClientOptions {
     bool color = false;            // ANSI colours
     int refresh_ms = 500;          // poll interval
     int bot_think_ms = 0;          // pause before a bot submits (demo pacing)
+    bool ui = false;               // graphical (SDL) client instead of the terminal one
+    int ui_frames = 0;             // ui: stop after this many frames (tests, screenshots); 0 = run until closed
+    std::string ui_screenshot;     // ui: with ui_frames, save the last frame here (BMP)
+    bool ui_exit_on_finish = false;  // ui: close the window as soon as the match result is known
 };
 
 struct ClientResult {
