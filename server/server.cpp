@@ -180,6 +180,9 @@ Json GameServer::create(const Json& req) {
     if (!token_field(req, "map_id", kMaxNameLength, false, "training-01", map_id, err)) return err;
     if (!int_field(req, "player_count", 2, kMaxPlayers, false, kMaxPlayers, players, err)) return err;
     if (!int_field(req, "rounds", 1, 99, false, kDefaultRounds, rounds, err)) return err;
+    std::int64_t bots = 0;
+    if (!int_field(req, "bots", 0, kMaxPlayers - 1, false, 0, bots, err)) return err;
+    if (bots > players - 1) return make_error("BAD_REQUEST", "at least one seat must be left for a human player", &req);
     if (!int_field(req, "planning_seconds", 0, kMaxPlanningSeconds, false, cfg_.default_planning_seconds, secs, err))
         return err;
     auto mit = maps_.find(map_id);
@@ -195,6 +198,7 @@ Json GameServer::create(const Json& req) {
     r.id = "m" + std::to_string(next_room_++);
     r.map = mit->second;
     r.capacity = static_cast<int>(players);
+    r.bots = static_cast<int>(bots);
     r.rounds = static_cast<int>(rounds);
     r.planning_seconds = static_cast<int>(secs);
     std::string id = r.id;
@@ -204,6 +208,7 @@ Json GameServer::create(const Json& req) {
     out.set("ok", true);
     out.set("match_id", id);
     out.set("player_count", players);
+    out.set("bots", bots);
     return out;
 }
 
@@ -237,7 +242,8 @@ Json GameServer::join(const Json& req) {
     Room* r = room_for(req, err);
     if (!r) return err;
     if (r->match) return make_error("ALREADY_STARTED", "match already started", &req);
-    if (static_cast<int>(r->tokens.size()) >= r->capacity) return make_error("MATCH_FULL", "no free slot", &req);
+    const int human_seats = r->capacity - r->bots;
+    if (static_cast<int>(r->tokens.size()) >= human_seats) return make_error("MATCH_FULL", "no free slot", &req);
     int pid = static_cast<int>(r->tokens.size()) + 1;
     std::string token = make_token(r->id, pid);
     r->tokens.push_back(token);
@@ -247,7 +253,7 @@ Json GameServer::join(const Json& req) {
     out.set("match_id", r->id);
     out.set("player_id", pid);
     out.set("session", token);
-    if (static_cast<int>(r->tokens.size()) == r->capacity) {
+    if (static_cast<int>(r->tokens.size()) == human_seats) {
         std::string e;
         if (!start_room(*r, e)) return make_error("START_FAILED", e, &req);
         out.set("started", true);
@@ -259,7 +265,9 @@ Json GameServer::join(const Json& req) {
 
 bool GameServer::start_room(Room& r, std::string& error) {
     if (r.match) { error = "already started"; return false; }
-    int joined = static_cast<int>(r.tokens.size());
+    const int humans = static_cast<int>(r.tokens.size());
+    const int joined = humans + r.bots;  // bot seats take the ids after the humans
+    if (humans < 1) { error = "at least one human player required"; return false; }
     if (joined < 2) { error = "at least two players required"; return false; }
     ValidationOptions vo;
     vo.player_count = joined;
@@ -272,6 +280,12 @@ bool GameServer::start_room(Room& r, std::string& error) {
     mc.rounds = r.rounds;
     mc.request_budget_per_round = cfg_.request_budget_per_round;
     r.match = std::make_unique<Match>(std::move(mc));
+    r.ai.clear();
+    for (int i = 0; i < r.bots; ++i) {
+        const int pid = humans + 1 + i;
+        const std::uint64_t seed = fnv1a64(r.id + ":" + std::to_string(pid)) ^ (cfg_.bot_seed * 0x9e3779b97f4a7c15ULL);
+        r.ai.push_back(std::make_unique<sim::Bot>(pid, *r.map, seed));
+    }
     open_planning(r);
     return true;
 }
@@ -296,10 +310,24 @@ void GameServer::open_planning(Room& r) {
     if (r.match->finished() || r.planning_seconds <= 0) {
         r.deadline_ms = 0;
         r.match->set_planning_deadline("");
-        return;
+    } else {
+        r.deadline_ms = clock_.now_unix_ms() + static_cast<std::int64_t>(r.planning_seconds) * 1000;
+        r.match->set_planning_deadline(format_utc(r.deadline_ms));
     }
-    r.deadline_ms = clock_.now_unix_ms() + static_cast<std::int64_t>(r.planning_seconds) * 1000;
-    r.match->set_planning_deadline(format_utc(r.deadline_ms));
+    plan_bots(r);
+}
+
+// Bot seats submit ordinary locked-in programmes through Match::submit_program, exactly like a human
+// client would, as soon as a round opens. They see only the public snapshot.
+void GameServer::plan_bots(Room& r) {
+    if (r.ai.empty() || r.match->finished()) return;
+    const Json snap = r.match->snapshot();
+    const int round = r.match->state().round;
+    for (auto& bot : r.ai) {
+        auto prog = bot->plan(snap);
+        r.match->submit_program(bot->id(), round, 1, {prog[0], prog[1], prog[2]}, true,
+                                "bot-p" + std::to_string(bot->id()) + "-r" + std::to_string(round));
+    }
 }
 
 void GameServer::advance(Room& r) {
@@ -337,6 +365,8 @@ Json GameServer::submit(const Json& req) {
     if (player < 1 || player > r->match->config().player_count)
         return make_error("UNKNOWN_PLAYER", "no such player slot", &req);
     const Json* sj = req.find("session");
+    if (player > static_cast<std::int64_t>(r->tokens.size()))  // bot seats cannot be driven by clients
+        return make_error("UNAUTHORIZED", "session does not own this player slot", &req);
     if (!sj || !sj->is_string() || !token_equal(sj->as_string(), r->tokens[static_cast<std::size_t>(player - 1)]))
         return make_error("UNAUTHORIZED", "session does not own this player slot", &req);
     if (static_cast<int>(orders->items().size()) != kRegisters)
@@ -417,13 +447,19 @@ Json GameServer::get_status(const Json& req) {
     out.set("type", "MATCH_STATUS");
     out.set("ok", true);
     if (r->match) {
-        out.set("status", r->match->status());
+        Json st = r->match->status();
+        st.set("bots", r->bots);
+        Json ids = Json::array();
+        for (const auto& b : r->ai) ids.push(b->id());
+        st.set("bot_players", std::move(ids));
+        out.set("status", std::move(st));
     } else {
         Json st = Json::object();
         st.set("match_id", r->id);
         st.set("phase", "LOBBY");
-        st.set("joined", static_cast<int>(r->tokens.size()));
+        st.set("joined", static_cast<int>(r->tokens.size()) + r->bots);  // seats filled, bots included
         st.set("capacity", r->capacity);
+        st.set("bots", r->bots);
         out.set("status", std::move(st));
     }
     return out;

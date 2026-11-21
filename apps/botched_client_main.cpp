@@ -19,6 +19,7 @@ void usage() {
         "  --port N              server port (default 7878)\n"
         "  --create              create a match and join it as player 1\n"
         "    --players N         seats, 2-4 (default 2)\n"
+        "    --bots N            seats played by the server (0-3; at least one human)\n"
         "    --rounds N          rounds (default 12)\n"
         "    --planning-seconds N  planning time per round (default 60)\n"
         "  --join MATCH_ID       join a match created by someone else\n"
@@ -58,6 +59,7 @@ int main(int argc, char** argv) {
         else if (a == "--join") opt.match_id = next();
         else if (a == "--players") opt.players = std::atoi(next());
         else if (a == "--rounds") opt.rounds = std::atoi(next());
+        else if (a == "--bots") opt.bots = std::atoi(next());
         else if (a == "--planning-seconds") opt.planning_seconds = std::atoi(next());
         else if (a == "--bot") opt.bot = true;
         else if (a == "--seed") opt.seed = std::strtoull(next(), nullptr, 10);

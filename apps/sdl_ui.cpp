@@ -425,7 +425,9 @@ struct App {
 
     std::string phase = "LOBBY";
     Json snap, status;
-    int joined = 0, capacity = 0;
+    int joined = 0, capacity = 0, bots = 0;
+    std::vector<int> bot_ids;  // seats played by the server
+    bool is_bot(int id) const { return std::find(bot_ids.begin(), bot_ids.end(), id) != bot_ids.end(); }
     bool finished_logged = false;
     std::vector<int> winners;
 
@@ -484,6 +486,7 @@ struct App {
             c.set("player_count", opt.players);
             c.set("rounds", opt.rounds);
             c.set("planning_seconds", opt.planning_seconds);
+            if (opt.bots > 0) c.set("bots", opt.bots);
             if (!call(c, resp)) { res.error = err; return false; }
             if (!resp.get_bool("ok").value_or(false)) { res.error = "cannot create match: " + resp.get_string("message").value_or("?"); return false; }
             match_id = *resp.get_string("match_id");
@@ -528,6 +531,9 @@ struct App {
             joined = static_cast<int>(s->get_int("joined").value_or(0));
             capacity = static_cast<int>(s->get_int("capacity").value_or(0));
             phase = s->get_string("phase").value_or(phase);
+            bots = static_cast<int>(s->get_int("bots").value_or(0));
+            bot_ids.clear();
+            if (const Json* b = s->find("bot_players")) for (const auto& v : b->items()) bot_ids.push_back(static_cast<int>(v.as_int()));
         }
         return true;
     }
@@ -650,9 +656,8 @@ struct App {
         std::string names;
         for (int w : winners) names += (names.empty() ? "P" : " P") + std::to_string(w);
         const std::string msg = winners.size() == 1 ? "MATCH OVER - winner: " + names : "MATCH OVER - shared victory: " + names;
-        notice = msg;
         if (play.active()) held.push_back({1 << 20, {{msg, ScrollLog::Good}}});  // after the replay
-        else log.add(msg, ScrollLog::Good);
+        else say(msg, ScrollLog::Good);
     }
 
     void start_match() {
@@ -794,7 +799,8 @@ void draw_board(App& a, Gfx& g, Uint32 now) {
         g.text(L.board_panel.x + L.board_panel.w / 2, L.board_panel.y + L.board_panel.h / 2 - 70, head, kInk, g.title, 1);
         if (a.phase == "LOBBY") {
             g.text(L.board_panel.x + L.board_panel.w / 2, L.board_panel.y + L.board_panel.h / 2 - 20,
-                   std::to_string(a.joined) + " of " + std::to_string(a.capacity) + " seats filled", kMuted, g.big, 1);
+                   std::to_string(a.joined) + " of " + std::to_string(a.capacity) + " seats filled" +
+                       (a.bots > 0 ? "  (" + std::to_string(a.bots) + (a.bots == 1 ? " bot)" : " bots)") : ""), kMuted, g.big, 1);
             const bool ok = a.joined >= 2;
             g.fill(L.start_button, ok ? C(40, 130, 80) : C(48, 54, 66));
             g.frame(L.start_button, ok ? kGreen : kPanelEdge, 2);
@@ -1064,7 +1070,7 @@ void draw_scores(App& a, Gfx& g) {
         g.fill(card, shade(pc, 0.18f));
         g.frame(card, r.id == a.me ? pc : shade(pc, 0.5f), r.id == a.me ? 2 : 1);
         g.fill({card.x, card.y, 8, card.h}, pc);
-        g.text(card.x + 18, card.y + 4, "P" + std::to_string(r.id) + (r.id == a.me ? "  (you)" : ""), pc, g.body);
+        g.text(card.x + 18, card.y + 4, "P" + std::to_string(r.id) + (r.id == a.me ? "  (you)" : a.is_bot(r.id) ? "  BOT" : ""), pc, g.body);
         const bool lead = r.score == best && best > 0;
         g.text(card.x + 18, card.y + 26, "deliveries " + std::to_string(r.deliveries), kMuted, g.small);
         g.text(card.x + 190, card.y + 2, std::to_string(r.score), lead ? kGold : kInk, g.big, 2);

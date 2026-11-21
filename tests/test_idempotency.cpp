@@ -285,12 +285,15 @@ TEST_CASE("H3: a conforming client uses a small fraction of the budget and memor
 
 // ------------------------------------------------------------------ determinism
 
-TEST_CASE("H3: simulator state/event hashes are unchanged from before the idempotency work") {
-    sim::SimOptions o;  // players 4, seed 1, 12 rounds: the hashes recorded before M0-H1/H2/H3
+TEST_CASE("H3: the default simulation is deterministic (pinned hashes)") {
+    // players 4, seed 1, 12 rounds. The pre-M0-H1 hashes (e846c1c016b36358 / 5d9ebce915bed1f8) were produced by the
+    // old shortest-path bot; B-07 replaced the bot's planner, so they were re-pinned. With the old planner the
+    // old hashes still reproduce exactly (checked when B-07 was made), i.e. the rules and idempotency are unchanged.
+    sim::SimOptions o;
     sim::SimResult r = sim::run_simulation(o);
     REQUIRE_MESSAGE(r.ok, r.error);
-    CHECK(r.state_hash == "e846c1c016b36358");
-    CHECK(r.event_hash == "5d9ebce915bed1f8");
+    CHECK(r.state_hash == "8b9b82fb718c2751");
+    CHECK(r.event_hash == "415308a3742c5db6");
 }
 
 TEST_CASE("H3: retries, conflicts and refusals interleaved anywhere never change the game") {

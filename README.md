@@ -67,6 +67,11 @@ which dispensers hold a crate. The "what happened" log narrates each tick in the
 terminal; `--ascii` forces the plain ASCII board (the default when the locale is not UTF-8) and
 `--no-color` (or `NO_COLOR`) disables colour.
 
+**Bots.** `--create --players 4 --bots 3` fills three seats with server-managed bots (no extra processes);
+any mix works as long as at least one seat is human (e.g. `--players 4 --bots 2`, the other human runs
+`--join ID`). Bots plan from the public snapshot with a short look-ahead on the real rules engine, make
+occasional mistakes, and are deterministic for a given server `bot_seed`.
+
 ### Graphical client (SDL2)
 
 `botched-client --ui ...` takes the same `--create` / `--join` arguments as the terminal client but opens a

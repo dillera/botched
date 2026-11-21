@@ -29,13 +29,13 @@ target_include_directories(botched_core PUBLIC include)
 # --- Server orchestration (rooms, sessions, API dispatch). Transport-agnostic.
 add_library(botched_server STATIC
   server/server.cpp
+  server/bot.cpp
 )
 target_include_directories(botched_server PUBLIC server)
 target_link_libraries(botched_server PUBLIC botched_core)
 
 # --- POSIX reference apps: simulated players and the stdio server host.
 add_library(botched_sim_lib STATIC
-  apps/bot.cpp
   apps/ascii_render.cpp
   apps/sim_runner.cpp
 )

@@ -14,6 +14,7 @@
 
 #include "botched/json.hpp"
 #include "botched/match.hpp"
+#include "bot.hpp"
 
 namespace botched::server {
 
@@ -60,6 +61,9 @@ struct ServerConfig {
     // Session tokens come from OS entropy (std::random_device, 256 bits). Set this ONLY for
     // reproducible tests/simulations: it makes tokens predictable.
     std::optional<std::uint64_t> deterministic_token_seed;
+    // Seeds the server-managed bot seats (CREATE_MATCH "bots"). Bot decisions depend only on this seed,
+    // the match id, the seat and the game state, so a match with the same human inputs replays identically.
+    std::uint64_t bot_seed = 1;
 };
 
 class GameServer {
@@ -87,7 +91,9 @@ private:
         int capacity = 0;
         int planning_seconds = 0;
         int rounds = kDefaultRounds;
-        std::vector<std::string> tokens;  // index = player id - 1
+        int bots = 0;                     // seats played by the server (always the highest player ids)
+        std::vector<std::string> tokens;  // human seats only: index = player id - 1
+        std::vector<std::unique_ptr<sim::Bot>> ai;  // created at start; ai[i] plays player (humans + 1 + i)
         std::unique_ptr<Match> match;
         std::int64_t deadline_ms = 0;     // 0 = none
     };
@@ -104,6 +110,7 @@ private:
     Room* room_for(const Json& req, Json& err);
     bool start_room(Room& r, std::string& error);
     void open_planning(Room& r);
+    void plan_bots(Room& r);
     void advance(Room& r);
 
     ServerConfig cfg_;

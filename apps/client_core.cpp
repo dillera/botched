@@ -363,6 +363,7 @@ ClientResult run_client(const ClientOptions& opt, std::ostream& out) {
         c.set("player_count", opt.players);
         c.set("rounds", opt.rounds);
         c.set("planning_seconds", opt.planning_seconds);
+        if (opt.bots > 0) c.set("bots", opt.bots);
         if (!call(c, resp)) return fail(err);
         if (!resp.get_bool("ok").value_or(false)) return fail("cannot create match: " + resp.get_string("message").value_or("?"));
         match_id = *resp.get_string("match_id");

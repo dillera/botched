@@ -21,6 +21,7 @@ struct ClientOptions {
     std::string match_id;          // join this match (when not creating)
     int players = 2;               // with create: seats (2-4)
     int rounds = 12;               // with create
+    int bots = 0;                  // with create: seats played by the server (0-3, leaving at least one human)
     int planning_seconds = 60;     // with create
     bool bot = false;              // auto-play instead of reading the keyboard
     std::uint64_t seed = 1;        // bot noise seed
