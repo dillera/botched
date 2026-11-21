@@ -795,7 +795,7 @@ void draw_title(App& a, Gfx& g, Uint32 now) {
         mid = "Round " + std::to_string(a.last_round) + (a.target_score() > 0 ? " (cap " : " / ") + std::to_string(total) + (a.target_score() > 0 ? ")" : "") + "     " + (a.phase == "PLANNING" ? "PLANNING" : "EXECUTING");
     }
     g.text(L.title.x + 250, L.title.y + 10, mid, kInk, g.big);
-    if (a.target_score() > 0) g.text(L.title.x + 250, L.title.y + 36, "First to " + std::to_string(a.target_score()) + " points wins - judged after each full round", kGold, g.small);
+    if (a.target_score() > 0) g.text(L.title.x + 800, L.title.y + 15, "First to " + std::to_string(a.target_score()) + " points wins", kGold, g.small);
     g.text(L.title.x + L.title.w - 16, L.title.y + 6, "match " + a.match_id + "   -   you are P" + std::to_string(a.me), player_color(a.me), g.body, 2);
     if (a.phase == "PLANNING") {
         std::string t = "waiting";
