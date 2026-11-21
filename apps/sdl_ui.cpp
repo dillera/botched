@@ -487,6 +487,7 @@ struct App {
             c.set("rounds", opt.rounds);
             c.set("planning_seconds", opt.planning_seconds);
             if (opt.bots > 0) c.set("bots", opt.bots);
+            if (!opt.map_id.empty()) c.set("map_id", opt.map_id);
             if (!call(c, resp)) { res.error = err; return false; }
             if (!resp.get_bool("ok").value_or(false)) { res.error = "cannot create match: " + resp.get_string("message").value_or("?"); return false; }
             match_id = *resp.get_string("match_id");

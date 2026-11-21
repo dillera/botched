@@ -6,6 +6,7 @@
 #include "botched/serialize.hpp"
 #include "botched/match.hpp"
 #include "doctest.h"
+#include "map_fixture.hpp"
 #include "line_reader.hpp"
 #include "server.hpp"
 #include "bot.hpp"

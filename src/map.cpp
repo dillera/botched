@@ -385,24 +385,4 @@ MapLoad map_from_json(const Json& j) {
     return parse_map(*id, text);
 }
 
-const char* const kTraining01Text =
-    "#  #  #  #  #  #  #  #  #  #  #  #\n"
-    "# S1 D1  .  . G1  .  .  . D2 S2  #\n"
-    "#  .  .  #  .  .  .  #  .  .  .  #\n"
-    "#  .  .  . C> C> C>  .  . G2  .  #\n"
-    "#  .  #  .  .  O  .  .  #  .  .  #\n"
-    "#  .  . G3  .  T  .  .  .  .  .  #\n"
-    "#  .  #  . C< C< C<  .  #  .  .  #\n"
-    "#  .  .  .  .  .  .  .  . G4  .  #\n"
-    "# S3 D3  .  .  .  .  .  . D4 S4  #\n"
-    "#  #  #  #  #  #  #  #  #  #  #  #\n";
-
-const Map& training01() {
-    static const Map m = [] {
-        MapLoad r = load_map("training-01", kTraining01Text);
-        return *r.map;
-    }();
-    return m;
-}
-
 }  // namespace botched

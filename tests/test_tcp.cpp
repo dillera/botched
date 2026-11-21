@@ -18,6 +18,7 @@
 #include "botched/serialize.hpp"
 #include "client_core.hpp"
 #include "doctest.h"
+#include "map_fixture.hpp"
 #include "line_buffer.hpp"
 #include "server.hpp"
 #include "tcp_host.hpp"

@@ -19,6 +19,8 @@ void usage() {
         "  --port N              server port (default 7878)\n"
         "  --create              create a match and join it as player 1\n"
         "    --players N         seats, 2-4 (default 2)\n"
+        "    --map-id ID         map to play (see --list-maps; default training-01)\n"
+        "  --list-maps           print the server's maps and exit\n"
         "    --bots N            seats played by the server (0-3; at least one human)\n"
         "    --rounds N          rounds (default 12)\n"
         "    --planning-seconds N  planning time per round (default 60)\n"
@@ -60,6 +62,8 @@ int main(int argc, char** argv) {
         else if (a == "--players") opt.players = std::atoi(next());
         else if (a == "--rounds") opt.rounds = std::atoi(next());
         else if (a == "--bots") opt.bots = std::atoi(next());
+        else if (a == "--map-id") opt.map_id = next();
+        else if (a == "--list-maps") opt.list_maps = true;
         else if (a == "--planning-seconds") opt.planning_seconds = std::atoi(next());
         else if (a == "--bot") opt.bot = true;
         else if (a == "--seed") opt.seed = std::strtoull(next(), nullptr, 10);
@@ -78,7 +82,7 @@ int main(int argc, char** argv) {
         else if (a == "--no-color") no_color = true;
         else { usage(); return 2; }
     }
-    if (!opt.create && opt.match_id.empty()) { usage(); return 2; }
+    if (!opt.list_maps && !opt.create && opt.match_id.empty()) { usage(); return 2; }
     opt.unicode = opt.tty && !ascii;
     opt.color = opt.tty && !no_color;
     if (opt.bot) opt.refresh_ms = 200;

@@ -35,9 +35,10 @@ SimResult run_simulation(const SimOptions& opt) {
     server::ManualClock clock;
     server::ServerConfig cfg;
     cfg.default_planning_seconds = 60;
+    cfg.maps_dir = opt.maps_dir;
     GameServer srv(cfg, clock);
 
-    std::string map_id = "training-01";
+    std::string map_id = opt.map_id;
     if (!opt.map_file.empty()) {
         std::ifstream f(opt.map_file);
         if (!f) return fail(res, "cannot open map file " + opt.map_file);
@@ -47,7 +48,7 @@ SimResult run_simulation(const SimOptions& opt) {
         vo.player_count = opt.players;
         MapLoad ml = load_map("custom", ss.str(), vo);
         if (!ml.ok()) return fail(res, "map invalid: " + (ml.errors.empty() ? std::string("parse error") : ml.errors[0]));
-        srv.register_map(std::make_shared<const Map>(std::move(*ml.map)));
+        srv.register_map(std::make_shared<const Map>(std::move(*ml.map)));  // id "custom"
         map_id = "custom";
     }
 

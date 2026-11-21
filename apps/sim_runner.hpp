@@ -16,7 +16,9 @@ struct SimOptions {
     std::uint64_t seed = 1;
     int rounds = 12;
     int flaky_percent = 0;        // chance per bot per round that it never submits (disconnect/lag)
-    std::string map_file;         // empty = built-in training-01
+    std::string map_file;         // custom map text file (overrides map_id)
+    std::string map_id = "training-01";  // map resource id
+    std::string maps_dir;         // empty = default resource directory
     bool verbose = false;         // board + scores after every round
     bool print_events = false;    // one JSON event per line
     std::ostream* out = nullptr;  // where verbose/event output goes (nullptr = silent)

@@ -123,10 +123,47 @@ Json make_error(std::string code, std::string message, const Json* request) {
 }
 
 GameServer::GameServer(ServerConfig cfg, const Clock& clock) : cfg_(cfg), clock_(clock) {
-    register_map(std::make_shared<const Map>(training01()));
+    if (cfg_.load_maps) {
+        map_report_ = load_map_dir(resolve_maps_dir(cfg_.maps_dir));
+        for (const auto& lm : map_report_.maps) register_map(lm.map, lm.info);
+    }
 }
 
-void GameServer::register_map(std::shared_ptr<const Map> map) { maps_[map->id] = std::move(map); }
+bool GameServer::register_map(std::shared_ptr<const Map> map, MapInfo info) {
+    info.id = map->id;
+    if (info.name.empty()) info.name = info.id;
+    if (maps_.count(info.id)) return false;
+    LoadedMap lm;
+    lm.info = std::move(info);
+    lm.map = std::move(map);
+    maps_.emplace(lm.info.id, std::move(lm));
+    return true;
+}
+
+std::vector<MapInfo> GameServer::list_maps() const {
+    std::vector<MapInfo> out;
+    for (const auto& kv : maps_) out.push_back(kv.second.info);
+    return out;
+}
+
+Json GameServer::list_maps_request(const Json&) {
+    Json arr = Json::array();
+    for (const auto& kv : maps_) {  // std::map: ascending id, deterministic
+        const MapInfo& i = kv.second.info;
+        Json m = Json::object();
+        m.set("map_id", i.id);
+        m.set("name", i.name);
+        m.set("description", i.description);
+        m.set("min_players", i.min_players);
+        m.set("max_players", i.max_players);
+        arr.push(std::move(m));
+    }
+    Json out = Json::object();
+    out.set("type", "MAPS");
+    out.set("ok", true);
+    out.set("maps", std::move(arr));
+    return out;
+}
 
 const Match* GameServer::find_match(const std::string& id) const {
     auto it = rooms_.find(id);
@@ -146,7 +183,8 @@ Json GameServer::handle(const Json& req) {
     auto type = req.get_string("type");
     if (!type || !token_ok(*type, kMaxNameLength)) return make_error("BAD_REQUEST", "missing or malformed request type", &req);
     Json out;
-    if (*type == "CREATE_MATCH") out = create(req);
+    if (*type == "LIST_MAPS") out = list_maps_request(req);
+    else if (*type == "CREATE_MATCH") out = create(req);
     else if (*type == "JOIN_MATCH") out = join(req);
     else if (*type == "START_MATCH") out = start(req);
     else if (*type == "SUBMIT_PROGRAM") out = submit(req);
@@ -187,16 +225,19 @@ Json GameServer::create(const Json& req) {
         return err;
     auto mit = maps_.find(map_id);
     if (mit == maps_.end()) return make_error("UNKNOWN_MAP", "no such map", &req);
+    if (players < mit->second.info.min_players || players > mit->second.info.max_players)
+        return make_error("BAD_REQUEST", "map " + map_id + " supports " + std::to_string(mit->second.info.min_players) + "-" +
+                                             std::to_string(mit->second.info.max_players) + " players", &req);
     if (static_cast<int>(rooms_.size()) >= cfg_.max_matches)
         return make_error("TOO_MANY_MATCHES", "this server hosts at most " + std::to_string(cfg_.max_matches) + " matches", &req);
     ValidationOptions vo;
     vo.player_count = static_cast<int>(players);
-    auto errors = validate_map(*mit->second, vo);
+    auto errors = validate_map(*mit->second.map, vo);
     if (!errors.empty()) return make_error("INVALID_MAP", errors.front(), &req);
 
     Room r;
     r.id = "m" + std::to_string(next_room_++);
-    r.map = mit->second;
+    r.map = mit->second.map;
     r.capacity = static_cast<int>(players);
     r.bots = static_cast<int>(bots);
     r.rounds = static_cast<int>(rounds);
@@ -269,6 +310,10 @@ bool GameServer::start_room(Room& r, std::string& error) {
     const int joined = humans + r.bots;  // bot seats take the ids after the humans
     if (humans < 1) { error = "at least one human player required"; return false; }
     if (joined < 2) { error = "at least two players required"; return false; }
+    if (auto mi = maps_.find(r.map->id); mi != maps_.end() && joined < mi->second.info.min_players) {
+        error = "map " + r.map->id + " needs at least " + std::to_string(mi->second.info.min_players) + " players";
+        return false;
+    }
     ValidationOptions vo;
     vo.player_count = joined;
     auto errors = validate_map(*r.map, vo);

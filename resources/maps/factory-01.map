@@ -1,0 +1,20 @@
+; Botched! map resource (whitespace-separated tiles, one row per line; see README "Maps").
+; Metadata lines are comments of the form "; key: value".
+; id: factory-01
+; name: Factory Floor
+; description: Mirrored shop floor: two belt lanes per side (groups A and B), pit pairs and side dispensers.
+; players: 2-4
+;
+; Left lanes (group A) push toward the middle on top and away from it below; the right side mirrors
+; them with group B. Consoles TA / TB reverse their own group. Four dispensers: two top-centre, one per side.
+#  #  #   #   #   #  #  #  #   #   #   #  #  #
+# S1 D1   .   .   . G1 G2  .   .   .  D2 S2  #
+#  .  .   #   .   .  .  .  .   .   #   .  .  #
+#  .  . C>A C>A C>A  .  . C<B C<B C<B   .  .  #
+#  .  #   .   .   . O  O  .   .   .   #  .  #
+# G3  .   .  TA   .  .  .  .  TB   .   .  G4 #
+#  .  #   .   .   . O  O  .   .   .   #  .  #
+#  .  . C<A C<A C<A  .  . C>B C>B C>B   .  .  #
+#  .  .   #   .   .  .  .  .   .   #   .  .  #
+# S3 D3   .   .   .  .  .  .   .   .  D4 S4  #
+#  #  #   #   #   #  #  #  #   #   #   #  #  #

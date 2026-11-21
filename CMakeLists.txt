@@ -30,9 +30,12 @@ target_include_directories(botched_core PUBLIC include)
 add_library(botched_server STATIC
   server/server.cpp
   server/bot.cpp
+  server/map_loader.cpp
 )
 target_include_directories(botched_server PUBLIC server)
 target_link_libraries(botched_server PUBLIC botched_core)
+# Last-resort default for the maps directory (the source tree); executables first look next to themselves.
+target_compile_definitions(botched_server PRIVATE BOTCHED_DEFAULT_MAPS_DIR="${CMAKE_CURRENT_SOURCE_DIR}/resources/maps")
 
 # --- POSIX reference apps: simulated players and the stdio server host.
 add_library(botched_sim_lib STATIC
@@ -96,11 +99,22 @@ if(BOTCHED_BUILD_APPS)
   endif()
 endif()
 
+# --- Install: <prefix>/bin/<executables> and <prefix>/share/botched/maps/*.map. The servers find the maps
+# next to themselves (../share/botched/maps), so an installed tree works from any working directory.
+if(BOTCHED_BUILD_APPS)
+  install(TARGETS botched-server botched-sim RUNTIME DESTINATION bin)
+  if(UNIX)
+    install(TARGETS botched-tcp-server botched-client RUNTIME DESTINATION bin)
+  endif()
+endif()
+install(DIRECTORY resources/maps DESTINATION share/botched FILES_MATCHING PATTERN "*.map")
+
 if(BOTCHED_BUILD_TESTS)
   enable_testing()
   file(GLOB BOTCHED_TEST_SOURCES CONFIGURE_DEPENDS tests/test_*.cpp)
   add_executable(botched_tests tests/test_main.cpp ${BOTCHED_TEST_SOURCES})
   target_include_directories(botched_tests PRIVATE tests tests/third_party)
+  target_compile_definitions(botched_tests PRIVATE BOTCHED_TEST_MAPS_DIR="${CMAKE_CURRENT_SOURCE_DIR}/resources/maps")
   target_link_libraries(botched_tests PRIVATE botched_sim_lib botched_ui_model)
   if(UNIX)
     target_link_libraries(botched_tests PRIVATE botched_tcp_host botched_client_lib)

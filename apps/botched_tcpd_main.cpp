@@ -26,8 +26,9 @@ int main(int argc, char** argv) {
         else if (a == "--bind") opt.bind_address = next();
         else if (a == "--planning-seconds") cfg.default_planning_seconds = std::atoi(next());
         else if (a == "--max-matches") cfg.max_matches = std::atoi(next());
+        else if (a == "--maps-dir") cfg.maps_dir = next();
         else {
-            std::cerr << "usage: botched-tcp-server [--port N] [--bind ADDR] [--planning-seconds N] [--max-matches N]\n"
+            std::cerr << "usage: botched-tcp-server [--port N] [--bind ADDR] [--planning-seconds N] [--max-matches N] [--maps-dir DIR]\n"
                          "  default: 127.0.0.1:7878, 60 s planning. Use --bind 0.0.0.0 for LAN play (no authentication!).\n";
             return 2;
         }
@@ -38,6 +39,11 @@ int main(int argc, char** argv) {
 
     SystemClock clock;
     GameServer server(cfg, clock);
+    print_map_report(server.map_report(), std::cerr);
+    if (server.list_maps().empty()) {
+        std::cerr << "botched-tcp-server: no usable maps (use --maps-dir DIR or set BOTCHED_MAPS_DIR)\n";
+        return 1;
+    }
     TcpHost host(server, opt);
     std::string err;
     if (!host.listen(err)) {

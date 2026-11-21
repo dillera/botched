@@ -15,6 +15,7 @@
 #include "botched/json.hpp"
 #include "botched/match.hpp"
 #include "bot.hpp"
+#include "map_loader.hpp"
 
 namespace botched::server {
 
@@ -64,16 +65,26 @@ struct ServerConfig {
     // Seeds the server-managed bot seats (CREATE_MATCH "bots"). Bot decisions depend only on this seed,
     // the match id, the seat and the game state, so a match with the same human inputs replays identically.
     std::uint64_t bot_seed = 1;
+    // Map resources. Empty maps_dir = resolve_maps_dir() (env, executable-relative, compile-time default).
+    // load_maps=false starts with an empty registry (tests that register their own maps).
+    std::string maps_dir;
+    bool load_maps = true;
 };
 
 class GameServer {
 public:
     GameServer(ServerConfig cfg, const Clock& clock);
 
-    void register_map(std::shared_ptr<const Map> map);
+    // Adds a map to the registry. Maps are immutable (shared_ptr<const Map>) and matches keep their own
+    // reference, so registering never affects running matches. Returns false (and changes nothing)
+    // when the id is already registered; a missing name defaults to the id.
+    bool register_map(std::shared_ptr<const Map> map, MapInfo info = {});
+    // What was found when the maps directory was loaded at construction (empty if load_maps=false).
+    const MapDirReport& map_report() const { return map_report_; }
+    std::vector<MapInfo> list_maps() const;  // ascending id
 
     // Dispatches one request. Never throws; malformed input yields an ERROR response.
-    //   Lobby/admin:  CREATE_MATCH, JOIN_MATCH, START_MATCH
+    //   Lobby/admin:  LIST_MAPS, CREATE_MATCH (optional map_id), JOIN_MATCH, START_MATCH
     //   Spec 9.2:     SUBMIT_PROGRAM, GET_SNAPSHOT, GET_EVENTS, GET_MAP, GET_MATCH_STATUS
     Json handle(const Json& request);
     Json handle_text(std::string_view line);  // parse + handle + (caller dumps)
@@ -98,6 +109,7 @@ private:
         std::int64_t deadline_ms = 0;     // 0 = none
     };
 
+    Json list_maps_request(const Json& req);
     Json create(const Json& req);
     Json join(const Json& req);
     Json start(const Json& req);
@@ -115,7 +127,8 @@ private:
 
     ServerConfig cfg_;
     const Clock& clock_;
-    std::map<std::string, std::shared_ptr<const Map>> maps_;
+    std::map<std::string, LoadedMap> maps_;
+    MapDirReport map_report_;
     std::map<std::string, Room> rooms_;
     int next_room_ = 1;
     std::uint64_t token_counter_ = 0;

@@ -90,8 +90,4 @@ std::string map_to_text(const Map& map);
 // Inverse of map_to_json (what a client does with a GET_MAP response). Parse only.
 MapLoad map_from_json(const Json& j);
 
-// The section 7 example map.
-extern const char* const kTraining01Text;
-const Map& training01();
-
 }  // namespace botched

@@ -8,6 +8,7 @@
 #include "botched/serialize.hpp"
 #include "bot.hpp"
 #include "doctest.h"
+#include "map_fixture.hpp"
 #include "ui_playback.hpp"
 
 using namespace botched;

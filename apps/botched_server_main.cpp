@@ -19,13 +19,20 @@ int main(int argc, char** argv) {
         std::string a = argv[i];
         if (a == "--planning-seconds" && i + 1 < argc) {
             cfg.default_planning_seconds = std::atoi(argv[++i]);
+        } else if (a == "--maps-dir" && i + 1 < argc) {
+            cfg.maps_dir = argv[++i];
         } else {
-            std::cerr << "usage: botched-server [--planning-seconds N]   (JSON lines on stdin/stdout)\n";
+            std::cerr << "usage: botched-server [--planning-seconds N] [--maps-dir DIR]   (JSON lines on stdin/stdout)\n";
             return 2;
         }
     }
     botched::server::SystemClock clock;
     botched::server::GameServer srv(cfg, clock);
+    print_map_report(srv.map_report(), std::cerr);
+    if (srv.list_maps().empty()) {
+        std::cerr << "botched-server: no usable maps (use --maps-dir DIR or set BOTCHED_MAPS_DIR)\n";
+        return 1;
+    }
     std::string line;
     for (;;) {
         // One request per line, read with a hard size bound (kMaxRequestBytes + room for CRLF).

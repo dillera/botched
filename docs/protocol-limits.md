@@ -66,6 +66,6 @@ identifiers; arbitrary client text is never reflected.
 ## Not covered here (deliberately)
 
 - Network-level concerns: connection counts, rate limiting, slow-loris, authentication of the
-  lobby operations (`CREATE_MATCH`, `JOIN_MATCH`, `START_MATCH`). The stdio host is a reference
+  lobby operations (`LIST_MAPS`, `CREATE_MATCH`, `JOIN_MATCH`, `START_MATCH`). The stdio host is a reference
   harness, not a production server; these belong to the NIO transport (M1).
 - Reclaiming finished matches (M1).

@@ -16,7 +16,8 @@ void usage() {
         "  --seed S         bot/noise seed (default 1)\n"
         "  --rounds R       rounds to play (default 12)\n"
         "  --flaky P        percent chance a bot misses a round, forcing a timeout (default 0)\n"
-        "  --map FILE       custom map text (default: built-in training-01)\n"
+        "  --map FILE       custom map text file\n"
+        "  --map-id ID      map resource id (default training-01)   --maps-dir DIR   resource directory\n"
         "  --verbose        print the board after every round\n"
         "  --events         print every event as one JSON line\n"
         "  --check          run twice and verify identical state and event hashes\n";
@@ -39,6 +40,8 @@ int main(int argc, char** argv) {
         else if (a == "--rounds") opt.rounds = std::atoi(next());
         else if (a == "--flaky") opt.flaky_percent = std::atoi(next());
         else if (a == "--map") opt.map_file = next();
+        else if (a == "--map-id") opt.map_id = next();
+        else if (a == "--maps-dir") opt.maps_dir = next();
         else if (a == "--verbose") opt.verbose = true;
         else if (a == "--events") opt.print_events = true;
         else if (a == "--check") check = true;

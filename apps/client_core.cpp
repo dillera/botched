@@ -355,6 +355,19 @@ ClientResult run_client(const ClientOptions& opt, std::ostream& out) {
         return true;
     };
 
+    if (opt.list_maps) {
+        Json lm = make("LIST_MAPS"), r;
+        if (!call(lm, r)) return fail(err);
+        const Json* maps = r.find("maps");
+        if (!maps) return fail("server sent no map list");
+        for (const auto& m : maps->items())
+            out << m.get_string("map_id").value_or("?") << "  -  " << m.get_string("name").value_or("") << "  ("
+                << m.get_int("min_players").value_or(0) << "-" << m.get_int("max_players").value_or(0) << " players)  "
+                << m.get_string("description").value_or("") << "\n";
+        res.ok = true;
+        return res;
+    }
+
     // ---- create / join ----
     Json resp;
     std::string match_id = opt.match_id;
@@ -364,6 +377,7 @@ ClientResult run_client(const ClientOptions& opt, std::ostream& out) {
         c.set("rounds", opt.rounds);
         c.set("planning_seconds", opt.planning_seconds);
         if (opt.bots > 0) c.set("bots", opt.bots);
+        if (!opt.map_id.empty()) c.set("map_id", opt.map_id);
         if (!call(c, resp)) return fail(err);
         if (!resp.get_bool("ok").value_or(false)) return fail("cannot create match: " + resp.get_string("message").value_or("?"));
         match_id = *resp.get_string("match_id");

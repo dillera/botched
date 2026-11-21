@@ -33,6 +33,39 @@ Build once (`cmake -S . -B build && cmake --build build -j`), then:
 ./build/botched-client --join m1
 ```
 
+### Maps
+
+Maps are plain files in `resources/maps/*.map` (shipped: `training-01`, the spec's example, and `factory-01`).
+The server loads and validates every `.map` file at startup and reports problems per file on stderr; valid
+maps stay available when another file is bad, and duplicate ids are rejected. Adding a map needs no rebuild:
+drop a file in the directory and restart the server.
+
+```
+; id: my-map                 required, unique, [A-Za-z0-9._:-]
+; name: My Map               required, shown to players
+; description: One line.     optional
+; players: 2-4               optional (N or A-B), default 2-4
+#  #  #  ...                 then the tile rows exactly as in the spec: # . O S1 D1 G1 C> C<B T TA L> ...
+```
+
+Where the server looks (first match wins): `--maps-dir DIR`; `$BOTCHED_MAPS_DIR`; next to the executable
+(`<exe dir>/resources/maps`, the installed layout `<exe dir>/../share/botched/maps`, or `<exe dir>/../resources/maps`
+for a build tree inside the source tree); the source tree's `resources/maps` baked in at build time; `./resources/maps`.
+So a build tree, an installed tree (`cmake --install build --prefix /opt/botched`) and `--maps-dir` all work from any
+working directory.
+
+```sh
+./build/botched-tcp-server --maps-dir /srv/botched/maps       # optional
+./build/botched-client --list-maps                            # id, name, players, description
+./build/botched-client --create --map-id factory-01 --players 3
+./build/botched-client --join m1                              # joiners need no local map files (GET_MAP)
+```
+
+`LIST_MAPS` (no fields) returns `{"type":"MAPS","ok":true,"maps":[{"map_id","name","description","min_players",
+"max_players"}...]}` in ascending id order; `CREATE_MATCH` takes an optional `"map_id"` (default `training-01`).
+Maps are immutable once registered and every match holds its own reference, which is what a future runtime
+"register a map" feature would build on (see the backlog, B-12); none of that exists yet.
+
 The match starts when all seats are filled (or type `start` in the creating client to begin with the
 players who have joined; at least 2). Each round, every player has the planning time to enter **three
 orders** and lock them in:

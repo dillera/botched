@@ -2,6 +2,7 @@
 #include "botched/json.hpp"
 #include "botched/map.hpp"
 #include "doctest.h"
+#include "map_fixture.hpp"
 
 using namespace botched;
 
@@ -19,7 +20,7 @@ bool has_error(const std::vector<std::string>& errs, const std::string& needle) 
 }  // namespace
 
 TEST_CASE("map: training-01 parses, validates and has the documented features") {
-    MapLoad r = load_map("training-01", kTraining01Text);
+    MapLoad r = load_map("training-01", training01_text());
     REQUIRE_MESSAGE(r.ok(), (r.errors.empty() ? "" : r.errors[0]));
     const Map& m = *r.map;
     CHECK(m.width == 12);
@@ -73,7 +74,7 @@ TEST_CASE("map: parse errors are reported") {
 }
 
 TEST_CASE("map validator: section 8 rejections") {
-    std::string good = kTraining01Text;
+    std::string good = training01_text();
     ValidationOptions o;
 
     SUBCASE("dimensions") {

@@ -7,6 +7,7 @@
 #include "ascii_render.hpp"
 #include "botched/match.hpp"
 #include "doctest.h"
+#include "map_fixture.hpp"
 
 using namespace botched;
 using namespace botched::sim;

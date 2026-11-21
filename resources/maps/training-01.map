@@ -1,0 +1,17 @@
+; Botched! map resource (whitespace-separated tiles, one row per line; see README "Maps").
+; Metadata lines are comments of the form "; key: value".
+; id: training-01
+; name: Training Floor
+; description: The spec section 7 example: two belt lanes around a central pit, one console.
+; players: 2-4
+;
+#  #  #  #  #  #  #  #  #  #  #  #
+# S1 D1  .  . G1  .  .  . D2 S2  #
+#  .  .  #  .  .  .  #  .  .  .  #
+#  .  .  . C> C> C>  .  . G2  .  #
+#  .  #  .  .  O  .  .  #  .  .  #
+#  .  . G3  .  T  .  .  .  .  .  #
+#  .  #  . C< C< C<  .  #  .  .  #
+#  .  .  .  .  .  .  .  . G4  .  #
+# S3 D3  .  .  .  .  .  . D4 S4  #
+#  #  #  #  #  #  #  #  #  #  #  #
