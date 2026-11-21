@@ -1,0 +1,17 @@
+
+; Botched! map resource
+; id: crossroads-01
+; name: The Crossroads
+; description: Three shared dispensers, two independently controlled conveyor lanes and a central pit.
+; players: 2-4
+;
+#   #   #   #   #   #   #   #   #   #   #   #
+#   S1  D1  .   .   .   .   .   .   D2  S2  #
+#   .   .   #   .   .   .   .   #   .   .   #
+#   .   .   .   C>A C>A C>A .   .   .   .   #
+#   .   #   .   G1  O   .   G2  .   #   .   #
+#   .   .   .   .   TA  TB  .   .   .   .   #
+#   .   #   .   C<B C<B C<B .   #   .   .   #
+#   .   .   .   .   G3  .   .   .   .   .   #
+#   S3  D3  .   .   .   .   .   .   D4  S4  #
+#   #   #   #   #   #   #   #   #   #   #   #
