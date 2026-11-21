@@ -37,6 +37,8 @@ struct Layout {
     Rect lock_button;
     Rect clear_button;
     Rect start_button;  // lobby only (drawn over the board panel)
+    Rect queue;         // execution queue strip, bottom of the board panel
+    Rect skip_button;   // skips round playback
 };
 
 Layout compute_layout(int map_w, int map_h);

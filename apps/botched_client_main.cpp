@@ -26,6 +26,8 @@ void usage() {
         "    --seed N            bot seed          --think-ms N   bot pause before submitting\n"
         "  --plain               no ANSI screen control (default when output is not a terminal)\n"
         "  --ui                  graphical SDL window (board sprites, panels, scrollable log)\n"
+        "    --programs \"F2 R T;W W W\"   ui: scripted orders per round (demos and tests)\n"
+        "    --anim-speed X --no-anim   ui: round replay speed (default 1.0) / disable the replay\n"
         "    --frames N --screenshot FILE.bmp   ui: render N frames, save the last one, exit (testing)\n"
         "  --ascii               plain ASCII board (default unless the locale is UTF-8)\n"
         "  --no-color            no colours (also honours NO_COLOR)\n";
@@ -62,6 +64,12 @@ int main(int argc, char** argv) {
         else if (a == "--think-ms") opt.bot_think_ms = std::atoi(next());
         else if (a == "--plain") opt.tty = false;
         else if (a == "--ui") opt.ui = true;
+        else if (a == "--programs") {  // "R F2 L;F2 F W;..." one entry per round
+            std::string all = next(), cur;
+            for (char c : all + ";") { if (c == ';') { opt.programs.push_back(cur); cur.clear(); } else cur += c; }
+        }
+        else if (a == "--no-anim") opt.animate = false;
+        else if (a == "--anim-speed") opt.anim_speed = std::atof(next());
         else if (a == "--frames") opt.ui_frames = std::atoi(next());
         else if (a == "--screenshot") opt.ui_screenshot = next();
         else if (a == "--ascii") ascii = true;

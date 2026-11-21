@@ -10,12 +10,16 @@ Layout compute_layout(int map_w, int map_h) {
     l.title = {m, m, kScreenW - 2 * m, 48};
     l.board_panel = {m, 64, 840, 632};
     const int pad = 12, head = 28;  // panel caption row
-    const int aw = l.board_panel.w - 2 * pad, ah = l.board_panel.h - 2 * pad - head;
+    const int qh = 46;  // execution queue strip
+    const int aw = l.board_panel.w - 2 * pad, ah = l.board_panel.h - 2 * pad - head - qh - 6;
     if (map_w < 1) map_w = 1;
     if (map_h < 1) map_h = 1;
     l.cell = std::max(8, std::min(aw / map_w, ah / map_h));
     const int bw = l.cell * map_w, bh = l.cell * map_h;
     l.board = {l.board_panel.x + (l.board_panel.w - bw) / 2, l.board_panel.y + head + pad + (ah - bh) / 2, bw, bh};
+
+    l.queue = {l.board_panel.x + pad, l.board_panel.y + l.board_panel.h - pad - qh, l.board_panel.w - 2 * pad - 92, qh};
+    l.skip_button = {l.queue.x + l.queue.w + 8, l.queue.y + 6, 76, 34};
 
     const int rx = l.board_panel.x + l.board_panel.w + m, rw = kScreenW - m - rx;
     l.scores = {rx, 64, rw, 250};

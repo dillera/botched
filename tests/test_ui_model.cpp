@@ -18,6 +18,10 @@ TEST_CASE("ui layout: panels fit the screen and never overlap, for any map size"
         for (std::size_t i = 0; i < panels.size(); ++i)
             for (std::size_t j = i + 1; j < panels.size(); ++j) CHECK_FALSE(panels[i].overlaps(panels[j]));
         CHECK(l.board.inside(l.board_panel));
+        CHECK(l.queue.inside(l.board_panel));
+        CHECK(l.skip_button.inside(l.board_panel));
+        CHECK_FALSE(l.queue.overlaps(l.board));
+        CHECK_FALSE(l.skip_button.overlaps(l.queue));
         CHECK(l.board.w == l.cell * dims.first);
         CHECK(l.board.h == l.cell * dims.second);
         CHECK(l.log_text.inside(l.messages));
@@ -34,7 +38,7 @@ TEST_CASE("ui layout: panels fit the screen and never overlap, for any map size"
 
 TEST_CASE("ui layout: the training-01 board is large enough to read") {
     Layout l = compute_layout(12, 10);
-    CHECK(l.cell >= 48);
+    CHECK(l.cell >= 48);  // still readable with the queue strip below the board
 }
 
 TEST_CASE("scroll log: follows the newest line until the reader scrolls up") {
