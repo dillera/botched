@@ -617,12 +617,6 @@ struct App {
     }
 
     // ---- events ----
-    void to_logical(int wx, int wy, SDL_Renderer* rd, int& lx, int& ly) {
-        float fx = 0, fy = 0;
-        SDL_RenderWindowToLogical(rd, wx, wy, &fx, &fy);
-        lx = static_cast<int>(fx);
-        ly = static_cast<int>(fy);
-    }
     void set_scroll_from_y(int y) {
         const Rect& sb = lay.scrollbar;
         if (log.max_offset() == 0) return;
@@ -631,11 +625,13 @@ struct App {
         log.scroll(target - log.offset());
     }
     // returns false to quit
-    bool handle(const SDL_Event& e, SDL_Renderer* rd) {
+    bool handle(const SDL_Event& e) {
         switch (e.type) {
             case SDL_QUIT: return false;
             case SDL_MOUSEMOTION: {
-                to_logical(e.motion.x, e.motion.y, rd, mouse_x, mouse_y);
+                // SDL already reports event coordinates in logical units (SDL_RenderSetLogicalSize)
+                mouse_x = e.motion.x;
+                mouse_y = e.motion.y;
                 if (dragging_scroll) set_scroll_from_y(mouse_y);
                 break;
             }
@@ -647,9 +643,9 @@ struct App {
             }
             case SDL_MOUSEBUTTONDOWN: {
                 if (e.button.button != SDL_BUTTON_LEFT) break;
-                int mx, my;
-                to_logical(e.button.x, e.button.y, rd, mx, my);
-                click(mx, my);
+                mouse_x = e.button.x;
+                mouse_y = e.button.y;
+                click(e.button.x, e.button.y);
                 break;
             }
             case SDL_KEYDOWN: {
@@ -1054,7 +1050,7 @@ client::ClientResult run_ui(const client::ClientOptions& opt) {
         while (running) {
             const Uint32 t0 = SDL_GetTicks();
             SDL_Event e;
-            while (SDL_PollEvent(&e)) if (!app.handle(e, rd)) running = false;
+            while (SDL_PollEvent(&e)) if (!app.handle(e)) running = false;
             if (t0 - last_poll >= (opt.bot ? 150u : 250u) || last_poll == 0) { app.poll(); last_poll = t0; }
             if (app.opt.ui_exit_on_finish && app.finished_logged) running = false;
 
