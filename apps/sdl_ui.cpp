@@ -430,6 +430,21 @@ struct App {
     bool is_bot(int id) const { return std::find(bot_ids.begin(), bot_ids.end(), id) != bot_ids.end(); }
     bool finished_logged = false;
     std::vector<int> winners;
+    // Match rules: from the live snapshot once started, from the lobby status before that.
+    int target_score() const { return static_cast<int>((snap.is_null() ? status : snap).get_int("target_score").value_or(0)); }
+    int round_cap() const { return static_cast<int>((snap.is_null() ? status : snap).get_int("rounds_total").value_or(0)); }
+    std::string rules_text() const {
+        const int t = target_score(), c = round_cap();
+        if (t > 0) return "First to " + std::to_string(t) + " pts  (cap " + std::to_string(c) + " rounds)";
+        return std::to_string(c) + " rounds";
+    }
+    // Why a finished match ended: someone reached the target, or the round cap was hit.
+    std::string end_reason() const {
+        const int t = target_score();
+        if (t <= 0) return "";
+        for (const auto& r : auth.robots) if (r.score >= t) return "Target of " + std::to_string(t) + " points reached";
+        return "Round cap of " + std::to_string(round_cap()) + " reached - highest score wins";
+    }
 
     int last_round = 0, revision = 0, events_version = -1;
     bool locked = false;
@@ -484,7 +499,8 @@ struct App {
         if (opt.create) {
             Json c = make("CREATE_MATCH");
             c.set("player_count", opt.players);
-            c.set("rounds", opt.rounds);
+            if (opt.rounds > 0) c.set("rounds", opt.rounds);
+            if (opt.target_score > 0) c.set("target_score", opt.target_score);
             c.set("planning_seconds", opt.planning_seconds);
             if (opt.bots > 0) c.set("bots", opt.bots);
             if (!opt.map_id.empty()) c.set("map_id", opt.map_id);
@@ -656,7 +672,8 @@ struct App {
         finished_logged = true;
         std::string names;
         for (int w : winners) names += (names.empty() ? "P" : " P") + std::to_string(w);
-        const std::string msg = winners.size() == 1 ? "MATCH OVER - winner: " + names : "MATCH OVER - shared victory: " + names;
+        std::string msg = winners.size() == 1 ? "MATCH OVER - winner: " + names : "MATCH OVER - shared victory: " + names;
+        if (!end_reason().empty()) msg += "  (" + end_reason() + ")";
         if (play.active()) held.push_back({1 << 20, {{msg, ScrollLog::Good}}});  // after the replay
         else say(msg, ScrollLog::Good);
     }
@@ -770,14 +787,15 @@ void draw_title(App& a, Gfx& g, Uint32 now) {
     if (a.phase == "LOBBY") mid = "Lobby   " + std::to_string(a.joined) + "/" + std::to_string(a.capacity) + " players";
     else if (replay_step) {
         const int total = static_cast<int>(a.snap.get_int("rounds_total").value_or(0));
-        mid = "Round " + std::to_string(replay_step->round > 0 ? replay_step->round : a.last_round) + " / " + std::to_string(total) + "     REPLAY";
+        mid = "Round " + std::to_string(replay_step->round > 0 ? replay_step->round : a.last_round) + (a.target_score() > 0 ? " (cap " : " / ") + std::to_string(total) + (a.target_score() > 0 ? ")" : "") + "     REPLAY";
     }
     else if (a.phase == "FINISHED") mid = "MATCH OVER";
     else {
         const int total = static_cast<int>(a.snap.get_int("rounds_total").value_or(0));
-        mid = "Round " + std::to_string(a.last_round) + " / " + std::to_string(total) + "     " + (a.phase == "PLANNING" ? "PLANNING" : "EXECUTING");
+        mid = "Round " + std::to_string(a.last_round) + (a.target_score() > 0 ? " (cap " : " / ") + std::to_string(total) + (a.target_score() > 0 ? ")" : "") + "     " + (a.phase == "PLANNING" ? "PLANNING" : "EXECUTING");
     }
     g.text(L.title.x + 250, L.title.y + 10, mid, kInk, g.big);
+    if (a.target_score() > 0) g.text(L.title.x + 250, L.title.y + 36, "First to " + std::to_string(a.target_score()) + " points wins - judged after each full round", kGold, g.small);
     g.text(L.title.x + L.title.w - 16, L.title.y + 6, "match " + a.match_id + "   -   you are P" + std::to_string(a.me), player_color(a.me), g.body, 2);
     if (a.phase == "PLANNING") {
         std::string t = "waiting";
@@ -802,6 +820,7 @@ void draw_board(App& a, Gfx& g, Uint32 now) {
             g.text(L.board_panel.x + L.board_panel.w / 2, L.board_panel.y + L.board_panel.h / 2 - 20,
                    std::to_string(a.joined) + " of " + std::to_string(a.capacity) + " seats filled" +
                        (a.bots > 0 ? "  (" + std::to_string(a.bots) + (a.bots == 1 ? " bot)" : " bots)") : ""), kMuted, g.big, 1);
+            g.text(L.board_panel.x + L.board_panel.w / 2, L.board_panel.y + L.board_panel.h / 2 + 8, "Rules: " + a.rules_text(), kGold, g.body, 1);
             const bool ok = a.joined >= 2;
             g.fill(L.start_button, ok ? C(40, 130, 80) : C(48, 54, 66));
             g.frame(L.start_button, ok ? kGreen : kPanelEdge, 2);
@@ -1057,7 +1076,8 @@ void draw_queue(App& a, Gfx& g, Uint32 now) {
 
 void draw_scores(App& a, Gfx& g) {
     const Layout& L = a.lay;
-    panel(g, L.scores, "SCOREBOARD", kGold);
+    const std::string caption = a.target_score() > 0 ? "SCOREBOARD - FIRST TO " + std::to_string(a.target_score()) : "SCOREBOARD";
+    panel(g, L.scores, caption.c_str(), kGold);
     if (a.snap.is_null()) { g.text(L.scores.x + 14, L.scores.y + 40, "match not started", kMuted, g.body); return; }
     const BoardView& sv = a.shown();
     int best = 0;
@@ -1074,6 +1094,13 @@ void draw_scores(App& a, Gfx& g) {
         g.text(card.x + 18, card.y + 4, "P" + std::to_string(r.id) + (r.id == a.me ? "  (you)" : a.is_bot(r.id) ? "  BOT" : ""), pc, g.body);
         const bool lead = r.score == best && best > 0;
         g.text(card.x + 18, card.y + 26, "deliveries " + std::to_string(r.deliveries), kMuted, g.small);
+        if (const int tgt = a.target_score(); tgt > 0) {
+            // progress toward the target score
+            Rect bar{card.x + 18, card.y + card.h - 8, 150, 5};
+            g.fill(bar, C(30, 36, 48));
+            const int fill = std::min(bar.w, bar.w * std::min(r.score, tgt) / tgt);
+            g.fill({bar.x, bar.y, fill, bar.h}, r.score >= tgt ? kGold : pc);
+        }
         g.text(card.x + 190, card.y + 2, std::to_string(r.score), lead ? kGold : kInk, g.big, 2);
         g.text(card.x + 190 + 8, card.y + 14, "pts", kMuted, g.small);
         // damage pips (two hits disable)
@@ -1208,6 +1235,8 @@ void draw_result(App& a, Gfx& g) {
     const bool mine = std::find(a.winners.begin(), a.winners.end(), a.me) != a.winners.end();
     g.text(box.x + box.w / 2, box.y + 64, (a.winners.size() == 1 ? "Winner: " : "Shared victory: ") + names, mine ? kGreen : kInk, g.big, 1);
     if (mine) g.text(box.x + box.w / 2, box.y + 98, "That's you!", kGreen, g.body, 1);
+    else if (!a.end_reason().empty()) g.text(box.x + box.w / 2, box.y + 98, a.end_reason(), kMuted, g.body, 1);
+    if (mine && !a.end_reason().empty()) g.text(box.x + box.w / 2, box.y + 120, a.end_reason(), kMuted, g.small, 1);
     const BoardView& sv = a.auth;
     int y = box.y + 140;
     for (const auto& r : sv.robots) {

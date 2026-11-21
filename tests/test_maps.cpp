@@ -53,17 +53,24 @@ Json req(const char* type) {
 TEST_CASE("maps: training-01 and factory-01 load from files with their metadata") {
     MapDirReport rep = load_map_dir(BOTCHED_TEST_MAPS_DIR);
     CHECK(rep.errors.empty());
-    REQUIRE(rep.maps.size() == 2);
-    CHECK(rep.maps[0].info.id == "factory-01");  // ascending file name
-    CHECK(rep.maps[0].info.name == "Factory Floor");
-    CHECK(rep.maps[0].info.min_players == 2);
-    CHECK(rep.maps[0].info.max_players == 4);
-    CHECK(rep.maps[0].map->width == 14);
-    CHECK(rep.maps[0].map->height == 11);
-    CHECK(rep.maps[0].map->groups == std::vector<char>{'A', 'B'});  // C>A / C<B conveyors with TA / TB consoles
-    CHECK(rep.maps[1].info.id == "training-01");
-    CHECK(rep.maps[1].info.name == "Training Floor");
-    CHECK(rep.maps[1].map->id == "training-01");
+    REQUIRE(rep.maps.size() >= 2);  // more maps may be added to the directory over time
+    auto find = [&](const char* id) -> const LoadedMap* {
+        for (const auto& m : rep.maps) if (m.info.id == id) return &m;
+        return nullptr;
+    };
+    for (std::size_t i = 1; i < rep.maps.size(); ++i) CHECK(rep.maps[i - 1].info.file < rep.maps[i].info.file);  // ascending file name
+    const LoadedMap* f = find("factory-01");
+    REQUIRE(f);
+    CHECK(f->info.name == "Factory Floor");
+    CHECK(f->info.min_players == 2);
+    CHECK(f->info.max_players == 4);
+    CHECK(f->map->width == 14);
+    CHECK(f->map->height == 11);
+    CHECK(f->map->groups == std::vector<char>{'A', 'B'});  // C>A / C<B conveyors with TA / TB consoles
+    const LoadedMap* t = find("training-01");
+    REQUIRE(t);
+    CHECK(t->info.name == "Training Floor");
+    CHECK(t->map->id == "training-01");
 }
 
 TEST_CASE("maps: training-01 from its resource file is byte-for-byte the map it always was") {
@@ -80,13 +87,23 @@ TEST_CASE("maps: the server registers resource maps and LIST_MAPS is compact and
     CHECK(la.get_bool("ok").value_or(false));
     const Json* maps = la.find("maps");
     REQUIRE(maps != nullptr);
-    REQUIRE(maps->items().size() == 2);
-    CHECK(maps->items()[0].get_string("map_id").value_or("") == "factory-01");
-    CHECK(maps->items()[1].get_string("map_id").value_or("") == "training-01");
-    CHECK(maps->items()[1].get_string("name").value_or("") == "Training Floor");
-    CHECK(maps->items()[1].get_int("min_players").value_or(0) == 2);
-    CHECK(maps->items()[1].get_int("max_players").value_or(0) == 4);
-    CHECK(la.dump().size() < 600);  // small enough for constrained clients
+    REQUIRE(maps->items().size() >= 2);
+    const Json* training = nullptr;
+    std::string prev;
+    bool has_factory = false;
+    for (const auto& m : maps->items()) {
+        const std::string id = m.get_string("map_id").value_or("");
+        CHECK(prev < id);  // ascending id
+        prev = id;
+        has_factory = has_factory || id == "factory-01";
+        if (id == "training-01") training = &m;
+    }
+    CHECK(has_factory);
+    REQUIRE(training);
+    CHECK(training->get_string("name").value_or("") == "Training Floor");
+    CHECK(training->get_int("min_players").value_or(0) == 2);
+    CHECK(training->get_int("max_players").value_or(0) == 4);
+    CHECK(la.dump().size() < 200 * maps->items().size());  // small enough for constrained clients
     CHECK(a.map_report().errors.empty());
 }
 

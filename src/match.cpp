@@ -41,7 +41,7 @@ Match::Match(MatchConfig cfg) : cfg_(std::move(cfg)) {
     request_records_.assign(static_cast<std::size_t>(cfg_.player_count), {});
     budget_used_.assign(static_cast<std::size_t>(cfg_.player_count),
                         std::vector<int>(static_cast<std::size_t>(cfg_.rounds) + 2, 0));
-    state_ = make_initial_state(*cfg_.map, cfg_.player_count, cfg_.rounds);
+    state_ = make_initial_state(*cfg_.map, cfg_.player_count, cfg_.rounds, cfg_.target_score);
     entries_.assign(static_cast<std::size_t>(cfg_.player_count), Entry{});
     Engine eng(*cfg_.map, log_);
     publish([&] { eng.start_round(state_); });
@@ -266,6 +266,7 @@ Json Match::status() const {
     j.set("phase", to_string(state_.phase));
     j.set("round", state_.round);
     j.set("rounds_total", state_.rounds_total);
+    j.set("target_score", state_.target_score);
     j.set("tick", state_.tick);
     j.set("state_version", version_);
     j.set("player_count", cfg_.player_count);
@@ -369,7 +370,8 @@ std::optional<Match> Match::restore(MatchConfig cfg, const Json& saved, std::str
         bad(error, "configured player_count must be 2-4");
         return std::nullopt;
     }
-    if (cfg.rounds < 1 || cfg.rounds > 99) { bad(error, "configured rounds must be 1-99"); return std::nullopt; }
+    if (cfg.rounds < 1 || cfg.rounds > kMaxRounds) { bad(error, "configured rounds must be 1-200"); return std::nullopt; }
+    if (cfg.target_score < 0 || cfg.target_score > kMaxTargetScore) { bad(error, "configured target_score must be 0-1000"); return std::nullopt; }
     {
         ValidationOptions vo;
         vo.player_count = cfg.player_count;
@@ -402,7 +404,7 @@ std::optional<Match> Match::restore(MatchConfig cfg, const Json& saved, std::str
     // 3. World (strict parse, then semantic validation against the map).
     GameState world;
     if (!read_world(saved, world, error)) return std::nullopt;
-    if (!validate_world(world, *cfg.map, cfg.player_count, cfg.rounds, error)) return std::nullopt;
+    if (!validate_world(world, *cfg.map, cfg.player_count, cfg.rounds, cfg.target_score, error)) return std::nullopt;
 
     // 4. Programmes (secret planning data) and their consistency with the phase.
     const Json* progs = saved.find("programs");

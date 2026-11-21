@@ -43,7 +43,8 @@ and a 64-bit number is never narrowed into a valid-looking 32-bit one. Violation
 | `request_id` | optional, 1-64 chars, same alphabet (`""` = no idempotency key). Single-use per command: see `docs/request-id-contract.md` |
 | `session` | string; compared without early exit; mismatch is `UNAUTHORIZED` |
 | `player_count` | optional integer 2-4 |
-| `rounds` | optional integer 1-99 |
+| `rounds` | optional integer 1-200: the match length, or the safety cap when `target_score` is set (default 12, or 100 with a target) |
+| `target_score` | optional integer 0-1000 (0 = fixed-round mode, the default; N = first to N points, judged after each complete round) |
 | `planning_seconds` | optional integer 0-86400 (0 = no timer) |
 | `player_id`, `round`, `revision`, `since_version` | integers that fit in 32 bits; in-range but meaningless values keep their rules-level answers (`UNKNOWN_PLAYER`, `WRONG_ROUND`, `INVALID_REVISION`, `SNAPSHOT_REQUIRED`) |
 | `ready` | optional boolean |

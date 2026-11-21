@@ -217,7 +217,10 @@ Json GameServer::create(const Json& req) {
     std::int64_t players = 0, rounds = 0, secs = 0;
     if (!token_field(req, "map_id", kMaxNameLength, false, "training-01", map_id, err)) return err;
     if (!int_field(req, "player_count", 2, kMaxPlayers, false, kMaxPlayers, players, err)) return err;
-    if (!int_field(req, "rounds", 1, 99, false, kDefaultRounds, rounds, err)) return err;
+    std::int64_t target = 0;
+    if (!int_field(req, "target_score", 0, kMaxTargetScore, false, 0, target, err)) return err;
+    // Fixed-round mode (no target): "rounds" is the length. Score-target mode: it is the safety cap.
+    if (!int_field(req, "rounds", 1, kMaxRounds, false, target > 0 ? kDefaultRoundCap : kDefaultRounds, rounds, err)) return err;
     std::int64_t bots = 0;
     if (!int_field(req, "bots", 0, kMaxPlayers - 1, false, 0, bots, err)) return err;
     if (bots > players - 1) return make_error("BAD_REQUEST", "at least one seat must be left for a human player", &req);
@@ -241,6 +244,7 @@ Json GameServer::create(const Json& req) {
     r.capacity = static_cast<int>(players);
     r.bots = static_cast<int>(bots);
     r.rounds = static_cast<int>(rounds);
+    r.target_score = static_cast<int>(target);
     r.planning_seconds = static_cast<int>(secs);
     std::string id = r.id;
     rooms_.emplace(id, std::move(r));
@@ -250,6 +254,8 @@ Json GameServer::create(const Json& req) {
     out.set("match_id", id);
     out.set("player_count", players);
     out.set("bots", bots);
+    out.set("rounds", rounds);
+    out.set("target_score", target);
     return out;
 }
 
@@ -323,6 +329,7 @@ bool GameServer::start_room(Room& r, std::string& error) {
     mc.map = r.map;
     mc.player_count = joined;  // unoccupied slots are disabled
     mc.rounds = r.rounds;
+    mc.target_score = r.target_score;
     mc.request_budget_per_round = cfg_.request_budget_per_round;
     r.match = std::make_unique<Match>(std::move(mc));
     r.ai.clear();
@@ -505,6 +512,8 @@ Json GameServer::get_status(const Json& req) {
         st.set("joined", static_cast<int>(r->tokens.size()) + r->bots);  // seats filled, bots included
         st.set("capacity", r->capacity);
         st.set("bots", r->bots);
+        st.set("rounds_total", r->rounds);
+        st.set("target_score", r->target_score);
         out.set("status", std::move(st));
     }
     return out;

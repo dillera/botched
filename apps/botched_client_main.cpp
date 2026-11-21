@@ -22,7 +22,8 @@ void usage() {
         "    --map-id ID         map to play (see --list-maps; default training-01)\n"
         "  --list-maps           print the server's maps and exit\n"
         "    --bots N            seats played by the server (0-3; at least one human)\n"
-        "    --rounds N          rounds (default 12)\n"
+        "    --rounds N          rounds (default 12), or the safety cap with --target-score (default 100, max 200)\n"
+        "    --target-score N    first to N points wins (judged after each complete round; default off)\n"
         "    --planning-seconds N  planning time per round (default 60)\n"
         "  --join MATCH_ID       join a match created by someone else\n"
         "  --bot                 auto-play instead of using the keyboard (testing/demos)\n"
@@ -61,6 +62,7 @@ int main(int argc, char** argv) {
         else if (a == "--join") opt.match_id = next();
         else if (a == "--players") opt.players = std::atoi(next());
         else if (a == "--rounds") opt.rounds = std::atoi(next());
+        else if (a == "--target-score") opt.target_score = std::atoi(next());
         else if (a == "--bots") opt.bots = std::atoi(next());
         else if (a == "--map-id") opt.map_id = next();
         else if (a == "--list-maps") opt.list_maps = true;

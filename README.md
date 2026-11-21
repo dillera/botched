@@ -105,6 +105,21 @@ any mix works as long as at least one seat is human (e.g. `--players 4 --bots 2`
 `--join ID`). Bots plan from the public snapshot with a short look-ahead on the real rules engine, make
 occasional mistakes, and are deterministic for a given server `bot_seed`.
 
+### Score-target matches
+
+`CREATE_MATCH` also takes an optional `"target_score"` (1-1000). With a target the match ends at the end of
+the first *complete* round (all three ticks plus round-end effects) in which a player has at least that many
+points, and `"rounds"` becomes the maximum-round safety cap (default 100, up to 200). If nobody reaches the
+target by the cap the highest score wins. Ties use the existing deliveries/damage tie-breakers, and several
+players over the line in the same round are ranked by score, so rotating tick priority never decides it.
+Without a target nothing changes: 12 fixed rounds and identical hashes. `MATCH_ENDED` carries
+`"reason":"target"|"cap"` in target mode, and snapshots/status carry `target_score`.
+
+```sh
+./build/botched-client --ui --create --players 3 --bots 2 --map-id crossroads-01 --target-score 30
+./build/botched-sim --players 3 --map-id crossroads-01 --target-score 30 --check
+```
+
 ### Graphical client (SDL2)
 
 `botched-client --ui ...` takes the same `--create` / `--join` arguments as the terminal client but opens a

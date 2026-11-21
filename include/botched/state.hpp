@@ -43,7 +43,8 @@ struct GameState {
     Phase phase = Phase::Planning;
     int round = 0;  // 1-based once started
     int tick = 0;   // 0 during planning, 1..3 while executing / after a tick
-    int rounds_total = kDefaultRounds;
+    int rounds_total = kDefaultRounds;  // fixed-round mode: the match length; score-target mode: the safety cap
+    int target_score = 0;               // 0 = fixed-round mode; N > 0 = first to N points (checked after a whole round)
     int next_crate_id = 1;
     std::vector<Robot> robots;   // index = player id - 1
     std::vector<Crate> crates;   // ascending id

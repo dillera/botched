@@ -42,9 +42,10 @@ std::vector<int> priority_order(int abs_tick, int player_count) {
     return v;
 }
 
-GameState make_initial_state(const Map& map, int player_count, int rounds) {
+GameState make_initial_state(const Map& map, int player_count, int rounds, int target_score) {
     GameState s;
     s.rounds_total = rounds;
+    s.target_score = target_score;
     for (int p = 1; p <= player_count; ++p) {
         Robot r;
         r.id = p;
@@ -391,11 +392,18 @@ void Engine::end_round(GameState& s) {
     log_.begin(s.round, kRegisters);
     process_respawns(s);
     log_.emit("ROUND_ENDED", obj({{"round", s.round}, {"scores", scores_json(s)}}));
-    if (s.round >= s.rounds_total) {
+    // Victory is judged only here, after all three ticks and the round-end effects, so rotating tick
+    // priority can never decide who "got there first".
+    bool target_hit = false;
+    if (s.target_score > 0)
+        for (const auto& r : s.robots) target_hit = target_hit || r.score >= s.target_score;
+    if (target_hit || s.round >= s.rounds_total) {
         s.phase = Phase::Finished;
         Json w = Json::array();
         for (int p : compute_winners(s)) w.push(p);
-        log_.emit("MATCH_ENDED", obj({{"winners", w}, {"scores", scores_json(s)}}));
+        Json ev = obj({{"winners", w}, {"scores", scores_json(s)}});
+        if (s.target_score > 0) ev.set("reason", target_hit ? "target" : "cap");  // fixed-round events are unchanged
+        log_.emit("MATCH_ENDED", std::move(ev));
     }
 }
 

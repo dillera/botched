@@ -374,7 +374,8 @@ ClientResult run_client(const ClientOptions& opt, std::ostream& out) {
     if (opt.create) {
         Json c = make("CREATE_MATCH");
         c.set("player_count", opt.players);
-        c.set("rounds", opt.rounds);
+        if (opt.rounds > 0) c.set("rounds", opt.rounds);
+        if (opt.target_score > 0) c.set("target_score", opt.target_score);
         c.set("planning_seconds", opt.planning_seconds);
         if (opt.bots > 0) c.set("bots", opt.bots);
         if (!opt.map_id.empty()) c.set("map_id", opt.map_id);
@@ -502,7 +503,9 @@ ClientResult run_client(const ClientOptions& opt, std::ostream& out) {
         if (final_screen) {
             o << "MATCH OVER after round " << round << " of " << total << "\n";
         } else {
-            o << "Round " << round << "/" << total << "   " << phase;
+            const int tgt = static_cast<int>(snap.get_int("target_score").value_or(0));
+            if (tgt > 0) o << "Round " << round << " (cap " << total << ")   first to " << tgt << " pts   " << phase;
+            else o << "Round " << round << "/" << total << "   " << phase;
             if (phase == "PLANNING") {
                 const Json* dl = snap.find("planning_deadline_utc");
                 if (dl && dl->is_string()) {

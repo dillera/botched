@@ -14,7 +14,8 @@ namespace botched::sim {
 struct SimOptions {
     int players = 4;
     std::uint64_t seed = 1;
-    int rounds = 12;
+    int rounds = 12;              // fixed length, or the safety cap when target_score > 0
+    int target_score = 0;         // 0 = fixed rounds; N > 0 = first to N points
     int flaky_percent = 0;        // chance per bot per round that it never submits (disconnect/lag)
     std::string map_file;         // custom map text file (overrides map_id)
     std::string map_id = "training-01";  // map resource id

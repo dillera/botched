@@ -101,7 +101,8 @@ private:
         std::shared_ptr<const Map> map;
         int capacity = 0;
         int planning_seconds = 0;
-        int rounds = kDefaultRounds;
+        int rounds = kDefaultRounds;      // fixed length, or the safety cap when target_score > 0
+        int target_score = 0;             // 0 = fixed-round mode
         int bots = 0;                     // seats played by the server (always the highest player ids)
         std::vector<std::string> tokens;  // human seats only: index = player id - 1
         std::vector<std::unique_ptr<sim::Bot>> ai;  // created at start; ai[i] plays player (humans + 1 + i)

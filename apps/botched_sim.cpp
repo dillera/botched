@@ -5,6 +5,7 @@
 #include <iostream>
 #include <string>
 
+#include "botched/types.hpp"
 #include "sim_runner.hpp"
 
 namespace {
@@ -14,7 +15,8 @@ void usage() {
         "usage: botched-sim [options]\n"
         "  --players N      2-4 simulated players (default 4)\n"
         "  --seed S         bot/noise seed (default 1)\n"
-        "  --rounds R       rounds to play (default 12)\n"
+        "  --rounds R       rounds to play (default 12); with --target-score, the round cap (default 100)\n"
+        "  --target-score N first to N points wins, judged after each complete round (default off)\n"
         "  --flaky P        percent chance a bot misses a round, forcing a timeout (default 0)\n"
         "  --map FILE       custom map text file\n"
         "  --map-id ID      map resource id (default training-01)   --maps-dir DIR   resource directory\n"
@@ -28,7 +30,7 @@ void usage() {
 int main(int argc, char** argv) {
     botched::sim::SimOptions opt;
     opt.out = &std::cout;
-    bool check = false;
+    bool check = false, rounds_set = false;
     for (int i = 1; i < argc; ++i) {
         std::string a = argv[i];
         auto next = [&]() -> const char* {
@@ -37,7 +39,8 @@ int main(int argc, char** argv) {
         };
         if (a == "--players") opt.players = std::atoi(next());
         else if (a == "--seed") opt.seed = std::strtoull(next(), nullptr, 10);
-        else if (a == "--rounds") opt.rounds = std::atoi(next());
+        else if (a == "--rounds") { opt.rounds = std::atoi(next()); rounds_set = true; }
+        else if (a == "--target-score") opt.target_score = std::atoi(next());
         else if (a == "--flaky") opt.flaky_percent = std::atoi(next());
         else if (a == "--map") opt.map_file = next();
         else if (a == "--map-id") opt.map_id = next();
@@ -48,6 +51,7 @@ int main(int argc, char** argv) {
         else { usage(); return 2; }
     }
     if (opt.players < 2 || opt.players > 4) { usage(); return 2; }
+    if (opt.target_score > 0 && !rounds_set) opt.rounds = botched::kDefaultRoundCap;
 
     botched::sim::SimResult r = botched::sim::run_simulation(opt);
     if (!r.ok) {

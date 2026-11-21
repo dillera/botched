@@ -30,7 +30,8 @@ struct MatchConfig {
     std::string match_id;
     std::shared_ptr<const Map> map;
     int player_count = kMaxPlayers;
-    int rounds = kDefaultRounds;
+    int rounds = kDefaultRounds;  // fixed-round mode: the match length; with target_score: the maximum-round safety cap (<= kMaxRounds)
+    int target_score = 0;         // 0 = fixed rounds; N > 0 = first to N points, judged after each complete round
     int event_retention_versions = 512;  // older events answer GET_EVENTS with SNAPSHOT_REQUIRED
     int request_budget_per_round = kDefaultRequestBudget;  // clamped to [kMinRequestBudget, kMaxRequestBudget]
 };

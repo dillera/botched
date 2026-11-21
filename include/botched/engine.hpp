@@ -16,7 +16,7 @@ std::vector<int> priority_order(int absolute_tick, int player_count);
 inline int absolute_tick(int round, int tick) { return (round - 1) * kRegisters + tick; }
 
 // Initial world: robots on their spawns, groups from the map, no crates, round 0.
-GameState make_initial_state(const Map& map, int player_count, int rounds = kDefaultRounds);
+GameState make_initial_state(const Map& map, int player_count, int rounds = kDefaultRounds, int target_score = 0);
 
 // Players sharing the best (score, deliveries, -damage_taken), ascending id.
 std::vector<int> compute_winners(const GameState& s);

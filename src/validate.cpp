@@ -8,13 +8,17 @@ namespace {
 bool fail(std::string& e, const std::string& m) { e = m; return false; }
 }  // namespace
 
-bool validate_world(const GameState& s, const Map& map, int player_count, int rounds, std::string& error) {
+bool validate_world(const GameState& s, const Map& map, int player_count, int rounds, int target_score, std::string& error) {
     if (s.player_count() != player_count)
         return fail(error, "player count " + std::to_string(s.player_count()) + " does not match configuration " +
                                std::to_string(player_count));
     if (s.rounds_total != rounds)
         return fail(error, "rounds_total " + std::to_string(s.rounds_total) + " does not match configured rounds " +
                                std::to_string(rounds));
+
+    if (s.target_score != target_score)
+        return fail(error, "target_score " + std::to_string(s.target_score) + " does not match configured target " +
+                               std::to_string(target_score));
 
     // ---- phase / round / tick (what Match can actually be in) ----------------------------
     if (s.round < 1 || s.round > s.rounds_total) return fail(error, "round must be within 1..rounds_total");
@@ -26,8 +30,13 @@ bool validate_world(const GameState& s, const Map& map, int player_count, int ro
             if (s.tick < 0 || s.tick >= kRegisters) return fail(error, "EXECUTING requires tick 0..2");
             break;
         case Phase::Finished:
-            if (s.round != s.rounds_total || s.tick != kRegisters)
-                return fail(error, "FINISHED requires the last round and tick 3");
+            if (s.tick != kRegisters) return fail(error, "FINISHED requires tick 3");
+            {
+                bool hit = false;
+                for (const auto& r : s.robots) hit = hit || (s.target_score > 0 && r.score >= s.target_score);
+                if (s.round != s.rounds_total && !hit)
+                    return fail(error, "FINISHED requires the last round or a player at the target score");
+            }
             break;
     }
 

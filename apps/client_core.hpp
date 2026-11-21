@@ -20,7 +20,8 @@ struct ClientOptions {
     bool create = false;           // create a match, then join it as player 1
     std::string match_id;          // join this match (when not creating)
     int players = 2;               // with create: seats (2-4)
-    int rounds = 12;               // with create
+    int rounds = 0;                // with create: match length, or the safety cap with --target-score (0 = server default: 12 / 100)
+    int target_score = 0;          // with create: first to N points (0 = fixed rounds)
     std::string map_id;            // with create: map to play (empty = server default, training-01)
     bool list_maps = false;        // print the server's maps and exit
     int bots = 0;                  // with create: seats played by the server (0-3, leaving at least one human)

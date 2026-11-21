@@ -1,0 +1,270 @@
+# Botched! — Gameplay Evolution Milestones (G1–G4)
+
+**Status:** Proposed roadmap for approval and incremental playtesting  
+**Date:** 21 November 2026  
+**Baseline:** Playable SDL client, server-managed bots, file-based maps, deterministic `botched/1` engine  
+**Related:** `docs/botched-playtest-backlog.md`, especially B-08  
+**Working rule:** Implement *one small task at a time*. This document does not authorise all four milestones.
+
+## Goal
+
+Evolve Botched! from a twelve-round crate-delivery race into a factory competition where **delivery, route control, and deliberate environmental sabotage** are viable paths to victory. Keep the three-order programming loop, rotating tick priority, server authority and entertaining event playback. Precision robot pushing remains an emergent interaction, not the primary sabotage strategy.
+
+## Existing behaviour vs new proposals
+
+- **Already implemented:** pits (`O`) disable robots on entry; conveyors and consoles (`C>A`, `TA`); three-hit durability and respawns; stationary directional ray emitters (`L>`, `L<`, `L^`, `Lv`) that fire each tick. Current playtest maps rarely exercise laser damage.
+- **Not implemented:** score-target victory, player-attributed traps, a single-use proximity burst, charging/targeting laser turret, slowing tar, sabotage points or bot personalities.
+- **Compatibility:** New scoring, traps and end conditions change normative gameplay. Introduce an explicitly versioned rules contract (proposed `botched/2`) when approved; keep `botched/1` fixtures and semantics intact where practical. **Never reinterpret an existing `L>` ray emitter as the new targeting turret.**
+
+## G1 — Score-target victory
+
+**Problem:** The game ends after 12 rounds just as players begin interfering with each other.
+
+**Bounded implementation:**
+
+- Configure a target score (suggested test default **30**) and maximum-round safety cap (suggested **100**, with an optional cap as high as 200). Expose both in match creation and SDL status.
+- Complete **all three ticks and round-end effects** before choosing a winner; a player reaching the target first within a round does not win prematurely because of priority.
+- If nobody reaches the target by the cap, compare scores and use existing delivery/damage tie-breakers.
+- Preserve +5 points per crate delivery. Retain a fixed-round mode for baseline comparisons/tests if straightforward.
+- Do not introduce sabotage, hazards or map changes during G1.
+
+**Acceptance:** A real human can play a score-target Crossroads match against bots, with correct target/cap endings and deterministic results. Stop for a playtest before G2.
+
+### G1 — implementation status: **done, awaiting playtest** (2026-11-21)
+
+**What shipped** (additive to `botched/1`; fixed-round matches are byte-identical):
+
+- `CREATE_MATCH` gains `target_score` (0-1000, default 0 = fixed-round mode). `rounds` is the match length without a target and the **maximum-round safety cap** with one (default 100, now allowed up to 200).
+- `Engine::end_round` is the only place victory is judged: after all three ticks and `process_respawns`, so rotating tick priority never decides who "got there first". If several players are over the line in the same round the usual ordering applies (score, then deliveries, then least damage taken; full ties share the win). The cap ends a match nobody finished, highest score wins.
+- `GameState.target_score` is in snapshots only when set (so no fixed-round hash moves), in `GET_MATCH_STATUS` (lobby and running), validated on checkpoint restore (target must match the configuration; `FINISHED` now needs the last round **or** a player at the target). `MATCH_ENDED` carries `reason: "target"|"cap"` in target mode only.
+- SDL client: `--target-score N` / `--rounds N` (the cap); the lobby shows the rules; the title shows `Round 7 (cap 100)` plus "First to 20 points wins - judged after each full round"; the scoreboard is titled `FIRST TO N` and every card has a progress bar (gold at the target); the result overlay and log say why the match ended. The terminal client prints the same header. `botched-sim --target-score` for headless runs.
+- Scoring (+5 per delivery), maps, hazards and bots are untouched. Nothing from G2-G4 was started.
+
+**Evidence**
+
+| Check | Result |
+|---|---|
+| Whole suite (normal and ASan/UBSan) | 201/201 test cases, 31 350 assertions, both builds |
+| Fixed-round regression | sim hashes still `8b9b82fb718c2751` / `415308a3742c5db6`; `test_idempotency` pins and the training-01 map hashes unchanged |
+| Target judged only after the round | `test_score_target.cpp`: leaders already at the target stay unfinished after ticks 1 and 2, finish only after tick 3; events end with ticks 1-3 then `MATCH_ENDED` |
+| Same-round multiple finishers | score, then damage taken, then shared victory, each asserted |
+| Target boundary / cap | target = score ends after round 1, target + 1 does not; unreachable target ends exactly at the cap with `reason: cap` and the top score wins |
+| Protocol | defaults (12 fixed, 100 with a target), range errors (`rounds` 201, `target_score` 1001/-1), `MATCH_CREATED` echo, lobby status |
+| Checkpoints | restore with a different target is refused; an impossible `FINISHED` is refused |
+| Determinism | `botched-sim --check` identical re-run on `crossroads-01` (3 players, target 30: ended round 20, hashes `47629cb74d7242dd`/`72496e88e4225bb3`) and `training-01` (ended round 14); tests repeat this on `training-01` and `factory-01` |
+| Live SDL | server + `botched-client --ui` on `crossroads-01`, 1 human seat plus 2 server bots, target 20: ended in round 19 with P1 and P2 both delivering their 4th crate in that round (20 pts each): shared victory, "Target of 20 points reached", progress bars and headers captured headlessly |
+
+**Notes for the playtest**
+
+- Bot-only simulations on Crossroads need about 20 rounds to reach 30 points with three bots and about 35 rounds to reach 40 with four; 30 is a reasonable first target for three players. The target is a per-match setting, so tune it freely.
+- `--rounds` now defaults to "server decides" in the clients (12 fixed, 100 with a target).
+- The planning-time per round is unchanged; a 30-point match is long, so use `--planning-seconds` while playtesting.
+
+**Stop gate:** playtest a score-target Crossroads match, then decide on G2. G2-G4 are not started.
+
+## G2 — Environmental hazards and sabotage
+
+**Problem:** Players optimising crate deliveries consistently outperform players attempting to disrupt opponents. Sabotage should be a viable scoring strategy based on controlling dangerous machinery, anticipating routes and creating ambushes — not perfectly predicting robot-to-robot collisions and rotating execution priority.
+
+**Design principle:** Individual hazards should be simple and predictable. Interesting gameplay emerges from their placement, combinations and interactions with conveyors, crates and other robots.
+
+**Sequence: implement and playtest one subtask at a time.**
+
+- **G2-A — Owned proximity traps and sabotage scoring.** Implement multi-target proximity damage, arming, ownership attribution, scoring and SDL animations. Validate this mechanic before adding other hazards.
+- **G2-B — Laser hazards and capturable turrets.** First exercise the existing continuous directional laser (`L>`, etc.) in a test map and verify its SDL presentation. Then introduce a separate charging laser turret with capturable ownership, autonomous targeting and damage attribution.
+- **G2-C — Tar/slowing hazard.** Introduce a simple movement restriction affecting robots near a tar generator.
+- **G2-D — Pit-push scoring.** Award a bonus when one robot directly pushes another into a pit. Preserve existing pit, crate-drop and respawn mechanics.
+
+### Hazard catalogue
+
+| Hazard | Behaviour |
+|---|---|
+| **Proximity burst** | Covers the eight immediately neighbouring tiles, including diagonals. Starts armed and neutral. During the machinery phase, if one or more robots occupy its affected area, it damages **all robots in range simultaneously** for 1 HP each, then disarms. An adjacent `T` command rearms it and assigns ownership to the activating player. |
+| **Charging laser turret** | Automatically cycles through two charging ticks and one firing tick. On its firing tick, it targets the nearest eligible robot within two tiles along the cardinal directions, fires once for 1 damage, then restarts charging. Starts neutral; players can capture ownership by entering its associated control tile. |
+| **Continuous directional laser** | Existing `L>`, `L<`, `L^`, `Lv` emitters remain unchanged. They fire along a fixed ray every tick and cause 1 damage. They remain neutral environmental hazards and do not award sabotage points. |
+| **Pit** | Permanent open hole. Entering immediately disables a robot. Carried cargo drops on the last safe tile if possible. Existing behaviour remains unchanged. |
+| **Tar generator** | Affects the eight neighbouring tiles around the generator. Robots within its area have reduced voluntary movement: `F2` advances at most one tile, `F` remains one tile, and `B` does not translate. Turning, dropping, toggling and waiting remain unaffected. Tar causes no damage. |
+
+### G2-A — Proximity trap rules
+
+**Activation and timing**
+
+1. At the start of a match, map-defined proximity traps are armed but have no player owner.
+2. A player adjacent to the trap's associated control console may execute `T` to arm or rearm it, gaining ownership. Rearming an already-armed trap transfers ownership without triggering it.
+3. Proximity traps are evaluated during the machinery phase of each tick, **after all player instructions and conveyor movement**, so robots moved voluntarily, pushed or transported by conveyors are evaluated at their resulting positions.
+4. If at least one robot occupies any of the eight neighbouring tiles, the trap activates once and deals 1 damage to every robot in the affected area, including its owner if present.
+5. The trap then becomes disarmed and remains inactive until rearmed.
+6. If the area is unoccupied, the trap remains armed.
+7. A trap's damage is attributed to its current owner for scoring. Neutral traps cause damage but award nobody points.
+
+A player may deliberately wait outside the affected area, attempt a different route, or enter knowing the trap will activate. Multiple robots entering the area during the same tick may all be caught.
+
+**Scoring must be based on actual damage and disables, not inferred intent.**
+
+### G2-B — Charging laser turret rules
+
+**Ownership**
+
+- Each turret has an associated control tile.
+- Turrets begin neutral.
+- A robot entering the control tile automatically claims the turret.
+- Another player may subsequently capture the turret by entering the same tile.
+- Ownership changes do not reset or pause the charging cycle.
+- Turrets can damage their owner, but self-inflicted damage never awards points.
+
+**Charging and firing**
+
+1. Tick 1: charge.
+2. Tick 2: charge.
+3. Tick 3: fire one shot, then restart the cycle.
+
+On the firing tick:
+
+- Select the nearest eligible robot at distance 1 or 2 in a cardinal direction.
+- Walls and other blocked terrain obstruct line of sight.
+- If multiple targets are equally near, resolve ties using a fixed, documented order (proposed: N, E, S, W, then player ID).
+- Fire at most once per cycle, dealing 1 damage.
+- If no target is available, fire nothing and restart charging.
+- The turret's owner receives any applicable sabotage points when another player is damaged.
+
+The turret's charging state, ownership and firing action must be visible in the SDL client.
+
+The charging turret is **not** a replacement for existing continuous directional lasers. Its map token and control tile must be distinct from the existing `L>` syntax.
+
+### G2-C — Tar rules
+
+Tar is a persistent movement hazard, not a damage source.
+
+When a robot begins a voluntary movement instruction inside the eight-tile area surrounding a tar generator:
+
+- `FORWARD_2` becomes a one-tile forward attempt.
+- `FORWARD_1` remains unchanged.
+- `BACK_1` does not move.
+- Rotations, `DROP`, `TOGGLE` and `WAIT` behave normally.
+- Pushing remains possible through an allowed one-tile movement attempt.
+- Conveyor-induced movement and being pushed by another robot are not slowed.
+
+No fractional speed, alternate-tick counters or real-time timing mechanics are required.
+
+Tar awards no points. It is intended to make movement planning less predictable and create opportunities for traps and interception.
+
+### Sabotage scoring
+
+| Action | Points |
+|---|---:|
+| Deliver a crate | **+5** |
+| Damage an opponent with an owned proximity trap | **+1 per damaged opponent** |
+| Damage an opponent with an owned charging laser turret | **+1 per hit** |
+| Disable an opponent using owned damaging machinery | **+3 additional bonus** |
+| Directly push an opponent into a pit | **+8** |
+| Damage yourself with owned machinery | **0** |
+| Neutral environmental damage | **0** |
+| Toggle, rearm or capture machinery without causing damage | **0** |
+| Slow an opponent using tar | **0** |
+
+A successfully attributed disabling hit earns both the ordinary damage point and the disable bonus.
+
+Examples:
+
+- Owned proximity trap damages two opponents: **+2**.
+- Owned proximity trap damages two opponents and disables one: **+5**.
+- Owned turret hits and disables one opponent: **+4**.
+- Directly push an opponent into a pit: **+8**.
+
+A single disable cannot award multiple disable bonuses. Damage and scoring events must identify their source and responsible player unambiguously.
+
+No points are awarded for ordinary robot pushes, except a direct push that causes a pit disable.
+
+### Deterministic resolution and attribution
+
+- Player orders retain existing rotating tick priority.
+- Conveyor movement is resolved according to the existing rules.
+- Proximity traps activate after conveyor movement during machinery resolution.
+- Each trap applies its entire multi-robot activation as one deterministic event group before disarming.
+- Charging turret firing and targeting must use deterministic state and tie-breaking rules.
+- If multiple hazards affect the same robot during one tick, the engine must preserve a fixed resolution order and prevent duplicate disable bonuses.
+- Direct pit-push credit requires evidence from the engine's actual push-chain resolution. Walking or voluntarily driving into a pit awards nobody a push bonus.
+- Damage, ownership changes, arming, activation, firing, scoring, disables and crate drops must be represented by authoritative events that SDL can replay without recalculating gameplay.
+
+**Before implementing G2-A**, settle and document the precise ordering between proximity traps, existing continuous lasers and future charging turrets. Keep this narrow: a clear phase order and a small set of edge-case tests are sufficient.
+
+### Presentation requirements
+
+Players should be able to understand each hazard's state by inspecting the map:
+
+| Hazard | Visible information |
+|---|---|
+| Proximity trap | Armed/disarmed, affected area and owner |
+| Charging turret | Charge progress, owner, range and firing effect |
+| Continuous laser | Fixed direction and beam |
+| Pit | Always visible as a permanent hazard |
+| Tar | Clearly marked slowing area |
+
+A client should explain why a robot took damage, which device caused it and whether another player earned points.
+
+Smooth animations are encouraged in SDL, but all effects must remain representable as discrete state changes on constrained retro clients.
+
+### Implementation boundaries
+
+- Preserve the existing three-instruction programming system.
+- Do not introduce weapons, inventory, ammunition, energy management or a general trap-scripting engine.
+- Reuse existing consoles, terrain parsing, deterministic events and SDL playback patterns where practical.
+- New normative mechanics require the agreed rules-version transition; do not silently change `botched/1`.
+- Keep existing maps and deterministic fixtures functional where practical.
+- Implement one hazard type at a time, with focused tests and a playable demonstration.
+- Stop after each subtask for human playtesting and approval.
+
+**G2 acceptance:** A human can deliberately control environmental machinery, damage or disable another player, receive the correct attributable score and understand the entire interaction through SDL playback.
+
+The goal is not to make every factory dangerous. It is to give map designers a small collection of understandable machinery that can create contested routes, ambushes, shortcuts and spectacular failures.
+
+## G3 — Maps designed for interactions
+
+**Problem:** Short safe dispenser-to-dock loops let delivery-specialist bots avoid the rest of the factory.
+
+**Bounded implementation:**
+
+- Retain `training-01`, `crossroads-01` and `factory-01` as reference/playtest resources. Don't silently replace them.
+- Design **one** new external `.map` around contested pickups, short routes, meaningful conveyor shortcuts, trap-controlled pinch points / “murder passages,” and a safe but less efficient alternative.
+- Experiment with **N−1 dispensers** (three for four players), but do not require it universally.
+- Aim for an uncontested delivery cycle of around **2–3 rounds** so journeys don't consume half a match; favour choices and encounters over raw distance.
+- Test with 2–4 players including imperfect server bots. Avoid universal Manhattan-distance rules, procedural generation, map editor or hot-loading implementation.
+
+**Acceptance:** Human playtests show contested routes and meaningful machinery usage; bots do not merely farm isolated corners. Adjust the map resource, not the engine, to improve layout balance.
+
+## G4 — Bot personalities and persistent goals
+
+**Goal:** Bots should be recognisable opponents with coherent tasks, not identical delivery optimisers or wholly random movers.
+
+Each bot has a **personality** and a **current plan**. Choose the next goal probabilistically from the personality, then retain it until it completes, becomes impossible, or a significant event forces replanning. Continue to calculate just **three orders per round**, from public information, using the existing planner.
+
+**Starting weights for selecting the next goal (illustrative, tune after playtesting):**
+
+| Personality | Haul / deliver | Mixed positioning / opportunism | Hunt / arm traps |
+|---|---:|---:|---:|
+| **Passive — Cargo hauler** | 80% | 15% | 5% |
+| **Normal — Opportunist** | 50% | 30% | 20% |
+| **Aggressive — Saboteur** | 20% | 25% | 55% |
+
+Goal examples: collect an accessible crate, return home with cargo, move to and arm an important trap, pressure a rival by occupying or controlling their likely route. Hunting should prefer **environmental disruption** to exact-tick pushes. If the chosen goal is unavailable or nonsensical, resample or fall back to useful delivery movement.
+
+Keep seeded deterministic variation, limited search and occasional imperfect choices. Bots must obey identical rules, cannot see unpublished human orders and must not become stuck waiting for unavailable traps. Expose a personality label in the scoreboard only if it is cheap.
+
+**Acceptance:** One human can play mixed-personality matches; visible differences emerge in goals and behaviour; bots still deliver crates and play reproducibly under fixed seeds. No new AI framework, learning system or difficulty hierarchy.
+
+## Parked — later, not part of G1–G4
+
+- **Positive pickups:** occasional temporary map bonus, e.g. *full health*, to enable clutch deliveries. Define spawn and fairness semantics only after damage/traps work.
+- Teleporters; fog of war and personal visibility radius; irregular board silhouettes; additional trap types; sound cues; replay history; live map registration with administrator authentication.
+- Retro binary transport, Amiga and constrained-platform clients: separate platform milestones, not additional requirements for G1–G4.
+
+## Scope control / stop gates
+
+1. Implement **G1 only** next, verify, commit, update this file and stop for playtest.
+2. Approve **G2-A** trigger/ownership/scoring semantics before coding. G2-B and G2-C are **separate, optional follow-on tasks**.
+3. Build one G3 map after seeing which hazards create worthwhile encounters.
+4. Implement G4 when useful sabotage goals exist; don't build personalities against imagined traps.
+5. No new trackers or broad refactoring. Report status, commit and a short playtest observation in this document.
+6. Game engine remains authoritative; clients only animate semantic events at their chosen speeds.
+
+**Next agent instruction: G1 only. Documenting G2–G4 is not permission to implement them now.**

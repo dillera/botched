@@ -56,6 +56,7 @@ SimResult run_simulation(const SimOptions& opt) {
     create.set("map_id", map_id);
     create.set("player_count", opt.players);
     create.set("rounds", opt.rounds);
+    if (opt.target_score > 0) create.set("target_score", opt.target_score);
     Json created = srv.handle(create);
     if (!created.get_bool("ok").value_or(false)) return fail(res, "create failed: " + created.dump());
     const std::string match_id = *created.get_string("match_id");

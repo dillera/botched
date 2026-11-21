@@ -12,6 +12,9 @@ inline constexpr const char* kProtocol = "botched/1";
 inline constexpr const char* kRulesVersion = "botched/1";
 inline constexpr int kRegisters = 3;       // orders per round / ticks per round
 inline constexpr int kDefaultRounds = 12;
+inline constexpr int kMaxRounds = 200;          // fixed length, or the safety cap in score-target mode
+inline constexpr int kDefaultRoundCap = 100;    // safety cap used when a score target is set and no cap is given
+inline constexpr int kMaxTargetScore = 1000;    // 0 = no target (fixed-round mode)
 inline constexpr int kMaxPlayers = 4;
 inline constexpr int kMaxHealth = 3;       // damage counter 0..2, disabled at 3
 inline constexpr int kDeliveryScore = 5;

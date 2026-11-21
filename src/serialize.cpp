@@ -10,6 +10,7 @@ void write_world(const GameState& s, Json& out) {
     out.set("round", s.round);
     out.set("tick", s.tick);
     out.set("rounds_total", s.rounds_total);
+    if (s.target_score > 0) out.set("target_score", s.target_score);  // absent in fixed-round mode (hashes unchanged)
     out.set("next_crate_id", s.next_crate_id);
 
     Json players = Json::array();
@@ -101,7 +102,8 @@ bool read_world(const Json& in, GameState& s, std::string& error) {
     g.phase = *ph;
     if (!need_int(in, "round", 0, kMaxField, g.round, "world", error)) return false;
     if (!need_int(in, "tick", 0, kRegisters, g.tick, "world", error)) return false;
-    if (!need_int(in, "rounds_total", 1, 99, g.rounds_total, "world", error)) return false;
+    if (!need_int(in, "rounds_total", 1, kMaxRounds, g.rounds_total, "world", error)) return false;
+    if (in.find("target_score") && !need_int(in, "target_score", 1, kMaxTargetScore, g.target_score, "world", error)) return false;
     if (!need_int(in, "next_crate_id", 1, kMaxField, g.next_crate_id, "world", error)) return false;
 
     const Json* players = in.find("players");

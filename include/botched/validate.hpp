@@ -13,6 +13,6 @@ namespace botched {
 // player/crate identity and ownership, positions and occupancy, carrying relationships,
 // group state, damage/score invariants and round/tick/phase consistency.
 // Returns false with a human-readable reason in `error`; never throws, never mutates.
-bool validate_world(const GameState& s, const Map& map, int player_count, int rounds, std::string& error);
+bool validate_world(const GameState& s, const Map& map, int player_count, int rounds, int target_score, std::string& error);
 
 }  // namespace botched
