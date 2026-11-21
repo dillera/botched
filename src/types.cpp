@@ -50,6 +50,8 @@ const char* to_string(Terrain t) {
         case Terrain::Conveyor: return "CONVEYOR";
         case Terrain::Console: return "CONSOLE";
         case Terrain::LaserEmitter: return "LASER_EMITTER";
+        case Terrain::Trap: return "TRAP";
+        case Terrain::TrapConsole: return "TRAP_CONSOLE";
         case Terrain::Pit: return "PIT";
     }
     return "?";

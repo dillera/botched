@@ -19,7 +19,8 @@ struct Robot {
     int carrying = 0;          // crate id, 0 = none
     int deliveries = 0;
     int score = 0;
-    int damage_taken = 0;      // cumulative laser hits over the match (tie-break)
+    int damage_taken = 0;      // cumulative laser/trap hits over the match (tie-break)
+    int sabotage = 0;          // G2-A points earned from owned machinery; score = 5 x deliveries + sabotage
     bool respawn_pending = false;
     friend bool operator==(const Robot&, const Robot&) = default;
 };
@@ -38,6 +39,14 @@ struct Group {
     friend bool operator==(const Group&, const Group&) = default;
 };
 
+// G2-A proximity trap state (device positions come from the map).
+struct TrapState {
+    int id = 0;
+    bool armed = true;  // maps start armed
+    int owner = 0;      // player id, 0 = neutral
+    friend bool operator==(const TrapState&, const TrapState&) = default;
+};
+
 // The world. Everything the rules engine reads or writes.
 struct GameState {
     Phase phase = Phase::Planning;
@@ -49,6 +58,7 @@ struct GameState {
     std::vector<Robot> robots;   // index = player id - 1
     std::vector<Crate> crates;   // ascending id
     std::vector<Group> groups;   // ascending id
+    std::vector<TrapState> traps;  // ascending id; empty on maps without traps
 
     int player_count() const { return static_cast<int>(robots.size()); }
     Robot& robot(int id) { return robots[static_cast<std::size_t>(id - 1)]; }
@@ -57,6 +67,8 @@ struct GameState {
     const Crate* crate(int id) const;
     Group* group(char id);
     const Group* group(char id) const;
+    TrapState* trap(int id);
+    const TrapState* trap(int id) const;
     Robot* robot_at(Pos p);                 // active robot on tile
     Crate* loose_crate_at(Pos p);
     void remove_crate(int id);

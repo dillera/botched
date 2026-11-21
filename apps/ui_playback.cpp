@@ -29,6 +29,10 @@ const RobotView* BoardView::robot_at(int x, int y) const {
     for (const auto& r : robots) if (r.active && r.x == x && r.y == y) return &r;
     return nullptr;
 }
+const TrapView* BoardView::trap(int id) const {
+    for (const auto& t : traps) if (t.id == id) return &t;
+    return nullptr;
+}
 const CrateView* BoardView::crate_at(int x, int y) const {
     for (const auto& c : crates) if (c.x == x && c.y == y) return &c;
     return nullptr;
@@ -50,6 +54,7 @@ std::string BoardView::diff(const BoardView& o) const {
         if (a.score != b.score) add(n + "score");
         if (a.deliveries != b.deliveries) add(n + "deliveries");
         if (a.disabled != b.disabled) add(n + "disabled");
+        if (a.sabotage != b.sabotage) add(n + "sabotage");
     }
     auto sorted = [](std::vector<CrateView> v) {
         std::sort(v.begin(), v.end(), [](const CrateView& a, const CrateView& b) { return a.id < b.id; });
@@ -60,6 +65,10 @@ std::string BoardView::diff(const BoardView& o) const {
     else for (std::size_t i = 0; i < ca.size(); ++i)
         if (ca[i].id != cb[i].id || ca[i].x != cb[i].x || ca[i].y != cb[i].y) add("crate " + std::to_string(ca[i].id));
     if (reversed != o.reversed) add("belt groups");
+    if (traps.size() != o.traps.size()) add("trap count");
+    else for (std::size_t i = 0; i < traps.size(); ++i)
+        if (traps[i].id != o.traps[i].id || traps[i].armed != o.traps[i].armed || traps[i].owner != o.traps[i].owner)
+            add("trap " + std::to_string(traps[i].id));
     return d;
 }
 bool BoardView::equals(const BoardView& o) const { return diff(o).empty(); }
@@ -80,6 +89,7 @@ BoardView read_board(const Json& snap) {
             r.score = gi(p, "score");
             r.deliveries = gi(p, "deliveries");
             r.disabled = p.get_bool("respawn_pending").value_or(false);
+            r.sabotage = gi(p, "sabotage");
             v.robots.push_back(r);
         }
     if (const Json* cs = snap.find("crates"))
@@ -87,6 +97,8 @@ BoardView read_board(const Json& snap) {
             auto x = c.get_int("x"), y = c.get_int("y");
             if (x && y) v.crates.push_back({gi(c, "id"), static_cast<int>(*x), static_cast<int>(*y)});
         }
+    if (const Json* ts = snap.find("traps"))
+        for (const auto& t : ts->items()) v.traps.push_back({gi(t, "id"), t.get_bool("armed").value_or(true), gi(t, "owner")});
     if (const Json* gs = snap.find("groups"))
         for (const auto& g : gs->items()) {
             auto id = g.get_string("id");
@@ -129,6 +141,14 @@ void apply_event(BoardView& b, const Json& e) {
         put_crate(gi(p, "crate"), gi(p, "x"), gi(p, "y"));
     } else if (t == "LASER_HIT") {
         if (r) r->damage = gi(p, "damage");
+    } else if (t == "TRAP_HIT") {
+        if (r) r->damage = gi(p, "damage");
+    } else if (t == "TRAP_ARMED") {
+        for (auto& tv : b.traps) if (tv.id == gi(p, "trap")) { tv.armed = true; tv.owner = gi(p, "owner"); }
+    } else if (t == "TRAP_TRIGGERED") {
+        for (auto& tv : b.traps) if (tv.id == gi(p, "trap")) tv.armed = false;
+    } else if (t == "SCORE_AWARDED") {
+        if (r) { r->score = gi(p, "score"); r->sabotage += gi(p, "points"); }
     } else if (t == "ROBOT_DISABLED") {
         if (r) { r->disabled = true; r->active = false; }
     } else if (t == "ROBOT_RESPAWNED") {
@@ -268,7 +288,8 @@ void Playback::build(const Json& batch, std::size_t first_event) {
     auto is_trigger = [&](const std::string& t, const Json& p, std::size_t i) {
         if (t == "CRATE_MOVED" || t == "LASER_HIT") return true;
         if (t == "ROBOT_MOVED" || t == "MOVE_BLOCKED") return p.get_string("cause").value_or("") == "CONVEYOR";
-        if (t == "ROBOT_DISABLED") return p.get_string("cause").value_or("") == "LASER";
+        if (t == "TRAP_TRIGGERED" || t == "TRAP_HIT" || t == "SCORE_AWARDED") return true;
+        if (t == "ROBOT_DISABLED") return p.get_string("cause").value_or("") == "LASER" || p.get_string("cause").value_or("") == "TRAP";
         if (t == "ROBOT_PUSHED") {  // caused by the pusher's own move: look ahead for it
             for (std::size_t j = i + 1; j < events_.size(); ++j) {
                 if (type_of(events_[j]) != "ROBOT_MOVED") continue;
@@ -446,6 +467,56 @@ void Playback::build(const Json& batch, std::size_t first_event) {
             s.cy = gi(p, "y");
             s.events = {i};
             s.caption = P(s.player) + " DISABLED (" + p.get_string("cause").value_or("?") + ")";
+            push(std::move(s));
+        } else if (t == "TRAP_ARMED") {
+            Step s = new_step(Step::TrapArm, 700);
+            s.player = gi(p, "player");
+            s.trap = gi(p, "trap");
+            s.owner = gi(p, "owner");
+            s.cx = gi(p, "x");
+            s.cy = gi(p, "y");
+            s.events = {i};
+            s.commit_first = true;
+            s.caption = P(s.player) + (p.get_bool("was_armed").value_or(false) ? " takes over trap " : " arms trap ") + std::to_string(s.trap) +
+                        (gi(p, "previous_owner") != 0 && gi(p, "previous_owner") != s.player ? " (was P" + std::to_string(gi(p, "previous_owner")) + "'s)" : "");
+            push(std::move(s));
+        } else if (t == "TRAP_TRIGGERED") {
+            Step s = new_step(Step::TrapBurst, 850);
+            s.trap = gi(p, "trap");
+            s.owner = gi(p, "owner");
+            s.player = s.owner;
+            s.cx = gi(p, "x");
+            s.cy = gi(p, "y");
+            std::string names;
+            if (const Json* v = p.find("victims"))
+                for (const auto& x : v->items()) {
+                    s.victims.push_back(static_cast<int>(x.as_int()));
+                    names += (names.empty() ? "" : ", ") + P(static_cast<int>(x.as_int()));
+                }
+            s.events = {i};
+            s.commit_first = true;
+            s.caption = "TRAP " + std::to_string(s.trap) + " (" + (s.owner ? P(s.owner) : std::string("neutral")) + ") fires: catches " + names;
+            push(std::move(s));
+        } else if (t == "TRAP_HIT") {
+            Step s = new_step(Step::TrapHit, 480);
+            s.player = gi(p, "player");
+            s.trap = gi(p, "trap");
+            s.owner = gi(p, "owner");
+            s.events = {i};
+            s.commit_first = true;
+            s.caption = P(s.player) + " damaged by trap " + std::to_string(s.trap) + " (damage " + std::to_string(gi(p, "damage")) + ")" +
+                        (s.owner == 0 ? " - neutral, no points" : s.owner == s.player ? " - own trap, no points" : "");
+            push(std::move(s));
+        } else if (t == "SCORE_AWARDED") {
+            Step s = new_step(Step::Score, 800);
+            s.player = gi(p, "player");   // who earned it
+            s.points = gi(p, "points");
+            s.trap = gi(p, "trap");
+            s.events = {i};
+            s.commit_first = true;
+            const std::string why = p.get_string("reason").value_or("") == "TRAP_DISABLE" ? "disabling " : "damaging ";
+            s.caption = "+" + std::to_string(s.points) + " for " + P(s.player) + ": " + why + P(gi(p, "victim")) + " with trap " + std::to_string(s.trap) +
+                        " (score " + std::to_string(gi(p, "score")) + ")";
             push(std::move(s));
         } else if (t == "GROUP_TOGGLED") {
             Step s = new_step(Step::Toggle, 600);

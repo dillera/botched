@@ -188,6 +188,39 @@ No points are awarded for ordinary robot pushes, except a direct push that cause
 
 **Before implementing G2-A**, settle and document the precise ordering between proximity traps, existing continuous lasers and future charging turrets. Keep this narrow: a clear phase order and a small set of edge-case tests are sufficient.
 
+### G2-A — implementation status: **done, awaiting playtest** (2026-11-21)
+
+**Resolution order (settled before implementing, as the roadmap required).** Each tick: 1 orders (rotating priority) → 2 conveyors → 3 continuous lasers (unchanged) → **3b proximity traps (ascending trap id)** → 4 disable check. Traps see final positions and every source's damage is judged once. Edge rules: a robot already at 3 damage after the lasers takes no trap damage (so a disable has exactly one source and one bonus); a robot in two trap areas is hit by both; arming happens in phase 1 and the same tick's trap phase judges occupancy, so arming a trap whose area is occupied fires it at once. Full list: `docs/rules-interpretations.md` #25-30.
+
+**What shipped**
+
+- Map tokens `X<n>` (trap device, solid) and `K<n>` (control console), validated (every trap needs a console and vice versa, ids unique). New map: `resources/maps/trapworks-01.map` (12x10, 2-4 players, one trap in the middle with a dispenser inside its area and a `K1` console on each side wall).
+- Rules: trap state in the world (`traps: [{id, armed, owner}]`, per-player `sabotage`; both appear only on maps with traps), `TOGGLE` next to a `K` console arms/re-arms and claims, activation/damage/disarm, attributed scoring (+1 per damaged opponent, +3 for a disabling hit, 0 for self or neutral), `score = 5 x deliveries + sabotage`, so sabotage also counts for score targets and tie-breaks.
+- Events (all authoritative, nothing recomputed by clients): `TRAP_ARMED`, `TRAP_TRIGGERED` (lists everyone caught), `TRAP_HIT`, `SCORE_AWARDED` (who, why, victim, trap, new score), and `ROBOT_DISABLED` with `cause: "TRAP"`, `trap`, `by`.
+- Versioning: kept `botched/1`. Everything is gated on map tokens, so every existing map plays, serialises and hashes exactly as before; the roadmap's proposed `botched/2` was **not** introduced. Say if you would rather bump the rules version when G2 completes.
+- SDL: trap and console sprites (armed = owner-coloured spikes, off = grey), the eight tiles tinted in the owner colour while armed, replay steps for arming ("ARMED" ring), the burst (area flash + shockwave), `-1` on each victim and a gold `+N` for the owner, the scoreboard's `sabotage +N`, a `Traps:` line, tile hover text, narration lines in both clients, and the terminal board (`X1!` armed, `x1` off, `K1`).
+
+**Evidence**
+
+| Check | Result |
+|---|---|
+| Whole suite, normal and ASan/UBSan | 216/216 test cases, 31 505 assertions, both builds (15 new in `tests/test_traps.cpp`) |
+| Existing behaviour | `training-01` sim hashes still `8b9b82fb718c2751` / `415308a3742c5db6`; training-01 map hashes and every older pin unchanged; snapshots of trap-less maps carry no `traps`/`sabotage` (tested) |
+| Map | parse/serialise round-trip (text and `GET_MAP` JSON), validation errors for a missing console, an orphan console, a duplicate id and bad tokens; the device blocks movement |
+| Rules | unoccupied trap stays armed and distance-2 robots are safe; neutral trap hurts once and scores 0 (disarmed for ticks 2-3); owned trap hits 3 robots at once, owner scores +1 per opponent and 0 for itself; disabling hit pays +1 and +3 exactly once; self-disable and neutral disable pay 0; laser-felled robot gets no trap damage or bonus; `T` arms and claims and the same tick's burst scores for the new owner; re-arm transfers an armed trap without firing; `T` away from consoles is still `NO_CONSOLE` |
+| Persistence / determinism | checkpoint restore round-trips traps and sabotage and rejects a score that does not add up; same scenario twice gives the same state hash; sabotage reaches a score target |
+| Playback | the replay of arm, burst, hits, scores and a trap disable ends on the authoritative board (field-by-field) |
+| Maps in simulation | `trapworks-01` with 2, 3 and 4 bot players finishes and re-runs identically (`--check`) |
+| Live SDL | server + two scripted `--ui` clients on `trapworks-01`: P1 walks to the console and `T`-claims the trap in round 2, P2 walks into its area in round 3; captured headlessly: replay of "P1 takes over trap 1", the machinery-phase burst ("TRAP 1 (P1) fires: catches P2"), then `+1 for P1`, scoreboard `1 pts / sabotage +1`, P2 damage pip, trap shown "off (P1)" |
+
+**Notes for the playtest**
+
+- Server bots ignore traps for now (they never press `T`), so a human needs to claim the trap; neutral traps still hurt bots that wander in. Bot personalities and deliberate sabotage are G4.
+- `T` next to a belt console still toggles the belt group; a `K` console is only used when no belt console is adjacent. Keep the two kinds of console apart on maps.
+- Not started: charging turrets, tar, pit-push scoring, new hazards beyond the proximity trap, other maps, bot changes.
+
+**Stop gate:** playtest `trapworks-01` with two or more humans, then decide on G2-B. G2-B and later are not started.
+
 ### Presentation requirements
 
 Players should be able to understand each hazard's state by inspecting the map:

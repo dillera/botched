@@ -16,6 +16,8 @@ char terrain_char(const Tile& t) {
         case Terrain::Dispenser: return 'G';
         case Terrain::Console: return 'T';
         case Terrain::LaserEmitter: return 'L';
+        case Terrain::Trap: return 'X';
+        case Terrain::TrapConsole: return 'K';
         case Terrain::Conveyor:
             switch (t.dir) {
                 case Dir::E: return '>';
@@ -73,7 +75,8 @@ std::string render_board(const Map& map, const Json& snap) {
             const Tile& t = map.tile({x, y});
             const Cell& c = cells[static_cast<std::size_t>(y * map.width + x)];
             out += terrain_char(t);
-            bool owned = t.terrain == Terrain::Spawn || t.terrain == Terrain::Dock || t.terrain == Terrain::Dispenser;
+            bool owned = t.terrain == Terrain::Spawn || t.terrain == Terrain::Dock || t.terrain == Terrain::Dispenser ||
+                         t.terrain == Terrain::Trap || t.terrain == Terrain::TrapConsole;
             out += owned ? static_cast<char>('0' + t.owner % 10) : ' ';
             out += c.crate ? '*' : ' ';
             out += c.robot;
@@ -156,6 +159,8 @@ struct Overlay {
 struct View {
     std::vector<Overlay> cells;
     std::vector<bool> reversed;  // by group letter A..Z
+    struct TrapInfo { bool armed = true; int owner = 0; };
+    std::vector<TrapInfo> traps = std::vector<TrapInfo>(10);  // by trap id 1..9
     View(const Map& map, const Json& snap) : cells(map.tiles.size()), reversed(26, false) {
         auto at = [&](int x, int y) -> Overlay* {
             if (x < 0 || y < 0 || x >= map.width || y >= map.height) return nullptr;
@@ -176,6 +181,11 @@ struct View {
                 o->heading = parse_dir(p.get_string("heading").value_or("N")).value_or(Dir::N);
                 const Json* c = p.find("carrying");
                 o->carrying = c && !c->is_null();
+            }
+        if (const Json* ts = snap.find("traps"))
+            for (const auto& t : ts->items()) {
+                const auto id = t.get_int("id").value_or(0);
+                if (id >= 1 && id <= 9) traps[static_cast<std::size_t>(id)] = {t.get_bool("armed").value_or(true), static_cast<int>(t.get_int("owner").value_or(0))};
             }
         if (const Json* gs = snap.find("groups"))
             for (const auto& g : gs->items()) {
@@ -213,6 +223,12 @@ std::string cell_text(const Map& map, const View& v, const Style& st, int x, int
                            : paint(st, "g" + std::to_string(t.owner % 10) + " ", "33");
         case Terrain::Console: return paint(st, u ? " ⌨ " : " T ", "1;" + std::to_string(group_fg(t.group)));
         case Terrain::LaserEmitter: return paint(st, std::string(" L") + arrow_glyph(t.dir, false), "1;91");
+        case Terrain::Trap: {  // armed: "X1!" in the owner's colour (white = neutral); disarmed: dim "x1 "
+            const auto& ti = v.traps[static_cast<std::size_t>(t.owner % 10)];
+            const std::string id = std::to_string(t.owner % 10);
+            return ti.armed ? paint(st, "X" + id + "!", "1;" + std::to_string(player_fg(ti.owner))) : paint(st, "x" + id + " ", "90");
+        }
+        case Terrain::TrapConsole: return paint(st, "K" + std::to_string(t.owner % 10) + " ", "1;96");
         case Terrain::Conveyor:
             return paint(st, std::string(" ") + belt_glyph(effective_dir(t, v), u) + " ", std::to_string(group_fg(t.group)));
     }
@@ -244,6 +260,7 @@ std::string render_scores_styled(const Json& snap, const Style& st) {
         line += "  score " + std::to_string(p.get_int("score").value_or(0)) +
                 "  deliveries " + std::to_string(p.get_int("deliveries").value_or(0)) +
                 "  damage " + std::to_string(p.get_int("damage").value_or(0));
+        if (auto sab = p.get_int("sabotage"); sab && *sab > 0) line += "  sabotage +" + std::to_string(*sab);
         const Json* c = p.find("carrying");
         if (c && !c->is_null()) line += "  carrying crate " + std::to_string(c->as_int());
         if (p.get_bool("respawn_pending").value_or(false)) line += "  " + paint(st, "[DISABLED]", "1;91");
@@ -276,6 +293,15 @@ std::string render_legend(const Map& map, const Json& snap, const Style& st) {
                  (v.group_reversed(g) ? paint(st, "REVERSED", "1;91") : std::string("normal"));
     }
     if (!belts.empty()) out += "Belts:" + belts + "\n";
+    // proximity traps
+    std::string traps;
+    for (const auto& tp : map.traps) {
+        const auto& ti = v.traps[static_cast<std::size_t>(tp.id % 10)];
+        traps += "  X" + std::to_string(tp.id) + "(" + std::to_string(tp.pos.x) + "," + std::to_string(tp.pos.y) + ") " +
+                 (ti.armed ? paint(st, "ARMED", "1;91") : std::string("disarmed")) + ", " +
+                 (ti.owner == 0 ? std::string("neutral") : "P" + std::to_string(ti.owner));
+    }
+    if (!traps.empty()) out += "Traps:" + traps + "   (hit the 8 tiles around; TOGGLE next to K<n> arms and claims)\n";
     // dispensers
     std::string disp;
     for (const auto& d : map.dispensers) {
@@ -307,6 +333,14 @@ std::string describe_tile(const Map& map, const Json& snap, Pos pos, int viewer)
         }
         case Terrain::Console: return std::string("console, belt group ") + t.group;
         case Terrain::LaserEmitter: return "laser emitter";
+        case Terrain::Trap: {
+            const auto& ti = v.traps[static_cast<std::size_t>(t.owner % 10)];
+            std::string who = ti.owner == 0 ? "neutral" : ti.owner == viewer ? "yours" : "owned by P" + std::to_string(ti.owner);
+            return "proximity trap " + std::to_string(t.owner) + " (" + (ti.armed ? "ARMED, " : "disarmed, ") + who +
+                   ") - hits every robot on the 8 tiles around it, once, then disarms";
+        }
+        case Terrain::TrapConsole:
+            return "control console of trap " + std::to_string(t.owner) + " - stand next to it and TOGGLE (T) to arm the trap and claim it";
         case Terrain::Conveyor:
             return "conveyor heading " + dname(effective_dir(t, v)) + " (group " + t.group + ", " +
                    (v.group_reversed(t.group) ? "reversed" : "normal") + ") - it will move you at the end of every tick";

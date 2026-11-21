@@ -7,6 +7,8 @@
 //   C<d>[grp]  conveyor, d in > < ^ v, group letter (default A)
 //   T[grp]     console, group letter (default A)
 //   L<d>       laser emitter, d in > < ^ v
+//   X<n>       proximity trap n (1-9): a device that hits all robots on its 8 neighbouring tiles
+//   K<n>       control console of trap n: TOGGLE next to it arms/re-arms the trap and claims it
 // Blank lines and lines starting with ';' are ignored.
 #pragma once
 
@@ -34,6 +36,16 @@ struct Console {
     char group;
 };
 
+struct Trap {
+    int id;
+    Pos pos;
+};
+
+struct TrapConsole {
+    int trap;  // the trap this console arms
+    Pos pos;
+};
+
 struct Dispenser {
     int id;
     Pos pos;
@@ -51,13 +63,15 @@ struct Map {
     std::vector<Dispenser> dispensers;  // ascending id
     std::vector<Console> consoles;      // ascending id
     std::vector<Pos> lasers;            // ascending (y,x)
+    std::vector<Trap> traps;            // ascending id
+    std::vector<TrapConsole> trap_consoles;  // ascending (y,x)
     std::vector<char> groups;           // ascending, every group referenced by any tile
 
     bool in_bounds(Pos p) const { return p.x >= 0 && p.y >= 0 && p.x < width && p.y < height; }
     const Tile& tile(Pos p) const { return tiles[static_cast<std::size_t>(p.y * width + p.x)]; }
     Tile& tile(Pos p) { return tiles[static_cast<std::size_t>(p.y * width + p.x)]; }
 
-    // Blocked for robots, pushes, crates and laser rays: out of bounds, wall, laser emitter.
+    // Blocked for robots, pushes, crates and laser rays: out of bounds, wall, laser emitter, trap device.
     bool blocked(Pos p) const;
     bool walkable(Pos p) const;  // in bounds and not blocked and not a pit
 

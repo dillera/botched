@@ -40,6 +40,13 @@ bool validate_world(const GameState& s, const Map& map, int player_count, int ro
             break;
     }
 
+    // ---- trap devices equal the map's, in order -------------------------------------------------------
+    if (s.traps.size() != map.traps.size()) return fail(error, "traps do not match the map");
+    for (std::size_t i = 0; i < s.traps.size(); ++i) {
+        if (s.traps[i].id != map.traps[i].id) return fail(error, "traps do not match the map");
+        if (s.traps[i].owner < 0 || s.traps[i].owner > player_count) return fail(error, "trap owner out of range");
+    }
+
     // ---- groups equal the map's, in order ----------------------------------------------------
     if (s.groups.size() != map.groups.size()) return fail(error, "groups do not match the map");
     for (std::size_t i = 0; i < s.groups.size(); ++i)
@@ -72,8 +79,9 @@ bool validate_world(const GameState& s, const Map& map, int player_count, int ro
     int total_deliveries = 0;
     for (const Robot& r : s.robots) {
         const std::string ctx = "player " + std::to_string(r.id);
-        if (r.score != kDeliveryScore * r.deliveries)
-            return fail(error, ctx + ": score must equal 5 x deliveries (botched/1 scoring)");
+        if (r.sabotage != 0 && s.traps.empty()) return fail(error, ctx + ": sabotage points on a map without traps");
+        if (r.score != kDeliveryScore * r.deliveries + r.sabotage)
+            return fail(error, ctx + ": score must equal 5 x deliveries + sabotage points (botched/1 scoring)");
         if (r.damage > r.damage_taken) return fail(error, ctx + ": damage exceeds cumulative damage_taken");
         total_deliveries += r.deliveries;
         if (r.respawn_pending) {

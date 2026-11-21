@@ -354,6 +354,43 @@ void draw_laser(Gfx& g, int x, int y, int s, Dir d) {
     g.disc(cx, cy, s * 0.14f, C(255, 90, 90));
 }
 
+// G2-A proximity trap: a squat mine-like device. Armed: owner-coloured ring and spikes that pulse;
+// disarmed: grey and flat. The owner colour is white for a neutral trap.
+SDL_Color trap_color(int owner) { return owner >= 1 && owner <= kMaxPlayers ? player_color(owner) : C(225, 228, 236); }
+
+void draw_trap(Gfx& g, int x, int y, int s, int id, bool armed, int owner, Uint32 now) {
+    g.fill({x, y, s, s}, C(28, 30, 38));
+    const float cx = x + s / 2.f, cy = y + s / 2.f;
+    const SDL_Color oc = trap_color(owner);
+    const float pulse = armed ? 0.5f + 0.5f * std::sin(static_cast<float>(now) * 0.008f) : 0.f;
+    if (armed) {
+        for (int i = 0; i < 8; ++i) {  // spikes
+            const float a = 6.2831853f * static_cast<float>(i) / 8.f + 0.39f;
+            const float r0 = s * 0.30f, r1 = s * (0.42f + 0.05f * pulse);
+            g.line(cx + std::cos(a) * r0, cy + std::sin(a) * r0, cx + std::cos(a) * r1, cy + std::sin(a) * r1, std::max(2.f, s * 0.07f), oc);
+        }
+    }
+    g.disc(cx, cy, s * 0.30f, armed ? C(70, 32, 34) : C(44, 46, 54), 28);
+    g.ring(cx, cy, s * 0.30f, std::max(2.f, s * 0.05f), armed ? oc : C(96, 100, 112), 28);
+    g.disc(cx, cy, s * 0.12f, armed ? mix(C(255, 70, 70), C(255, 200, 120), pulse) : C(70, 74, 84), 16);
+    g.text(x + s / 2, y + 1, "X" + std::to_string(id), armed ? oc : C(110, 114, 126), g.small, 1);
+    if (!armed) g.text(x + s / 2, y + s - g.line_h(g.small) - 1, "off", C(110, 114, 126), g.small, 1);
+}
+
+void draw_trap_console(Gfx& g, int x, int y, int s, int id, bool armed, int owner) {
+    const SDL_Color oc = trap_color(owner);
+    g.fill({x, y, s, s}, C(30, 38, 48));
+    const int in = s / 8;
+    g.fill({x + in, y + in, s - 2 * in, s - 2 * in}, C(70, 78, 98));
+    g.frame({x + in, y + in, s - 2 * in, s - 2 * in}, C(110, 120, 144), 2);
+    const int sx = x + in * 2, sy = y + in * 2, sw = s - 4 * in, sh = s * 38 / 100;
+    g.fill({sx, sy, sw, sh}, C(28, 10, 12));
+    g.frame({sx, sy, sw, sh}, oc, 1);
+    g.text(x + s / 2, sy + (sh - g.line_h(g.small)) / 2, "K" + std::to_string(id), oc, g.small, 1);
+    g.disc(x + s * 0.5f, y + s * 0.74f, s * 0.11f, armed ? C(235, 70, 70) : C(90, 94, 106), 14);   // arm button
+    g.ring(x + s * 0.5f, y + s * 0.74f, s * 0.11f, 2, C(200, 204, 214), 14);
+}
+
 void draw_floor(Gfx& g, int x, int y, int s, bool alt) {
     g.fill({x, y, s, s}, alt ? C(34, 42, 54) : C(30, 37, 48));
     g.frame({x, y, s, s}, C(24, 30, 40), 1);
@@ -854,6 +891,16 @@ void draw_board(App& a, Gfx& g, Uint32 now) {
                 case Terrain::Dispenser: draw_dispenser(g, px, py, s, t.owner, sv.crate_at(x, y) != nullptr); break;
                 case Terrain::Console: draw_console(g, px, py, s, t.group); break;
                 case Terrain::LaserEmitter: draw_laser(g, px, py, s, t.dir); break;
+                case Terrain::Trap: {
+                    const TrapView* tv = sv.trap(t.owner);
+                    draw_trap(g, px, py, s, t.owner, tv ? tv->armed : true, tv ? tv->owner : 0, now);
+                    break;
+                }
+                case Terrain::TrapConsole: {
+                    const TrapView* tv = sv.trap(t.owner);
+                    draw_trap_console(g, px, py, s, t.owner, tv ? tv->armed : true, tv ? tv->owner : 0);
+                    break;
+                }
                 case Terrain::Conveyor: {
                     float glow = machinery ? 0.35f : 0.f;
                     if (st && st->kind == Step::Toggle && st->group == t.group) glow = std::sin(pr * 3.14159f);
@@ -862,6 +909,22 @@ void draw_board(App& a, Gfx& g, Uint32 now) {
                 }
             }
         }
+    // armed traps: tint the eight tiles they will hit, in the owner's colour
+    for (const auto& tp : m.traps) {
+        const TrapView* tv = sv.trap(tp.id);
+        if (!tv || !tv->armed) continue;
+        const SDL_Color oc = trap_color(tv->owner);
+        const float pulse = 0.5f + 0.5f * std::sin(static_cast<float>(now) * 0.006f);
+        for (int dy = -1; dy <= 1; ++dy)
+            for (int dx = -1; dx <= 1; ++dx) {
+                if (!dx && !dy) continue;
+                const Pos q{tp.pos.x + dx, tp.pos.y + dy};
+                if (!m.in_bounds(q) || m.tile(q).terrain == Terrain::Wall) continue;
+                const int qx = L.board.x + q.x * s, qy = L.board.y + q.y * s;
+                g.fill({qx, qy, s, s}, C(oc.r, oc.g, oc.b, static_cast<int>(26 + 26 * pulse)));
+                g.frame({qx + 1, qy + 1, s - 2, s - 2}, C(oc.r, oc.g, oc.b, 110), 1);
+            }
+    }
     // laser beams
     for (const Pos& e : m.lasers) {
         Dir d = m.tile(e).dir;
@@ -982,6 +1045,50 @@ void draw_board(App& a, Gfx& g, Uint32 now) {
                 }
                 break;
             }
+            case Step::TrapArm: {
+                V2 c0 = cell_c(static_cast<float>(st->cx), static_cast<float>(st->cy));
+                const SDL_Color oc = trap_color(st->owner);
+                g.ring(c0.x, c0.y, s * (0.4f + 0.9f * pr), 4, C(oc.r, oc.g, oc.b, static_cast<int>(255 * fade_out)), 40);
+                g.alpha = std::min(1.f, 2.f * fade_out);
+                g.text(static_cast<int>(c0.x), static_cast<int>(c0.y - s * (0.7f + 0.4f * pr)) - 10, "ARMED", oc, g.body, 1);
+                g.alpha = 1.f;
+                break;
+            }
+            case Step::TrapBurst: {
+                V2 c0 = cell_c(static_cast<float>(st->cx), static_cast<float>(st->cy));
+                const SDL_Color oc = trap_color(st->owner);
+                const int fl = static_cast<int>(200 * std::sin(pr * 3.14159f));
+                for (int dy = -1; dy <= 1; ++dy)
+                    for (int dx = -1; dx <= 1; ++dx) {
+                        if (!dx && !dy) continue;
+                        const Pos q{st->cx + dx, st->cy + dy};
+                        if (!m.in_bounds(q) || m.tile(q).terrain == Terrain::Wall) continue;
+                        g.fill({L.board.x + q.x * s, L.board.y + q.y * s, s, s}, C(255, 240, 200, fl));
+                    }
+                g.ring(c0.x, c0.y, s * (0.3f + 1.4f * pr), 5, C(oc.r, oc.g, oc.b, static_cast<int>(255 * fade_out)), 40);
+                burst(c0, s * (0.5f + 0.9f * pr), C(255, 210, 120, static_cast<int>(255 * fade_out)), 12);
+                break;
+            }
+            case Step::TrapHit: {
+                const RobotView* rb = sv.robot(st->player);
+                if (rb && rb->active) {
+                    V2 c0 = cell_c(static_cast<float>(rb->x), static_cast<float>(rb->y));
+                    g.disc(c0.x, c0.y, s * 0.5f, C(255, 90, 40, static_cast<int>(170 * std::sin(pr * 3.14159f))));
+                    g.alpha = std::min(1.f, 2.f * fade_out);
+                    g.text(static_cast<int>(c0.x), static_cast<int>(c0.y - s * (0.5f + 0.4f * pr)) - 10, "-1", kRed, g.big, 1);
+                    g.alpha = 1.f;
+                }
+                break;
+            }
+            case Step::Score: {
+                const RobotView* rb = sv.robot(st->player);
+                V2 c0 = rb && rb->active ? cell_c(static_cast<float>(rb->x), static_cast<float>(rb->y)) : V2{L.board.x + 20.f, L.board.y + 20.f};
+                g.ring(c0.x, c0.y, s * (0.3f + 0.5f * pr), 3, C(255, 215, 80, static_cast<int>(255 * fade_out)), 36);
+                g.alpha = std::min(1.f, 2.f * fade_out);
+                g.text(static_cast<int>(c0.x), static_cast<int>(c0.y - s * (0.5f + 0.6f * pr)) - 12, "+" + std::to_string(st->points), kGold, g.title, 1);
+                g.alpha = 1.f;
+                break;
+            }
             case Step::Disable: {
                 V2 c0 = cell_c(static_cast<float>(st->cx), static_cast<float>(st->cy));
                 g.disc(c0.x, c0.y, s * (0.2f + 0.7f * pr), C(255, 150, 40, static_cast<int>(170 * fade_out)));
@@ -1093,7 +1200,7 @@ void draw_scores(App& a, Gfx& g) {
         g.fill({card.x, card.y, 8, card.h}, pc);
         g.text(card.x + 18, card.y + 4, "P" + std::to_string(r.id) + (r.id == a.me ? "  (you)" : a.is_bot(r.id) ? "  BOT" : ""), pc, g.body);
         const bool lead = r.score == best && best > 0;
-        g.text(card.x + 18, card.y + 26, "deliveries " + std::to_string(r.deliveries), kMuted, g.small);
+        g.text(card.x + 18, card.y + 26, "deliveries " + std::to_string(r.deliveries) + (r.sabotage > 0 ? "  sabotage +" + std::to_string(r.sabotage) : ""), kMuted, g.small);
         if (const int tgt = a.target_score(); tgt > 0) {
             // progress toward the target score
             Rect bar{card.x + 18, card.y + card.h - 8, 150, 5};
@@ -1127,14 +1234,16 @@ void draw_robot_panel(App& a, Gfx& g) {
     panel(g, L.robot, "YOUR ROBOT & THE FACTORY", player_color(a.me));
     if (a.snap.is_null() || !a.map) return;
     const BoardView& sv = a.auth;
-    int y = L.robot.y + 28;
+    const bool has_traps = !a.map->traps.empty();
+    const int lh = has_traps ? 16 : 18;  // one more line when the map has traps
+    int y = L.robot.y + (has_traps ? 25 : 28);
     for (const auto& r : sv.robots) {
         if (r.id != a.me) continue;
         if (r.disabled) { g.text(L.robot.x + 12, y, "Disabled - respawning at the end of the round", kRed, g.small); break; }
         g.text(L.robot.x + 12, y, "At (" + std::to_string(r.x) + "," + std::to_string(r.y) + ") facing " + to_string(r.heading) +
                                       (r.carry_id != 0 ? "  carrying a crate" : "  empty-handed"), kInk, g.small);
         std::string on = sim::describe_tile(*a.map, a.snap, {r.x, r.y}, a.me);
-        g.text(L.robot.x + 12, y + 18, "On: " + on, a.map->tile({r.x, r.y}).terrain == Terrain::Conveyor ? kAmber : kMuted, g.small);
+        g.text(L.robot.x + 12, y + lh, "On: " + on, a.map->tile({r.x, r.y}).terrain == Terrain::Conveyor ? kAmber : kMuted, g.small);
         break;
     }
     std::string belts = "Belts:";
@@ -1143,10 +1252,18 @@ void draw_robot_panel(App& a, Gfx& g) {
         for (const auto& t : a.map->tiles) if (t.group == gr && t.terrain == Terrain::Conveyor) belt = true;
         if (belt) belts += std::string("  ") + gr + (sv.group_reversed(gr) ? " REVERSED" : " normal");
     }
-    g.text(L.robot.x + 12, y + 36, belts, kCyan, g.small);
+    g.text(L.robot.x + 12, y + 2 * lh, belts, kCyan, g.small);
     std::string disp = "Dispensers:";
     for (const auto& d : a.map->dispensers) disp += "  G" + std::to_string(d.id) + (sv.crate_at(d.pos.x, d.pos.y) ? " loaded" : " empty");
-    g.text(L.robot.x + 12, y + 54, disp, kGold, g.small);
+    g.text(L.robot.x + 12, y + 3 * lh, disp, kGold, g.small);
+    if (has_traps) {
+        std::string tr = "Traps:";
+        for (const auto& tp : a.map->traps) {
+            const TrapView* tv = a.shown().trap(tp.id);  // what the board shows, so it matches the replay
+            tr += "  X" + std::to_string(tp.id) + (tv && tv->armed ? " ARMED" : " off") + (tv && tv->owner ? " (P" + std::to_string(tv->owner) + ")" : " (neutral)");
+        }
+        g.text(L.robot.x + 12, y + 4 * lh, tr, kRed, g.small);
+    }
 }
 
 void draw_orders(App& a, Gfx& g) {

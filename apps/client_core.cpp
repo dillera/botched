@@ -216,6 +216,19 @@ std::vector<std::string> summarize_events(const Json& events) {
             plain("crate " + std::to_string(pint(p, "crate")) + " destroyed (" + p.get_string("reason").value_or("?") + ") at " + xy(p, "x", "y"));
         } else if (type == "LASER_HIT") {
             plain(who + " hit by a laser (damage " + std::to_string(pint(p, "damage")) + ")");
+        } else if (type == "TRAP_ARMED") {
+            act(pl, std::string(p.get_bool("was_armed").value_or(false) ? "takes over trap " : "arms trap ") + std::to_string(pint(p, "trap")));
+        } else if (type == "TRAP_TRIGGERED") {
+            std::string who_caught;
+            if (const Json* v = p.find("victims")) for (const auto& x : v->items()) who_caught += (who_caught.empty() ? "" : ", ") + P(static_cast<int>(x.as_int()));
+            const int owner = pint(p, "owner");
+            plain("TRAP " + std::to_string(pint(p, "trap")) + " (" + (owner ? P(owner) : std::string("neutral")) + ") fires and catches " + who_caught);
+        } else if (type == "TRAP_HIT") {
+            plain("  " + who + " hit by the trap (damage " + std::to_string(pint(p, "damage")) + ")");
+        } else if (type == "SCORE_AWARDED") {
+            plain("  +" + std::to_string(pint(p, "points")) + " for " + who + ": " +
+                  (p.get_string("reason").value_or("") == "TRAP_DISABLE" ? "disabling " : "damaging ") + P(pint(p, "victim")) +
+                  " with trap " + std::to_string(pint(p, "trap")) + " (score " + std::to_string(pint(p, "score")) + ")");
         } else if (type == "ROBOT_DISABLED") {
             plain(who + " DISABLED (" + p.get_string("cause").value_or("?") + ")");
         } else if (type == "ROBOT_RESPAWNED") {

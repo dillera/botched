@@ -35,7 +35,7 @@ Build once (`cmake -S . -B build && cmake --build build -j`), then:
 
 ### Maps
 
-Maps are plain files in `resources/maps/*.map` (shipped: `training-01`, the spec's example, and `factory-01`).
+Maps are plain files in `resources/maps/*.map` (shipped: `training-01`, the spec's example, `factory-01`, `crossroads-01` and the G2-A playtest map `trapworks-01`).
 The server loads and validates every `.map` file at startup and reports problems per file on stderr; valid
 maps stay available when another file is bad, and duplicate ids are rejected. Adding a map needs no rebuild:
 drop a file in the directory and restart the server.
@@ -45,7 +45,7 @@ drop a file in the directory and restart the server.
 ; name: My Map               required, shown to players
 ; description: One line.     optional
 ; players: 2-4               optional (N or A-B), default 2-4
-#  #  #  ...                 then the tile rows exactly as in the spec: # . O S1 D1 G1 C> C<B T TA L> ...
+#  #  #  ...                 then the tile rows exactly as in the spec: # . O S1 D1 G1 C> C<B T TA L> X1 K1 ...
 ```
 
 Where the server looks (first match wins): `--maps-dir DIR`; `$BOTCHED_MAPS_DIR`; next to the executable
@@ -104,6 +104,25 @@ terminal; `--ascii` forces the plain ASCII board (the default when the locale is
 any mix works as long as at least one seat is human (e.g. `--players 4 --bots 2`, the other human runs
 `--join ID`). Bots plan from the public snapshot with a short look-ahead on the real rules engine, make
 occasional mistakes, and are deterministic for a given server `bot_seed`.
+
+### Proximity traps (G2-A)
+
+Maps may contain `X<n>` (a trap device, solid like a wall) and `K<n>` (its control console). A trap starts
+**armed and neutral**. In each tick's machinery phase (after orders, belts and lasers) an armed trap with at
+least one robot on its eight surrounding tiles fires once: every robot there takes 1 damage, the trap's owner
+included, and the trap disarms. A robot that is next to a `K<n>` console and executes `T` arms (or re-arms)
+trap `n` and becomes its **owner**; re-arming an armed trap only changes the owner. Damage an owned trap deals
+to an *opponent* scores for the owner (+1 per damaged opponent, +3 more when the hit disables them); neutral
+and self-inflicted damage scores nothing. `score = 5 x deliveries + sabotage`, and sabotage counts toward a
+score target. Maps without `X`/`K` tokens, and `botched/1` itself, are unchanged: the new state (`traps`,
+per-player `sabotage`) and events (`TRAP_ARMED`, `TRAP_TRIGGERED`, `TRAP_HIT`, `SCORE_AWARDED`) only appear on
+maps with traps, and `ROBOT_DISABLED` gains `cause: "TRAP"`. In the SDL client an armed trap tints its eight
+tiles in the owner's colour, fires with a flash, shows `-1` on each victim and a gold `+N` for the owner, and
+the scoreboard lists `sabotage +N`. Server bots do not use traps yet (that is G4). Try it:
+
+```sh
+./build/botched-client --ui --create --players 2 --map-id trapworks-01
+```
 
 ### Score-target matches
 

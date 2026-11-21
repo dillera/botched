@@ -20,6 +20,14 @@ const Group* GameState::group(char id) const {
     for (const auto& g : groups) if (g.id == id) return &g;
     return nullptr;
 }
+TrapState* GameState::trap(int id) {
+    for (auto& t : traps) if (t.id == id) return &t;
+    return nullptr;
+}
+const TrapState* GameState::trap(int id) const {
+    for (const auto& t : traps) if (t.id == id) return &t;
+    return nullptr;
+}
 Robot* GameState::robot_at(Pos p) {
     for (auto& r : robots) if (!r.respawn_pending && r.pos == p) return &r;
     return nullptr;

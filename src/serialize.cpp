@@ -26,6 +26,7 @@ void write_world(const GameState& s, Json& out) {
         p.set("deliveries", r.deliveries);
         p.set("damage_taken", r.damage_taken);
         p.set("respawn_pending", r.respawn_pending);
+        if (!s.traps.empty()) p.set("sabotage", r.sabotage);  // only on maps with traps (hashes elsewhere unchanged)
         players.push(std::move(p));
     }
     out.set("players", std::move(players));
@@ -49,6 +50,18 @@ void write_world(const GameState& s, Json& out) {
         groups.push(std::move(j));
     }
     out.set("groups", std::move(groups));
+
+    if (!s.traps.empty()) {
+        Json traps = Json::array();
+        for (const auto& t : s.traps) {
+            Json j = Json::object();
+            j.set("id", t.id);
+            j.set("armed", t.armed);
+            j.set("owner", t.owner ? Json(t.owner) : Json(nullptr));
+            traps.push(std::move(j));
+        }
+        out.set("traps", std::move(traps));
+    }
 }
 
 namespace {
@@ -133,6 +146,7 @@ bool read_world(const Json& in, GameState& s, std::string& error) {
         if (!need_int(pj, "deliveries", 0, kMaxField, r.deliveries, ctx, error)) return false;
         if (!need_int(pj, "damage_taken", 0, kMaxField, r.damage_taken, ctx, error)) return false;
         if (!need_bool(pj, "respawn_pending", r.respawn_pending, ctx, error)) return false;
+        if (pj.find("sabotage") && !need_int(pj, "sabotage", 0, kMaxField, r.sabotage, ctx, error)) return false;
         std::optional<int> x, y, carrying;
         if (!opt_int(pj, "x", 0, kMaxField, x, ctx, error)) return false;
         if (!opt_int(pj, "y", 0, kMaxField, y, ctx, error)) return false;
@@ -176,6 +190,22 @@ bool read_world(const Json& in, GameState& s, std::string& error) {
         bool rev = false;
         if (!need_bool(gj, "reversed", rev, ctx, error)) return false;
         g.groups.push_back({(*id)[0], rev});
+    }
+    if (const Json* traps = in.find("traps")) {
+        if (!traps->is_array()) return fail(error, "traps must be an array");
+        if (traps->items().size() > 9) return fail(error, "too many traps");
+        for (std::size_t i = 0; i < traps->items().size(); ++i) {
+            const Json& tj = traps->items()[i];
+            const std::string ctx = "traps[" + std::to_string(i) + "]";
+            if (!tj.is_object()) return fail(error, ctx + " must be an object");
+            TrapState t;
+            if (!need_int(tj, "id", 1, 9, t.id, ctx, error)) return false;
+            if (!need_bool(tj, "armed", t.armed, ctx, error)) return false;
+            std::optional<int> owner;
+            if (!opt_int(tj, "owner", 1, kMaxPlayers, owner, ctx, error)) return false;
+            t.owner = owner.value_or(0);
+            g.traps.push_back(t);
+        }
     }
     s = std::move(g);
     return true;

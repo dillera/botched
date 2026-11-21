@@ -104,6 +104,13 @@ std::optional<Tile> parse_token(const std::string& t, std::string& err) {
         }
         return tile;
     }
+    if (k == 'X' || k == 'K') {
+        int v = t.size() == 2 && t[1] >= '1' && t[1] <= '9' ? t[1] - '0' : -1;
+        if (v < 1) return bad(k == 'X' ? "expected X<1-9>" : "expected K<1-9>");
+        tile.terrain = k == 'X' ? Terrain::Trap : Terrain::TrapConsole;
+        tile.owner = v;
+        return tile;
+    }
     if (k == 'L') {
         if (t.size() != 2) return bad("expected L<dir>");
         auto d = arrow_dir(t[1]);
@@ -139,6 +146,8 @@ std::string token_text(const Tile& t) {
             return s;
         }
         case Terrain::LaserEmitter: return std::string("L") + dir_arrow(t.dir);
+        case Terrain::Trap: return "X" + std::to_string(t.owner);
+        case Terrain::TrapConsole: return "K" + std::to_string(t.owner);
     }
     return "?";
 }
@@ -148,7 +157,7 @@ std::string token_text(const Tile& t) {
 bool Map::blocked(Pos p) const {
     if (!in_bounds(p)) return true;
     Terrain t = tile(p).terrain;
-    return t == Terrain::Wall || t == Terrain::LaserEmitter;
+    return t == Terrain::Wall || t == Terrain::LaserEmitter || t == Terrain::Trap;
 }
 
 bool Map::walkable(Pos p) const {
@@ -161,6 +170,8 @@ void Map::finalize() {
     dispensers.clear();
     consoles.clear();
     lasers.clear();
+    traps.clear();
+    trap_consoles.clear();
     groups.clear();
     std::set<char> g;
     int console_index = 0;
@@ -185,12 +196,15 @@ void Map::finalize() {
                 }
                 case Terrain::Conveyor: g.insert(t.group); break;
                 case Terrain::LaserEmitter: lasers.push_back(p); break;
+                case Terrain::Trap: traps.push_back({t.owner, p}); break;
+                case Terrain::TrapConsole: trap_consoles.push_back({t.owner, p}); break;
                 default: break;
             }
         }
     }
     std::stable_sort(dispensers.begin(), dispensers.end(),
                      [](const Dispenser& a, const Dispenser& b) { return a.id < b.id; });
+    std::stable_sort(traps.begin(), traps.end(), [](const Trap& a, const Trap& b) { return a.id < b.id; });
     groups.assign(g.begin(), g.end());
 }
 
@@ -277,6 +291,18 @@ std::vector<std::string> validate_map(const Map& m, const ValidationOptions& opt
                 default: break;
             }
         }
+    }
+    {   // G2-A proximity traps: unique ids, and every trap has at least one control console (and vice versa)
+        std::set<int> trap_ids;
+        for (const Trap& t : m.traps)
+            if (!trap_ids.insert(t.id).second) e.push_back("duplicate trap id " + std::to_string(t.id));
+        std::set<int> controlled;
+        for (const TrapConsole& c : m.trap_consoles) {
+            controlled.insert(c.trap);
+            if (!trap_ids.count(c.trap)) e.push_back("trap console K" + std::to_string(c.trap) + " has no trap X" + std::to_string(c.trap));
+        }
+        for (int id : trap_ids)
+            if (!controlled.count(id)) e.push_back("trap X" + std::to_string(id) + " has no control console K" + std::to_string(id));
     }
     for (int p = 1; p <= kMaxPlayers; ++p) {
         auto i = static_cast<std::size_t>(p);

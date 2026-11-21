@@ -45,7 +45,9 @@ const char* to_string(Order o);
 std::optional<Order> parse_order(std::string_view s);
 
 enum class Terrain : std::uint8_t {
-    Floor, Wall, Spawn, Dock, Dispenser, Conveyor, Console, LaserEmitter, Pit
+    Floor, Wall, Spawn, Dock, Dispenser, Conveyor, Console, LaserEmitter, Pit,
+    Trap,         // G2-A proximity trap device X<n>: blocks movement; hits the 8 surrounding tiles
+    TrapConsole   // G2-A K<n>: a robot next to it that executes TOGGLE (T) arms/re-arms trap n and owns it
 };
 
 const char* to_string(Terrain t);

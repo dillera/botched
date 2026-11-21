@@ -45,7 +45,11 @@ private:
     void resolve_tile(GameState& s, int pid, Pos last_safe);
     void pick_up_and_deliver(GameState& s, int pid);
     void deliver_if_on_dock(GameState& s, int pid);
-    void disable_robot(GameState& s, int pid, Pos drop_cell, const char* cause);
+    struct TrapKill { int victim; int trap; int owner; };  // a trap hit that crossed the disable threshold
+    void disable_robot(GameState& s, int pid, Pos drop_cell, const char* cause, const TrapKill* kill = nullptr);
+    void award_sabotage(GameState& s, int owner, int points, const char* reason, int victim, int trap);
+    void arm_trap(GameState& s, int pid, const TrapConsole& console);
+    void phase_traps(GameState& s);
     void run_order(GameState& s, int pid, Order o, int slot);
     void toggle(GameState& s, int pid);
     void drop(GameState& s, int pid);
@@ -55,6 +59,7 @@ private:
 
     const Map& map_;
     EventLog& log_;
+    std::vector<TrapKill> trap_kills_;   // this tick only
     std::vector<int> moved_this_phase_;  // robots displaced during the conveyor phase
 };
 

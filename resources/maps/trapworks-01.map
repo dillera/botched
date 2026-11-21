@@ -1,0 +1,21 @@
+; Botched! map resource
+; id: trapworks-01
+; name: Trap Works
+; description: G2-A playtest: one proximity trap (X1) in the middle, armed from the two K1 consoles on the side walls.
+; players: 2-4
+;
+; The trap hits every robot on the eight tiles around X1 (columns 4-6, rows 3-5) once, then disarms.
+; Dispenser G1 sits inside that area, so grabbing its crate while the trap is armed is a gamble. A robot
+; standing next to a K1 console that executes TOGGLE (T) arms the trap and becomes its owner: damage it
+; deals to opponents scores for the owner (+1 per hit, +3 more for a disable). Neutral and self-inflicted
+; damage scores nothing.
+#   #   #   #   #   #   #   #   #   #   #   #
+#   S1  D1  .   .   .   .   .   .   D2  S2  #
+#   .   .   #   .   .   .   .   #   .   .   #
+#   .   .   .   .   G1  .   .   .   .   .   #
+#   .   #   .   .   X1  .   .   .   #   .   #
+#   K1  .   .   .   .   .   .   .   .   K1  #
+#   .   #   .   .   .   .   .   .   #   .   #
+#   .   .   G2  .   .   .   G3  .   .   .   #
+#   S3  D3  .   .   .   .   .   .   D4  S4  #
+#   #   #   #   #   #   #   #   #   #   #   #

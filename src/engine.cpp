@@ -55,6 +55,7 @@ GameState make_initial_state(const Map& map, int player_count, int rounds, int t
         s.robots.push_back(r);
     }
     for (char g : map.groups) s.groups.push_back({g, false});
+    for (const Trap& t : map.traps) s.traps.push_back({t.id, true, 0});  // armed and neutral
     return s;
 }
 
@@ -102,9 +103,13 @@ void Engine::deliver_if_on_dock(GameState& s, int pid) {
     }
 }
 
-void Engine::disable_robot(GameState& s, int pid, Pos drop_cell, const char* cause) {
+void Engine::disable_robot(GameState& s, int pid, Pos drop_cell, const char* cause, const TrapKill* kill) {
     Robot& r = s.robot(pid);
-    log_.emit("ROBOT_DISABLED", obj({{"player", pid}, {"cause", cause}, {"x", r.pos.x}, {"y", r.pos.y}}));
+    if (kill)  // attributed disable: say which trap and whose it was (0 = neutral)
+        log_.emit("ROBOT_DISABLED", obj({{"player", pid}, {"cause", cause}, {"x", r.pos.x}, {"y", r.pos.y},
+                                         {"trap", kill->trap}, {"by", kill->owner}}));
+    else
+        log_.emit("ROBOT_DISABLED", obj({{"player", pid}, {"cause", cause}, {"x", r.pos.x}, {"y", r.pos.y}}));
     if (r.carrying != 0) {
         int cid = r.carrying;
         if (s.loose_crate_at(drop_cell) == nullptr) {
@@ -194,6 +199,22 @@ void Engine::drop(GameState& s, int pid) {
     r.carrying = 0;
 }
 
+// G2-A: TOGGLE next to a trap console arms (or re-arms) the trap and makes the robot's player its owner.
+// Re-arming an armed trap only changes ownership; whether it fires is decided by who stands next to it
+// when the machinery phase runs.
+void Engine::arm_trap(GameState& s, int pid, const TrapConsole& console) {
+    TrapState* ts = s.trap(console.trap);
+    const Trap* dev = nullptr;
+    for (const auto& t : map_.traps) if (t.id == console.trap) dev = &t;
+    if (!ts || !dev) return;
+    const bool was_armed = ts->armed;
+    const int previous = ts->owner;
+    ts->armed = true;
+    ts->owner = pid;
+    log_.emit("TRAP_ARMED", obj({{"player", pid}, {"trap", ts->id}, {"x", dev->pos.x}, {"y", dev->pos.y},
+                                 {"was_armed", was_armed}, {"previous_owner", previous}, {"owner", pid}}));
+}
+
 void Engine::toggle(GameState& s, int pid) {
     const Robot& r = s.robot(pid);
     const Console* best = nullptr;
@@ -202,6 +223,17 @@ void Engine::toggle(GameState& s, int pid) {
         if (!best || c.id < best->id) best = &c;
     }
     if (!best) {
+        // G2-A: no belt console next to the robot; a trap console (lowest trap id, then scan order) may be.
+        const TrapConsole* tc = nullptr;
+        for (const auto& c : map_.trap_consoles) {
+            if (std::abs(c.pos.x - r.pos.x) + std::abs(c.pos.y - r.pos.y) != 1) continue;
+            if (!tc || c.trap < tc->trap) tc = &c;
+        }
+        if (tc) {
+            log_.emit("ORDER_EXECUTED", obj({{"player", pid}, {"order", "TOGGLE"}}));
+            arm_trap(s, pid, *tc);
+            return;
+        }
         log_.emit("ORDER_NO_OP", obj({{"player", pid}, {"order", "TOGGLE"}, {"reason", "NO_CONSOLE"}}));
         return;
     }
@@ -309,15 +341,64 @@ void Engine::phase_lasers(GameState& s) {
     }
 }
 
+void Engine::award_sabotage(GameState& s, int owner, int points, const char* reason, int victim, int trap) {
+    Robot& o = s.robot(owner);
+    o.score += points;
+    o.sabotage += points;
+    log_.emit("SCORE_AWARDED", obj({{"player", owner}, {"points", points}, {"reason", reason}, {"victim", victim},
+                                    {"trap", trap}, {"score", o.score}}));
+}
+
+// G2-A. After orders, conveyors and lasers: every armed trap with at least one robot on its eight
+// neighbouring tiles fires once, hits every such robot for 1 damage (its owner included) and disarms.
+// Points are awarded for damage actually dealt to an opponent of the trap's owner; neutral traps and
+// self-damage score nothing. A robot already at 3 damage (felled by a laser this tick) takes no further
+// damage, so a disable is attributed to exactly one source.
+void Engine::phase_traps(GameState& s) {
+    for (const Trap& t : map_.traps) {  // ascending id
+        TrapState* ts = s.trap(t.id);
+        if (!ts || !ts->armed) continue;
+        std::vector<int> caught;
+        for (const Robot& r : s.robots) {  // ascending player id
+            if (r.respawn_pending) continue;
+            const int dx = std::abs(r.pos.x - t.pos.x), dy = std::abs(r.pos.y - t.pos.y);
+            if (std::max(dx, dy) == 1) caught.push_back(r.id);
+        }
+        if (caught.empty()) continue;
+        ts->armed = false;
+        Json victims = Json::array();
+        for (int pid : caught) victims.push(pid);
+        log_.emit("TRAP_TRIGGERED", obj({{"trap", t.id}, {"x", t.pos.x}, {"y", t.pos.y}, {"owner", ts->owner},
+                                         {"victims", victims}}));
+        for (int pid : caught) {
+            Robot& r = s.robot(pid);
+            if (r.damage >= kMaxHealth) continue;
+            r.damage += 1;
+            r.damage_taken += 1;
+            const int owner = ts->owner;
+            const int points = (owner != 0 && owner != pid) ? 1 : 0;
+            log_.emit("TRAP_HIT", obj({{"trap", t.id}, {"player", pid}, {"damage", r.damage}, {"owner", owner},
+                                       {"points", points}}));
+            if (points) award_sabotage(s, owner, points, "TRAP_DAMAGE", pid, t.id);
+            if (r.damage >= kMaxHealth) trap_kills_.push_back({pid, t.id, owner});
+        }
+    }
+}
+
 void Engine::phase_disable(GameState& s) {
     for (auto& r : s.robots) {
-        if (!r.respawn_pending && r.damage >= kMaxHealth) disable_robot(s, r.id, r.pos, "LASER");
+        if (r.respawn_pending || r.damage < kMaxHealth) continue;
+        const TrapKill* kill = nullptr;
+        for (const auto& k : trap_kills_) if (k.victim == r.id) kill = &k;
+        disable_robot(s, r.id, r.pos, kill ? "TRAP" : "LASER", kill);
+        if (kill && kill->owner != 0 && kill->owner != r.id) award_sabotage(s, kill->owner, 3, "TRAP_DISABLE", r.id, kill->trap);
     }
 }
 
 void Engine::run_tick(GameState& s, const Programmes& programmes, int tick) {
     s.phase = Phase::Executing;
     s.tick = tick;
+    trap_kills_.clear();
     log_.begin(s.round, tick);
     const int abs_tick = absolute_tick(s.round, tick);
 
@@ -334,6 +415,7 @@ void Engine::run_tick(GameState& s, const Programmes& programmes, int tick) {
     }
     phase_conveyors(s);   // Phase 2
     phase_lasers(s);      // Phase 3
+    phase_traps(s);       // Phase 3b (G2-A): proximity traps, after lasers and before disables
     phase_disable(s);     // Phase 4
 }
 

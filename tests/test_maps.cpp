@@ -147,7 +147,7 @@ TEST_CASE("maps: malformed files and duplicate ids are reported by file name; va
     d.write("a-good.map", with_header(good_header("alpha")));
     d.write("b-dup.map", with_header(good_header("alpha")));                       // duplicate id
     d.write("c-noid.map", with_header("; name: No Id\n"));                         // missing id
-    d.write("d-badtile.map", good_header("delta") + "# # # # # # # # #\n# S1 D1 X . . . . #\n");  // unknown token
+    d.write("d-badtile.map", good_header("delta") + "# # # # # # # # #\n# S1 D1 Z . . . . #\n");  // unknown token
     d.write("e-badid.map", with_header("; id: bad id!\n; name: Bad\n"));
     d.write("f-players.map", with_header(good_header("foxtrot", "1-9")));
     d.write("g-unreachable.map", good_header("golf") +
