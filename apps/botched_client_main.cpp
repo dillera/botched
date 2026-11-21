@@ -1,3 +1,4 @@
+#include <cctype>
 // botched-client: play Botched! in a terminal against a botched-tcp-server.
 #include <unistd.h>
 
@@ -20,13 +21,24 @@ void usage() {
         "  --join MATCH_ID       join a match created by someone else\n"
         "  --bot                 auto-play instead of using the keyboard (testing/demos)\n"
         "    --seed N            bot seed          --think-ms N   bot pause before submitting\n"
-        "  --plain               no ANSI screen control (default when output is not a terminal)\n";
+        "  --plain               no ANSI screen control (default when output is not a terminal)\n"
+        "  --ascii               plain ASCII board (default unless the locale is UTF-8)\n"
+        "  --no-color            no colours (also honours NO_COLOR)\n";
 }
 }  // namespace
 
 int main(int argc, char** argv) {
     botched::client::ClientOptions opt;
     opt.tty = isatty(1) != 0;
+    bool ascii = false, no_color = std::getenv("NO_COLOR") != nullptr;
+    {
+        const char* loc = std::getenv("LC_ALL");
+        if (!loc || !*loc) loc = std::getenv("LC_CTYPE");
+        if (!loc || !*loc) loc = std::getenv("LANG");
+        std::string l = loc ? loc : "";
+        for (auto& c : l) c = static_cast<char>(std::tolower(static_cast<unsigned char>(c)));
+        ascii = l.find("utf-8") == std::string::npos && l.find("utf8") == std::string::npos;
+    }
     for (int i = 1; i < argc; ++i) {
         std::string a = argv[i];
         auto next = [&]() -> const char* {
@@ -44,9 +56,13 @@ int main(int argc, char** argv) {
         else if (a == "--seed") opt.seed = std::strtoull(next(), nullptr, 10);
         else if (a == "--think-ms") opt.bot_think_ms = std::atoi(next());
         else if (a == "--plain") opt.tty = false;
+        else if (a == "--ascii") ascii = true;
+        else if (a == "--no-color") no_color = true;
         else { usage(); return 2; }
     }
     if (!opt.create && opt.match_id.empty()) { usage(); return 2; }
+    opt.unicode = opt.tty && !ascii;
+    opt.color = opt.tty && !no_color;
     if (opt.bot) opt.refresh_ms = 200;
     botched::client::ClientResult r = botched::client::run_client(opt, std::cout);
     if (!r.ok) {

@@ -25,6 +25,8 @@ struct ClientOptions {
     bool bot = false;              // auto-play instead of reading the keyboard
     std::uint64_t seed = 1;        // bot noise seed
     bool tty = false;              // redraw in place with ANSI codes
+    bool unicode = false;          // box/block/arrow glyphs (else plain ASCII)
+    bool color = false;            // ANSI colours
     int refresh_ms = 500;          // poll interval
     int bot_think_ms = 0;          // pause before a bot submits (demo pacing)
 };

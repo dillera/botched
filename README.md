@@ -57,6 +57,16 @@ prints the final scores and the winner (ties are shared victories, per the spec)
 `botched-client --bot ...` plays automatically through the same request path (useful for filling seats,
 demos and tests); `--plain` disables screen redraws (also the default when output is not a terminal).
 
+**Reading the board.** Every cell is 3 characters wide. A robot (`1>` = player 1 facing east, a trailing
+block/`*` if it carries a crate) *replaces* the tile it stands on; the status line under the board names
+the tile under your robot (for example "conveyor heading E ... it will move you at the end of every
+tick"). Loaded dispensers are `G1`, empty ones `g1`; the legend lists belt groups (normal/reversed) and
+which dispensers hold a crate. The "what happened" log narrates each tick in the server's own order:
+`P1 F2: drives ...` for your orders, `belt moves P2 ... (they ordered WAIT)` for the conveyor phase,
+`pushes`, `is blocked`, turns, pickups and console toggles. Colour and Unicode blocks are used on a
+terminal; `--ascii` forces the plain ASCII board (the default when the locale is not UTF-8) and
+`--no-color` (or `NO_COLOR`) disables colour.
+
 **Limits of this MVP:** there is no authentication beyond the per-seat session token, so keep the
 server on `127.0.0.1` or a trusted LAN; a client that quits or crashes cannot rejoin (its robot waits
 every round); one server hosts up to 16 matches; no TLS.

@@ -100,47 +100,136 @@ namespace {
 int pint(const Json& p, const char* k) { return static_cast<int>(p.get_int(k).value_or(0)); }
 }  // namespace
 
+namespace {
+std::string xy(const Json& p, const char* kx, const char* ky) {
+    return "(" + std::to_string(pint(p, kx)) + "," + std::to_string(pint(p, ky)) + ")";
+}
+std::string P(int id) { return "P" + std::to_string(id); }
+}  // namespace
+
+// One line per thing that happened, in exactly the order the server logged it. Nothing is inferred
+// from positions: every movement line comes from a ROBOT_MOVED / ROBOT_PUSHED / MOVE_BLOCKED /
+// CRATE_MOVED event. Phases are visible from the wording: "P1 F2" lines are robot orders, "belt ..."
+// lines are the conveyor phase after all orders.
 std::vector<std::string> summarize_events(const Json& events) {
     std::vector<std::string> lines;
-    std::vector<std::string> orders;
-    std::vector<std::string> effects;
+    const auto& items = events.items();
     int cur_round = -1, cur_tick = -1;
-    auto flush = [&] {
-        if (cur_round < 0) return;
-        if (!orders.empty()) {
-            std::string l = "R" + std::to_string(cur_round) + " T" + std::to_string(cur_tick) + " ";
-            for (const auto& o : orders) l += " " + o;
-            lines.push_back(l);
-        }
-        for (const auto& e : effects) lines.push_back("      " + e);
-        orders.clear();
-        effects.clear();
+    std::string pending;  // an ORDER_EXECUTED line waiting to see whether the order did something
+    int pending_player = 0;
+    std::vector<std::pair<int, std::string>> ordered;  // (player, order code) this tick, for belt notes
+    auto order_of = [&](int pl) -> std::string {
+        for (const auto& o : ordered) if (o.first == pl) return o.second;
+        return "";
     };
-    for (const auto& e : events.items()) {
+    auto flush_pending = [&] {
+        if (!pending.empty()) lines.push_back(pending);
+        pending.clear();
+        pending_player = 0;
+    };
+    auto act = [&](int player, const std::string& text) {  // text belongs to an order actor
+        if (pending_player == player && !pending.empty()) {
+            lines.push_back(pending + ": " + text);
+            pending.clear();
+            pending_player = 0;
+        } else {
+            flush_pending();
+            lines.push_back("    " + P(player) + " " + text);
+        }
+    };
+    auto plain = [&](const std::string& text) { flush_pending(); lines.push_back("    " + text); };
+
+    for (std::size_t i = 0; i < items.size(); ++i) {
+        const Json& e = items[i];
         const int round = pint(e, "round"), tick = pint(e, "tick");
-        if (round != cur_round || tick != cur_tick) { flush(); cur_round = round; cur_tick = tick; }
+        if (round != cur_round || tick != cur_tick) {
+            flush_pending();
+            cur_round = round;
+            cur_tick = tick;
+            ordered.clear();
+            if (tick > 0) lines.push_back("-- round " + std::to_string(round) + ", tick " + std::to_string(tick) + " --");
+        }
         const std::string type = e.get_string("type").value_or("");
         const Json* pp = e.find("params");
         if (!pp) continue;
         const Json& p = *pp;
-        const std::string pl = "P" + std::to_string(pint(p, "player"));
-        if (type == "ORDER_EXECUTED") orders.push_back(pl + ":" + order_code(p.get_string("order").value_or("?")));
-        else if (type == "ORDER_NO_OP") orders.push_back(pl + ":" + order_code(p.get_string("order").value_or("?")) + "(nothing)");
-        else if (type == "ORDER_SKIPPED_DISABLED") orders.push_back(pl + ":-");
-        else if (type == "ROBOT_PUSHED") effects.push_back("P" + std::to_string(pint(p, "by")) + " pushed " + pl);
-        else if (type == "CRATE_PICKED_UP") effects.push_back(pl + " picked up crate " + std::to_string(pint(p, "crate")));
-        else if (type == "CRATE_DELIVERED")
-            effects.push_back(pl + " DELIVERED crate " + std::to_string(pint(p, "crate")) + " (score " + std::to_string(pint(p, "score")) + ")");
-        else if (type == "CRATE_DROPPED") effects.push_back(pl + " dropped crate " + std::to_string(pint(p, "crate")));
-        else if (type == "CRATE_DESTROYED") effects.push_back("crate " + std::to_string(pint(p, "crate")) + " destroyed (" + p.get_string("reason").value_or("?") + ")");
-        else if (type == "LASER_HIT") effects.push_back(pl + " hit by a laser (damage " + std::to_string(pint(p, "damage")) + ")");
-        else if (type == "ROBOT_DISABLED") effects.push_back(pl + " DISABLED (" + p.get_string("cause").value_or("?") + ")");
-        else if (type == "ROBOT_RESPAWNED") effects.push_back(pl + " respawned");
-        else if (type == "GROUP_TOGGLED")
-            effects.push_back(pl + " toggled belts " + p.get_string("group").value_or("?") + (p.get_bool("reversed").value_or(false) ? " (reversed)" : " (normal)"));
-        else if (type == "CRATE_SPAWNED") effects.push_back("crate " + std::to_string(pint(p, "crate")) + " appeared at (" + std::to_string(pint(p, "x")) + "," + std::to_string(pint(p, "y")) + ")");
+        const int pl = pint(p, "player");
+        const std::string who = P(pl);
+        const std::string dirn = p.get_string("dir").value_or("?");
+
+        if (type == "ORDER_EXECUTED") {
+            flush_pending();
+            const std::string code = order_code(p.get_string("order").value_or("?"));
+            ordered.emplace_back(pl, code);
+            pending = "  " + who + " " + code;
+            pending_player = pl;
+            // Orders with no visible effect (WAIT) read as a line of their own.
+            if (code == "W") { lines.push_back(pending + ": waits"); pending.clear(); pending_player = 0; }
+        } else if (type == "ORDER_NO_OP") {
+            const std::string code = order_code(p.get_string("order").value_or("?"));
+            const std::string why = p.get_string("reason").value_or("");
+            ordered.emplace_back(pl, code);
+            flush_pending();
+            lines.push_back("  " + who + " " + code + ": nothing happened" + (why.empty() ? "" : " (" + why + ")"));
+        } else if (type == "ORDER_SKIPPED_DISABLED") {
+            plain(who + " is disabled: order skipped");
+        } else if (type == "ROBOT_ROTATED") {
+            act(pl, "turns " + p.get_string("from").value_or("?") + " -> " + p.get_string("to").value_or("?"));
+        } else if (type == "ROBOT_MOVED") {
+            const bool belt = p.get_string("cause").value_or("") == "CONVEYOR";
+            const std::string route = xy(p, "from_x", "from_y") + " -> " + xy(p, "x", "y");
+            if (belt) {
+                std::string o = order_of(pl);
+                flush_pending();
+                lines.push_back("  belt moves " + who + " " + route + (o == "W" ? "   (they ordered WAIT)" : ""));
+            } else {
+                act(pl, "drives " + route);
+            }
+        } else if (type == "ROBOT_PUSHED") {
+            // The pusher's own ROBOT_MOVED follows; look ahead (same tick) only to name the cause.
+            const int by = pint(p, "by");
+            std::string cause = "ORDER";
+            for (std::size_t j = i + 1; j < items.size(); ++j) {
+                if (pint(items[j], "tick") != tick || pint(items[j], "round") != round) break;
+                if (items[j].get_string("type").value_or("") != "ROBOT_MOVED") continue;
+                const Json* jp = items[j].find("params");
+                if (jp && pint(*jp, "player") == by) { cause = jp->get_string("cause").value_or("ORDER"); break; }
+            }
+            const std::string text = "pushes " + who + " " + xy(p, "from_x", "from_y") + " -> " + xy(p, "x", "y");
+            if (cause == "CONVEYOR") { flush_pending(); lines.push_back("  belt: " + P(by) + " " + text); }
+            else act(by, text);
+        } else if (type == "MOVE_BLOCKED") {
+            const bool belt = p.get_string("cause").value_or("") == "CONVEYOR";
+            const std::string text = std::string(belt ? "" : "is blocked ") + "going " + dirn + " into " + xy(p, "x", "y");
+            if (belt) { flush_pending(); lines.push_back("  belt cannot move " + who + " " + dirn + " into " + xy(p, "x", "y") + ": blocked"); }
+            else act(pl, text);
+        } else if (type == "CRATE_MOVED") {
+            flush_pending();
+            lines.push_back("  belt moves crate " + std::to_string(pint(p, "crate")) + " " + xy(p, "from_x", "from_y") + " -> " + xy(p, "x", "y"));
+        } else if (type == "CRATE_PICKED_UP") {
+            act(pl, "picks up crate " + std::to_string(pint(p, "crate")) + " at " + xy(p, "x", "y"));
+        } else if (type == "CRATE_DELIVERED") {
+            act(pl, "DELIVERED crate " + std::to_string(pint(p, "crate")) + " (score " + std::to_string(pint(p, "score")) + ")");
+        } else if (type == "CRATE_DROPPED") {
+            act(pl, "drops crate " + std::to_string(pint(p, "crate")) + " at " + xy(p, "x", "y"));
+        } else if (type == "CRATE_DESTROYED") {
+            plain("crate " + std::to_string(pint(p, "crate")) + " destroyed (" + p.get_string("reason").value_or("?") + ") at " + xy(p, "x", "y"));
+        } else if (type == "LASER_HIT") {
+            plain(who + " hit by a laser (damage " + std::to_string(pint(p, "damage")) + ")");
+        } else if (type == "ROBOT_DISABLED") {
+            plain(who + " DISABLED (" + p.get_string("cause").value_or("?") + ")");
+        } else if (type == "ROBOT_RESPAWNED") {
+            plain(who + " respawned at " + xy(p, "x", "y"));
+        } else if (type == "RESPAWN_REDIRECTED") {
+            plain(who + " respawn redirected to " + xy(p, "x", "y"));
+        } else if (type == "GROUP_TOGGLED") {
+            act(pl, "toggles belt group " + p.get_string("group").value_or("?") +
+                       (p.get_bool("reversed").value_or(false) ? " -> REVERSED" : " -> normal"));
+        } else if (type == "CRATE_SPAWNED") {
+            plain("crate " + std::to_string(pint(p, "crate")) + " appears at dispenser G" + std::to_string(pint(p, "dispenser")) + " " + xy(p, "x", "y"));
+        }
     }
-    flush();
+    flush_pending();
     return lines;
 }
 
@@ -386,6 +475,7 @@ ClientResult run_client(const ClientOptions& opt, std::ostream& out) {
         return true;
     };
 
+    const sim::Style style{opt.unicode, opt.color};
     auto draw = [&](bool final_screen) {
         const std::string phase = snap.get_string("phase").value_or("?");
         const int round = static_cast<int>(snap.get_int("round").value_or(0));
@@ -411,13 +501,15 @@ ClientResult run_client(const ClientOptions& opt, std::ostream& out) {
             }
             o << "\n";
         }
-        o << sim::render_board(map, snap) << "\n" << sim::render_scores(snap);
+        o << sim::render_board_styled(map, snap, style) << "\n" << sim::render_scores_styled(snap, style) << sim::render_legend(map, snap, style);
         if (const Json* ps = snap.find("players")) {
             for (const auto& p : ps->items()) {
                 if (p.get_int("id").value_or(0) != me) continue;
                 if (p.get_bool("respawn_pending").value_or(false)) { o << "You: disabled, respawning at the end of the round\n"; break; }
                 o << "You: P" << me << " at (" << p.get_int("x").value_or(0) << "," << p.get_int("y").value_or(0) << ") facing "
-                  << p.get_string("heading").value_or("?") << ", damage " << p.get_int("damage").value_or(0) << "/2";
+                  << p.get_string("heading").value_or("?") << " on "
+                  << sim::describe_tile(map, snap, {static_cast<int>(p.get_int("x").value_or(0)), static_cast<int>(p.get_int("y").value_or(0))}, me)
+                  << ", damage " << p.get_int("damage").value_or(0) << "/2";
                 const Json* c = p.find("carrying");
                 if (c && !c->is_null()) o << ", carrying crate " << c->as_int();
                 o << "\n";
@@ -425,7 +517,7 @@ ClientResult run_client(const ClientOptions& opt, std::ostream& out) {
         }
         if (!log.empty()) {
             o << "-- what happened --\n";
-            const std::size_t from = log.size() > 16 ? log.size() - 16 : 0;
+            const std::size_t from = log.size() > 30 ? log.size() - 30 : 0;
             for (std::size_t i = from; i < log.size(); ++i) o << log[i] << "\n";
         }
         if (!final_screen) {
@@ -434,8 +526,7 @@ ClientResult run_client(const ClientOptions& opt, std::ostream& out) {
                 for (const auto& p : program) o << order_code(p) << " ";
                 o << (locked ? "(locked)\n" : "(not locked yet)\n");
             }
-            o << "Legend: # wall . floor O pit > < ^ v belts T console S/D/G = spawn/dock/dispenser, * crate, digit+arrow = robot\n"
-              << "Orders: " << order_help() << "\n";
+            o << "Orders: " << order_help() << "\n";
             if (!notice.empty()) o << ">> " << notice << "\n";
         }
         out << o.str() << std::flush;

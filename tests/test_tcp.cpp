@@ -11,6 +11,11 @@
 #include <sstream>
 #include <thread>
 
+#include <array>
+
+#include "ascii_render.hpp"
+#include "botched/match.hpp"
+#include "botched/serialize.hpp"
 #include "client_core.hpp"
 #include "doctest.h"
 #include "line_buffer.hpp"
@@ -169,22 +174,95 @@ TEST_CASE("M1-A client: server UTC timestamps parse back to the same instant") {
 TEST_CASE("M1-A client: events become readable lines, orders grouped per tick") {
     auto ev = Json::parse(
         "[{\"round\":2,\"tick\":1,\"type\":\"ORDER_EXECUTED\",\"params\":{\"player\":1,\"order\":\"FORWARD_2\"}},"
-        "{\"round\":2,\"tick\":1,\"type\":\"CRATE_PICKED_UP\",\"params\":{\"player\":1,\"crate\":3}},"
-        "{\"round\":2,\"tick\":1,\"type\":\"ORDER_NO_OP\",\"params\":{\"player\":2,\"order\":\"TOGGLE\"}},"
+        "{\"round\":2,\"tick\":1,\"type\":\"CRATE_PICKED_UP\",\"params\":{\"player\":1,\"crate\":3,\"x\":4,\"y\":5}},"
+        "{\"round\":2,\"tick\":1,\"type\":\"ORDER_NO_OP\",\"params\":{\"player\":2,\"order\":\"TOGGLE\",\"reason\":\"NO_CONSOLE\"}},"
         "{\"round\":2,\"tick\":2,\"type\":\"CRATE_DELIVERED\",\"params\":{\"player\":1,\"crate\":3,\"score\":5}},"
         "{\"round\":2,\"tick\":2,\"type\":\"ROBOT_DISABLED\",\"params\":{\"player\":2,\"cause\":\"PIT\"}}]");
     REQUIRE(ev.has_value());
     auto lines = summarize_events(*ev);
-    REQUIRE(lines.size() == 4);  // tick 1: orders + pickup; tick 2: delivery + disable (no orders that tick)
-    CHECK(lines[0] == "R2 T1  P1:F2 P2:T(nothing)");
-    CHECK(lines[1].find("P1 picked up crate 3") != std::string::npos);
-    bool delivered = false, disabled = false;
-    for (const auto& l : lines) {
-        if (l.find("P1 DELIVERED crate 3 (score 5)") != std::string::npos) delivered = true;
-        if (l.find("P2 DISABLED (PIT)") != std::string::npos) disabled = true;
-    }
-    CHECK(delivered);
-    CHECK(disabled);
+    auto has = [&](const std::string& needle) {
+        for (const auto& l : lines) if (l.find(needle) != std::string::npos) return true;
+        return false;
+    };
+    CHECK(has("-- round 2, tick 1 --"));
+    CHECK(has("P1 F2: picks up crate 3 at (4,5)"));
+    CHECK(has("P2 T: nothing happened (NO_CONSOLE)"));
+    CHECK(has("P1 DELIVERED crate 3 (score 5)"));
+    CHECK(has("P2 DISABLED (PIT)"));
+}
+
+namespace {
+std::vector<std::string> summarize_round(Match& m, int before) {
+    auto ev = m.events_since(before);
+    Json arr = Json::array();
+    for (const auto& e : *ev) arr.push(event_to_json(e, "m"));
+    return summarize_events(arr);
+}
+int find_line(const std::vector<std::string>& lines, const std::string& needle) {
+    for (std::size_t i = 0; i < lines.size(); ++i)
+        if (lines[i].find(needle) != std::string::npos) return static_cast<int>(i);
+    return -1;
+}
+}  // namespace
+
+TEST_CASE("M1-A UI: training-01 two-player belts and pushes are explained in server order") {
+    MatchConfig c;
+    c.match_id = "m";
+    c.map = std::make_shared<const Map>(training01());
+    c.player_count = 2;
+    c.rounds = 6;
+    Match m(c);
+    int rid = 0;
+    auto play = [&](std::array<const char*, 3> p1, std::array<const char*, 3> p2) {
+        ++rid;
+        m.submit_program(1, rid, 1, {p1[0], p1[1], p1[2]}, true, "a" + std::to_string(rid));
+        m.submit_program(2, rid, 1, {p2[0], p2[1], p2[2]}, true, "b" + std::to_string(rid));
+        int before = m.state_version();
+        m.run_round();
+        return summarize_round(m, before);
+    };
+    play({"TURN_RIGHT", "FORWARD_2", "TURN_LEFT"}, {"TURN_LEFT", "FORWARD_2", "TURN_RIGHT"});
+    auto r2 = play({"FORWARD_2", "FORWARD_1", "WAIT"}, {"FORWARD_2", "FORWARD_1", "FORWARD_1"});
+    // Round 2: P1 steps onto the central belt by order, then WAITs and is carried by the belt.
+    CHECK(find_line(r2, "P1 F: drives (3,3) -> (4,3)") >= 0);
+    CHECK(find_line(r2, "belt moves P1 (4,3) -> (5,3)") >= 0);
+    CHECK(find_line(r2, "P1 W: waits") >= 0);
+    CHECK(find_line(r2, "belt moves P1 (5,3) -> (6,3)   (they ordered WAIT)") >= 0);
+    CHECK(find_line(r2, "P1 W: waits") < find_line(r2, "belt moves P1 (5,3) -> (6,3)"));  // orders precede belts
+
+    auto r3 = play({"WAIT", "WAIT", "WAIT"}, {"FORWARD_1", "WAIT", "WAIT"});
+    // Tick 1: P2 pushes P1 off the belt tile by order; then the belt phase pushes back.
+    int order_push = find_line(r3, "P2 F: pushes P1 (6,3) -> (5,3)");
+    int drives = find_line(r3, "P2 drives (7,3) -> (6,3)");
+    int belt_push = find_line(r3, "belt: P1 pushes P2 (6,3) -> (7,3)");
+    int belt_move = find_line(r3, "belt moves P1 (5,3) -> (6,3)   (they ordered WAIT)");
+    REQUIRE(order_push >= 0);
+    REQUIRE(drives >= 0);
+    REQUIRE(belt_push >= 0);
+    REQUIRE(belt_move >= 0);
+    CHECK(order_push < drives);
+    CHECK(drives < belt_push);
+    CHECK(belt_push < belt_move);
+
+    auto r4 = play({"FORWARD_2", "FORWARD_2", "FORWARD_2"}, {"WAIT", "WAIT", "WAIT"});
+    CHECK(find_line(r4, "P1 F2: pushes P2 (8,3) -> (9,3)") >= 0);
+    CHECK(find_line(r4, "P1 F2: is blocked going E into (10,3)") >= 0);
+}
+
+TEST_CASE("M1-A UI: rotations, toggles, blocked belts and belt crates have their own lines") {
+    auto ev = Json::parse(
+        "[{\"round\":1,\"tick\":1,\"type\":\"ORDER_EXECUTED\",\"params\":{\"player\":1,\"order\":\"TURN_RIGHT\"}},"
+        "{\"round\":1,\"tick\":1,\"type\":\"ROBOT_ROTATED\",\"params\":{\"player\":1,\"from\":\"E\",\"to\":\"S\"}},"
+        "{\"round\":1,\"tick\":1,\"type\":\"ORDER_EXECUTED\",\"params\":{\"player\":2,\"order\":\"TOGGLE\"}},"
+        "{\"round\":1,\"tick\":1,\"type\":\"GROUP_TOGGLED\",\"params\":{\"player\":2,\"group\":\"A\",\"console\":\"T001\",\"reversed\":true}},"
+        "{\"round\":1,\"tick\":1,\"type\":\"MOVE_BLOCKED\",\"params\":{\"player\":2,\"dir\":\"E\",\"x\":7,\"y\":3,\"cause\":\"CONVEYOR\"}},"
+        "{\"round\":1,\"tick\":1,\"type\":\"CRATE_MOVED\",\"params\":{\"crate\":4,\"from_x\":4,\"from_y\":3,\"x\":5,\"y\":3}}]");
+    REQUIRE(ev.has_value());
+    auto lines = summarize_events(*ev);
+    CHECK(find_line(lines, "P1 R: turns E -> S") >= 0);
+    CHECK(find_line(lines, "P2 T: toggles belt group A -> REVERSED") >= 0);
+    CHECK(find_line(lines, "belt cannot move P2 E into (7,3): blocked") >= 0);
+    CHECK(find_line(lines, "belt moves crate 4 (4,3) -> (5,3)") >= 0);
 }
 
 // ------------------------------------------------------------------ host over real sockets (single-threaded)
