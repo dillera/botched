@@ -219,7 +219,34 @@ No points are awarded for ordinary robot pushes, except a direct push that cause
 - `T` next to a belt console still toggles the belt group; a `K` console is only used when no belt console is adjacent. Keep the two kinds of console apart on maps.
 - Not started: charging turrets, tar, pit-push scoring, new hazards beyond the proximity trap, other maps, bot changes.
 
-**Stop gate:** playtest `trapworks-01` with two or more humans, then decide on G2-B. G2-B and later are not started.
+**Playtest findings (live SDL, accepted).** G2-A is accepted.
+
+- A persistent trap and multi-tick arming both worked: a claim made in one round stayed in force and fired in a later one.
+- P2 escaped the blast area on a single tick (the burst only judges where robots stand when the machinery phase runs).
+- Friendly fire behaved correctly: the owner is damaged like anyone else and earns nothing for it.
+- A mixed delivery/sabotage strategy was enjoyable.
+
+*Observations for later balancing (not blockers):* server bots repeatedly walk into armed traps, and delivery scoring still dominates sabotage. Both belong to G4 (bot behaviour) and G3 (map design and scoring balance).
+
+### G2-B step 1 — existing continuous lasers on one small map: **done, awaiting review** (2026-11-21)
+
+Scope was deliberately narrow: **no rules, scoring or mechanics changed** (the engine, state, events and clients are untouched). The roadmap asks to exercise the existing `L>`/`L<`/`L^`/`Lv` emitters before building anything new, so this step adds one map and the tests that pin current behaviour.
+
+- **Map:** `resources/maps/laserworks-01.map` (12x10, 2-4 players). `L>` at (1,5) and `L<` at (10,5) fire along row 5 and stop at the walls (4,5) and (7,5), so (2,5), (3,5), (8,5), (9,5) are lit and (5,5), (6,5) never are. Crossing north/south is a gamble through a lane or the longer safe way through the gap. The lasers stay neutral (no points).
+- **Verified (`tests/test_lasers.cpp`, 8 cases, all passing):**
+  - the map validates for 2, 3 and 4 players and has exactly two beams of two lit tiles each;
+  - a robot in a lit lane takes 1 damage per tick (`LASER_HIT` with the emitter position), is disabled on the third hit (`ROBOT_DISABLED`, cause `LASER`), and robots in the gap or beside a stopping wall take nothing; no `SCORE_AWARDED`, scores stay 0;
+  - the east lane works the same way;
+  - a disabled robot carrying a crate drops it on the tile where it fell (`CRATE_DROPPED`), the loose crate is not harmed by later ticks, and if a loose crate already lies there the carried crate is destroyed (`CRATE_DESTROYED`, `DROP_BLOCKED`);
+  - the robot respawns at round end on its spawn with damage 0 and `damage_taken` 3;
+  - SDL playback of hits, the disable, the crate drop and the respawn replays to exactly the authoritative board (two `Laser` steps, one `Disable`, one `Drop`, one `Respawn`);
+  - bots finish 12 rounds with 2-4 players, with identical state and event hashes on re-run (they avoid the lit lanes, so the map shows no laser damage in bot play: a human is needed to test the gamble).
+- **Live SDL:** server + two scripted `--ui` clients: P1 walks to (3,5) and waits; captured the beam lines from both emitters, the machinery phase, the explosion at (3,5) on the third hit with two damage pips, "P1 hit by a laser (damage 3)", "P1 DISABLED (LASER)" and the respawn at (1,1).
+- **Whole suite:** 224/224 test cases, 31 605 assertions; ASan/UBSan run also passes; `training-01` hashes unchanged.
+
+Not started: charging or capturable turrets, any new mechanic, scoring or rule change, bots using lasers deliberately.
+
+**Stop gate:** review `laserworks-01` (and playtest it with humans if desired) before deciding whether to proceed to the charging turret.
 
 ### Presentation requirements
 

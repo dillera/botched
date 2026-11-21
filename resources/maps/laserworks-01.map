@@ -1,0 +1,21 @@
+; Botched! map resource
+; id: laserworks-01
+; name: Laser Works
+; description: G2-B step 1: two continuous laser lanes across the middle, a safe gap between them.
+; players: 2-4
+;
+; Emitters L> at (1,5) and L< at (10,5) fire every tick along row 5 until they reach the walls at (4,5)
+; and (7,5): the lit tiles are (2,5), (3,5), (8,5) and (9,5). Each hit is +1 damage (three disable a robot,
+; which drops its crate where it stands). The middle tiles (5,5) and (6,5) are never lit, so the
+; north/south crossing is either a gamble through a lane or the safe, longer way through the gap.
+; The lasers are neutral machinery: they award no points.
+#   #   #   #   #   #   #   #   #   #   #   #
+#   S1  D1  .   .   .   .   .   .   D2  S2  #
+#   .   .   #   .   .   .   .   #   .   .   #
+#   .   .   .   .   G1  .   .   .   .   .   #
+#   .   #   .   .   .   .   .   .   #   .   #
+#   L>  .   .   #   .   .   #   .   .   L<  #
+#   .   #   .   .   .   .   .   .   #   .   #
+#   .   .   G2  .   .   .   G3  .   .   .   #
+#   S3  D3  .   .   .   .   .   .   D4  S4  #
+#   #   #   #   #   #   #   #   #   #   #   #

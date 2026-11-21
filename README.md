@@ -35,7 +35,7 @@ Build once (`cmake -S . -B build && cmake --build build -j`), then:
 
 ### Maps
 
-Maps are plain files in `resources/maps/*.map` (shipped: `training-01`, the spec's example, `factory-01`, `crossroads-01` and the G2-A playtest map `trapworks-01`).
+Maps are plain files in `resources/maps/*.map` (shipped: `training-01`, the spec's example, `factory-01`, `crossroads-01` the G2-A playtest map `trapworks-01` and the laser map `laserworks-01`).
 The server loads and validates every `.map` file at startup and reports problems per file on stderr; valid
 maps stay available when another file is bad, and duplicate ids are rejected. Adding a map needs no rebuild:
 drop a file in the directory and restart the server.
