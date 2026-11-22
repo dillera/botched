@@ -355,10 +355,12 @@ void Engine::award_sabotage(GameState& s, int owner, int points, const char* rea
 //  1. capture: a robot that entered one of its pads this tick claims it. If the current owner is among
 //     the entrants they keep it; otherwise the first entrant in pad scan order (y, then x) claims it.
 //     Standing on a pad claims nothing, and a capture never resets the cycle.
-//  2. cycle: charge 0 -> 1 -> 2 on two ticks, then the third tick fires and the charge returns to 0.
-//  3. fire: the nearest active robot at distance 1 or 2 along N, E, S, W with no blocked tile between
-//     takes 1 damage; ties break N, E, S, W. A robot already at 3 damage (felled this tick) is neither
-//     a target nor an obstruction, so every disable has exactly one source. No target, no shot.
+//  2. charge: charge 0 -> 1 -> 2 on two ticks (TURRET_CHARGING). At 2 the turret is READY and stays READY
+//     (across ticks and rounds) until a shot is actually fired.
+//  3. fire: a READY turret looks for the nearest active robot at distance 1 or 2 along N, E, S, W with no
+//     blocked tile between; it takes 1 damage and the turret resets to 0 (recharging from the next tick).
+//     Ties break N, E, S, W. A robot already at 3 damage (felled this tick) is neither a target nor an
+//     obstruction, so every disable has exactly one source. No target: nothing happens and it stays READY.
 // Points follow the trap rules: +1 for damaging an opponent of the owner, +3 more for the disabling hit,
 // nothing for self-damage or a neutral turret.
 void Engine::phase_turrets(GameState& s) {
@@ -388,8 +390,7 @@ void Engine::phase_turrets(GameState& s) {
             log_.emit("TURRET_CHARGING", obj({{"turret", t.id}, {"x", t.pos.x}, {"y", t.pos.y}, {"charge", ts->charge}, {"owner", ts->owner}}));
             continue;
         }
-        ts->charge = 0;
-        // 3. fire
+        // 3. fire (READY)
         const Robot* target = nullptr;
         int best_dist = 0, best_dir = 0;
         for (int d = 0; d < 4; ++d) {
@@ -402,10 +403,8 @@ void Engine::phase_turrets(GameState& s) {
                 break;
             }
         }
-        if (!target) {
-            log_.emit("TURRET_IDLE", obj({{"turret", t.id}, {"x", t.pos.x}, {"y", t.pos.y}, {"owner", ts->owner}}));
-            continue;
-        }
+        if (!target) continue;  // stays READY
+        ts->charge = 0;
         Robot& r = s.robot(target->id);
         r.damage += 1;
         r.damage_taken += 1;

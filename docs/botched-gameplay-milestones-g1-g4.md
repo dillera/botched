@@ -80,7 +80,7 @@ Evolve Botched! from a twelve-round crate-delivery race into a factory competiti
 | Hazard | Behaviour |
 |---|---|
 | **Proximity burst** | Covers the eight immediately neighbouring tiles, including diagonals. Starts armed and neutral. During the machinery phase, if one or more robots occupy its affected area, it damages **all robots in range simultaneously** for 1 HP each, then disarms. An adjacent `T` command rearms it and assigns ownership to the activating player. |
-| **Charging laser turret** | Automatically cycles through two charging ticks and one firing tick. On its firing tick, it targets the nearest eligible robot within two tiles along the cardinal directions, fires once for 1 damage, then restarts charging. Starts neutral; players can capture ownership by entering its associated control tile. |
+| **Charging laser turret** | Charges for two ticks and is then READY (2/2). While READY, on each machinery phase it targets the nearest eligible robot within two tiles along the cardinal directions, fires once for 1 damage, then resets to 0/2 and recharges. With no target it stays READY. Starts neutral; players can capture ownership by entering its associated control tile. |
 | **Continuous directional laser** | Existing `L>`, `L<`, `L^`, `Lv` emitters remain unchanged. They fire along a fixed ray every tick and cause 1 damage. They remain neutral environmental hazards and do not award sabotage points. |
 | **Pit** | Permanent open hole. Entering immediately disables a robot. Carried cargo drops on the last safe tile if possible. Existing behaviour remains unchanged. |
 | **Tar generator** | Affects the eight neighbouring tiles around the generator. Robots within its area have reduced voluntary movement: `F2` advances at most one tile, `F` remains one tile, and `B` does not translate. Turning, dropping, toggling and waiting remain unaffected. Tar causes no damage. |
@@ -114,17 +114,17 @@ A player may deliberately wait outside the affected area, attempt a different ro
 
 **Charging and firing**
 
-1. Tick 1: charge.
-2. Tick 2: charge.
-3. Tick 3: fire one shot, then restart the cycle.
+1. Tick 1: charge (0/2 -> 1/2).
+2. Tick 2: charge (1/2 -> 2/2). The turret is now **READY**.
+3. At every subsequent machinery phase a READY turret looks for an eligible target. If none exists it stays READY, indefinitely and across round boundaries. When a target is found it fires once and resets to 0/2, starting another two-tick recharge. (Approved after playtesting; the original fixed three-tick cycle always fired on tick 3 of a round.)
 
-On the firing tick:
+When a READY turret checks for a target:
 
 - Select the nearest eligible robot at distance 1 or 2 in a cardinal direction.
 - Walls and other blocked terrain obstruct line of sight.
 - If multiple targets are equally near, resolve ties using a fixed, documented order (proposed: N, E, S, W, then player ID).
 - Fire at most once per cycle, dealing 1 damage.
-- If no target is available, fire nothing and restart charging.
+- If no target is available, fire nothing and **stay READY** (no reset).
 - The turret's owner receives any applicable sabotage points when another player is damaged.
 
 The turret's charging state, ownership and firing action must be visible in the SDL client.
@@ -255,11 +255,11 @@ Continuous lasers are accepted and unchanged (neutral, no points). This step add
 **What shipped**
 
 - Map tokens `Y<n>` (turret device, blocked) and `P<n>` (control pad, walkable), validated like trap/console pairs. New map `resources/maps/turretworks-01.map` (12x10, 2-4 players): `Y1` at (5,4), dispenser G1 one tile north of it, a wall at (5,6) shortening the southern shot, and a `P1` pad on each side at (2,4) and (9,4), both out of range.
-- Rules, as specified: neutral at the start; charge, charge, fire on a three-tick cycle (the counter is world state, so a turret fires on tick 3 of every round and ownership changes never touch it); target = nearest robot at distance 1-2 along N/E/S/W with no blocked tile between, ties N, E, S, W; one shot, 1 damage, or no shot when nothing is in range; the owner can be hit; capture by entering a pad; sabotage scoring identical to traps (+1 per damaged opponent, +3 more for the disabling hit, 0 for self or neutral).
+- Rules (revised after playtest, see "READY revision" below): neutral at the start; two charging ticks, then READY until a shot is actually fired (the charge is world state, so READY persists across rounds and ownership changes never touch it); target = nearest robot at distance 1-2 along N/E/S/W with no blocked tile between, ties N, E, S, W; one shot, 1 damage, or no shot when nothing is in range; the owner can be hit; capture by entering a pad; sabotage scoring identical to traps (+1 per damaged opponent, +3 more for the disabling hit, 0 for self or neutral).
 - Settled ordering (`docs/rules-interpretations.md` #31-36): 1 orders, 2 conveyors, 3 lasers, 3b traps, **3c turrets (ascending id: capture, cycle, fire)**, 4 disables. A robot already felled by a laser or trap this tick is not a turret target, so each disable has one source and one bonus. "Entering" means arriving on a pad this tick; standing on one claims nothing; with two entrants the owner keeps it, otherwise pad scan order decides.
-- Events (authoritative, nothing recomputed by clients): `TURRET_CAPTURED`, `TURRET_CHARGING` (1 or 2), `TURRET_FIRED` (victim, owner, direction, distance, damage, points), `TURRET_IDLE`, `SCORE_AWARDED` with reasons `TURRET_DAMAGE` / `TURRET_DISABLE` (carrying `turret`), `ROBOT_DISABLED` with `cause: "TURRET"`, `turret`, `by`. Snapshots and checkpoints gain `turrets: [{id, charge, owner}]` only on turret maps; `sabotage` now appears on trap or turret maps.
+- Events (authoritative, nothing recomputed by clients): `TURRET_CAPTURED`, `TURRET_CHARGING` (1 or 2), `TURRET_FIRED` (victim, owner, direction, distance, damage, points), `SCORE_AWARDED` with reasons `TURRET_DAMAGE` / `TURRET_DISABLE` (carrying `turret`), `ROBOT_DISABLED` with `cause: "TURRET"`, `turret`, `by`. Snapshots and checkpoints gain `turrets: [{id, charge, owner}]` only on turret maps; `sabotage` now appears on trap or turret maps.
 - Versioning: still `botched/1`, additive and gated on the tokens, as with traps.
-- SDL: turret with a barrel on each side and two charge pips (glows at 2), owner colour, a faint cross over the tiles in range, pad with an owner-coloured ring, replay steps for charging (inward ring), capture ("CAPTURED"), firing (beam, impact, `-1`) and idle ("no target"), the gold `+N`, a `Turrets:` line in the robot panel, scoreboard `sabotage +N`, tile hover text, narration in both clients and the terminal board (`Y1` plus charge mark, `P1`).
+- SDL: turret with a barrel on each side and two charge pips (glows at 2), owner colour, a faint cross over the tiles in range, pad with an owner-coloured ring, replay steps for charging (inward ring), capture ("CAPTURED") and firing (beam, impact, `-1`), the gold `+N`, a `Turrets:` line in the robot panel, scoreboard `sabotage +N`, tile hover text, narration in both clients and the terminal board (`Y1` plus charge mark, `P1`).
 
 **Evidence**
 
@@ -268,7 +268,7 @@ Continuous lasers are accepted and unchanged (neutral, no points). This step add
 | Whole suite, normal and ASan/UBSan | 239/239 test cases, 31 826 assertions, both builds (15 new in `tests/test_turrets.cpp`) |
 | Existing behaviour | `training-01` sim hashes still `8b9b82fb718c2751` / `415308a3742c5db6`; all earlier pins and maps unchanged; training-01 snapshots carry no `turrets` or `sabotage` (tested) |
 | Map | validates for 2-4 players, text round-trip, orphan pad / orphan turret / duplicate id / bad id rejected, the device blocks and the pad does not, no `L` emitters |
-| Cycle | charge 1 on tick 1, charge 2 on tick 2, fire or idle on tick 3, and the cycle continues into the next round |
+| Cycle | (superseded by the READY revision below) |
 | Targeting | nearest wins; N2 loses to E1; ties N > E > S > W; distance 3 and diagonals never hit; W2 is in range; a wall at distance 1 hides a robot at distance 2 |
 | Scoring and attribution | owned hit +1; disabling hit +1 and +3 once (`by`, `turret` on the event); crate drops where the robot fell; owner self-hit and self-disable score 0; neutral hit and disable score 0; a laser-felled robot is not targeted and its disable stays a laser disable with no bonus |
 | Ownership | entering a pad claims, a second player entering the other pad takes it (previous owner reported), charge unaffected, the capture on a firing tick owns that shot; standing on a pad from the start claims nothing; simultaneous entrants resolve by pad order |
@@ -278,9 +278,17 @@ Continuous lasers are accepted and unchanged (neutral, no points). This step add
 
 **Notes for the playtest**
 
-- Because the cycle is three ticks and a round has three ticks, the turret always fires on tick 3. Players can count on it; say if you would rather desynchronise it (for example a per-turret starting charge).
+- (Superseded: the fixed tick-3 firing was replaced by the READY behaviour below.)
 - Server bots do not claim turrets deliberately (G4). They plan on the real rules engine, so they see the damage but not the ownership opportunity.
 - The next roadmap items (G2-C tar, G2-D pit-push) are not started.
+
+**READY revision (approved after live playtest, 2026-11-22).** Playtesting showed the fixed three-tick cycle wasted shots whenever nobody happened to be in range on tick 3. The turret now keeps full charge until a shot is actually fired: two charging ticks, then READY (2/2); each machinery phase while READY it checks for a target, fires once (resetting to 0/2) if there is one, and otherwise stays READY indefinitely, across round boundaries included. Targeting, ownership, damage, scoring and animations are unchanged. Consequences:
+
+- The `TURRET_IDLE` event is gone (a READY turret with no target emits nothing); `TURRET_CHARGING` (1, 2) and `TURRET_FIRED` are unchanged, and `charge` in snapshots is still 0-2 (2 = READY). The playback step and narration for "no target" were removed with it.
+- The tick that reaches 2/2 only charges; the earliest shot is the following tick (a fresh turret therefore first fires on tick 3).
+- A target that stays in range is hit once per recharge, i.e. every third tick.
+- READY is shown everywhere: a pulsing "READY" label and glowing barrels on the SDL turret, a brighter range cross, `Turrets: Y1 READY (P1)` in the robot panel, and `READY` in the terminal board, legend and tile description.
+- Evidence: 242/242 test cases, 31 858 assertions, normal and ASan/UBSan; `training-01` hashes unchanged; `turretworks-01` with 2-4 bots deterministic. New/changed tests: READY held across a round boundary and for three further empty rounds (never recharges, never fires); a missed opportunity then a first shot when a robot steps into range (fires on that tick, recharges ticks 2-3 and is READY again); a target left in range is hit every third tick; wall-hidden robot leaves the turret READY; playback of a READY turret across a round boundary equals the authoritative board.
 
 **Stop gate:** playtest `turretworks-01` with humans before deciding anything further.
 

@@ -161,8 +161,6 @@ void apply_event(BoardView& b, const Json& e) {
         for (auto& tv : b.turrets) if (tv.id == gi(p, "turret")) tv.owner = gi(p, "owner");
     } else if (t == "TURRET_CHARGING") {
         for (auto& tv : b.turrets) if (tv.id == gi(p, "turret")) tv.charge = gi(p, "charge");
-    } else if (t == "TURRET_IDLE") {
-        for (auto& tv : b.turrets) if (tv.id == gi(p, "turret")) tv.charge = 0;
     } else if (t == "TURRET_FIRED") {
         for (auto& tv : b.turrets) if (tv.id == gi(p, "turret")) tv.charge = 0;
         if (r) r->damage = gi(p, "damage");
@@ -308,7 +306,7 @@ void Playback::build(const Json& batch, std::size_t first_event) {
         if (t == "CRATE_MOVED" || t == "LASER_HIT") return true;
         if (t == "ROBOT_MOVED" || t == "MOVE_BLOCKED") return p.get_string("cause").value_or("") == "CONVEYOR";
         if (t == "TRAP_TRIGGERED" || t == "TRAP_HIT" || t == "SCORE_AWARDED") return true;
-        if (t == "TURRET_CAPTURED" || t == "TURRET_CHARGING" || t == "TURRET_FIRED" || t == "TURRET_IDLE") return true;
+        if (t == "TURRET_CAPTURED" || t == "TURRET_CHARGING" || t == "TURRET_FIRED") return true;
         if (t == "ROBOT_DISABLED") return p.get_string("cause").value_or("") == "LASER" || p.get_string("cause").value_or("") == "TRAP" ||
                                           p.get_string("cause").value_or("") == "TURRET";
         if (t == "ROBOT_PUSHED") {  // caused by the pusher's own move: look ahead for it
@@ -563,16 +561,6 @@ void Playback::build(const Json& batch, std::size_t first_event) {
             s.events = {i};
             s.commit_first = true;
             s.caption = "turret " + std::to_string(s.trap) + " charging " + std::to_string(s.charge) + "/2";
-            push(std::move(s));
-        } else if (t == "TURRET_IDLE") {
-            Step s = new_step(Step::TurretIdle, 350);
-            s.trap = gi(p, "turret");
-            s.owner = gi(p, "owner");
-            s.cx = gi(p, "x");
-            s.cy = gi(p, "y");
-            s.events = {i};
-            s.commit_first = true;
-            s.caption = "turret " + std::to_string(s.trap) + " fires its cycle: no target in range";
             push(std::move(s));
         } else if (t == "TURRET_FIRED") {
             Step s = new_step(Step::TurretFire, 900);

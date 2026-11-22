@@ -127,14 +127,14 @@ the scoreboard lists `sabotage +N`. Server bots do not use traps yet (that is G4
 ### Charging laser turrets (G2-B)
 
 Maps may contain `Y<n>` (a turret, solid) and `P<n>` (its control pad). A turret is **neutral** at the start
-and cycles on its own: two charging ticks, then on the third tick it fires once at the nearest robot within two
-tiles north, east, south or west of it (a wall stops the shot; ties go N, E, S, W; nothing in range means no
-shot) for 1 damage, and starts charging again. A robot that **enters** a `P<n>` pad claims the turret; a rival
+and charges on its own for two ticks, after which it is **READY**. A READY turret fires once, on the first
+machinery phase in which a robot is within two tiles north, east, south or west of it (a wall stops the shot; the
+nearest robot wins, ties go N, E, S, W), for 1 damage, and then recharges from 0. With nobody in range it simply
+stays READY, across rounds. A robot that **enters** a `P<n>` pad claims the turret; a rival
 can take it by entering a pad later, and neither affects the charge. Scoring matches the traps: +1 for hitting an
 opponent of the owner, +3 more for a disabling hit, nothing for self-inflicted or neutral damage. These are new
 tokens only: the existing `L>` lasers are unchanged and still neutral, and `turrets` (state) and the
-`TURRET_*` events only appear on maps with turrets. The SDL client shows two charge pips on the turret (it
-glows when the next tick fires), a faint cross over the tiles in range, the owner's colour, a beam to the
+`TURRET_*` events only appear on maps with turrets. The SDL client shows two charge pips and a pulsing READY label on the turret, a faint cross over the tiles in range, the owner's colour, a beam to the
 victim with `-1`, a `CAPTURED` ring and the gold `+N`. Try it (server bots do not use turrets deliberately):
 
 ```sh

@@ -87,7 +87,7 @@ struct Step {
         Mark, Turn, Move, Push, Blocked, Pickup, Deliver, Drop, Toggle, CrateMove, CrateGone,
         Laser, Disable, Respawn, Spawn, Quiet, Instant,
         TrapArm, TrapBurst, TrapHit, Score,
-        TurretCapture, TurretCharge, TurretFire, TurretIdle
+        TurretCapture, TurretCharge, TurretFire
     } kind = Instant;
     enum Phase { Orders, Machinery, RoundEdge } phase = Orders;
     int ms = 0;

@@ -324,11 +324,11 @@ std::string render_legend(const Map& map, const Json& snap, const Style& st) {
     std::string turrets;
     for (const auto& tp : map.turrets) {
         const auto& ti = v.turrets[static_cast<std::size_t>(tp.id % 10)];
-        turrets += "  Y" + std::to_string(tp.id) + "(" + std::to_string(tp.pos.x) + "," + std::to_string(tp.pos.y) + ") charge " +
-                   std::to_string(ti.charge) + "/2, " + (ti.owner == 0 ? std::string("neutral") : "P" + std::to_string(ti.owner));
+        turrets += "  Y" + std::to_string(tp.id) + "(" + std::to_string(tp.pos.x) + "," + std::to_string(tp.pos.y) + ") " +
+                   (ti.charge >= 2 ? paint(st, "READY", "1;91") : "charge " + std::to_string(ti.charge) + "/2") + ", " + (ti.owner == 0 ? std::string("neutral") : "P" + std::to_string(ti.owner));
     }
     if (!turrets.empty())
-        out += "Turrets:" + turrets + "   (fire every 3rd tick at the nearest robot within 2 tiles N/E/S/W; step on P<n> to claim)\n";
+        out += "Turrets:" + turrets + "   (2 ticks to charge, then READY: fires at the nearest robot within 2 tiles N/E/S/W; step on P<n> to claim)\n";
     // dispensers
     std::string disp;
     for (const auto& d : map.dispensers) {
@@ -369,8 +369,8 @@ std::string describe_tile(const Map& map, const Json& snap, Pos pos, int viewer)
         case Terrain::Turret: {
             const auto& ti = v.turrets[static_cast<std::size_t>(t.owner % 10)];
             std::string who = ti.owner == 0 ? "neutral" : ti.owner == viewer ? "yours" : "owned by P" + std::to_string(ti.owner);
-            return "charging laser turret " + std::to_string(t.owner) + " (charge " + std::to_string(ti.charge) + "/2, " + who +
-                   ") - fires every 3rd tick at the nearest robot within 2 tiles N/E/S/W";
+            return "charging laser turret " + std::to_string(t.owner) + " (" + (ti.charge >= 2 ? std::string("READY") : "charge " + std::to_string(ti.charge) + "/2") + ", " + who +
+                   ") - charges for 2 ticks, then fires at the nearest robot within 2 tiles N/E/S/W as soon as one is there";
         }
         case Terrain::TurretPad:
             return "control pad of turret " + std::to_string(t.owner) + " - step onto it to claim the turret";

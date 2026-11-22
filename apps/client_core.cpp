@@ -229,8 +229,6 @@ std::vector<std::string> summarize_events(const Json& events) {
             act(pl, "captures turret " + std::to_string(pint(p, "turret")));
         } else if (type == "TURRET_CHARGING") {
             plain("turret " + std::to_string(pint(p, "turret")) + " charging " + std::to_string(pint(p, "charge")) + "/2");
-        } else if (type == "TURRET_IDLE") {
-            plain("turret " + std::to_string(pint(p, "turret")) + " fires its cycle but has no target");
         } else if (type == "TURRET_FIRED") {
             const int owner = pint(p, "owner");
             plain("TURRET " + std::to_string(pint(p, "turret")) + " (" + (owner ? P(owner) : std::string("neutral")) + ") fires " +

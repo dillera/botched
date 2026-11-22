@@ -411,6 +411,7 @@ void draw_turret(Gfx& g, int x, int y, int s, int id, int charge, int owner, Uin
         g.disc(cx + (i == 0 ? -0.09f : 0.09f) * s, cy, s * 0.065f, lit ? mix(C(255, 90, 60), C(255, 230, 150), pulse) : C(66, 70, 82), 12);
     }
     g.text(x + s / 2, y + 1, "Y" + std::to_string(id), oc, g.small, 1);
+    if (ready) g.text(x + s / 2, y + s - g.line_h(g.small) - 1, "READY", mix(C(255, 200, 120), C(255, 255, 255), pulse), g.small, 1);
 }
 
 // G2-B turret control pad: step on it to claim the turret. The ring shows who owns it now.
@@ -1145,13 +1146,6 @@ void draw_board(App& a, Gfx& g, Uint32 now) {
                 g.ring(c0.x, c0.y, s * (0.95f - 0.4f * pr), 3, C(oc.r, oc.g, oc.b, static_cast<int>(200 * pr)), 36);  // energy drawn in
                 break;
             }
-            case Step::TurretIdle: {
-                V2 c0 = cell_c(static_cast<float>(st->cx), static_cast<float>(st->cy));
-                g.alpha = std::min(1.f, 2.f * fade_out);
-                g.text(static_cast<int>(c0.x), static_cast<int>(c0.y - s * 0.8f) - 10, "no target", kMuted, g.small, 1);
-                g.alpha = 1.f;
-                break;
-            }
             case Step::TurretFire: {
                 V2 c0 = cell_c(static_cast<float>(st->cx), static_cast<float>(st->cy));
                 const SDL_Color oc = trap_color(st->owner);
@@ -1366,7 +1360,7 @@ void draw_robot_panel(App& a, Gfx& g) {
         std::string tr = "Turrets:";
         for (const auto& tp : a.map->turrets) {
             const TurretView* tv = a.shown().turret(tp.id);
-            tr += "  Y" + std::to_string(tp.id) + " " + std::to_string(tv ? tv->charge : 0) + "/2" +
+            tr += "  Y" + std::to_string(tp.id) + " " + (tv && tv->charge >= 2 ? std::string("READY") : std::to_string(tv ? tv->charge : 0) + "/2") +
                   (tv && tv->owner ? " (P" + std::to_string(tv->owner) + ")" : " (neutral)");
         }
         g.text(L.robot.x + 12, y + (has_traps ? 5 : 4) * lh, tr, kRed, g.small);

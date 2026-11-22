@@ -156,7 +156,7 @@ TEST_CASE("G2-B turret state: neutral and uncharged at the start, snapshot carri
     CHECK(t.snapshot().find("players")->items()[0].find("sabotage") == nullptr);
 }
 
-TEST_CASE("G2-B turret cycle: charge, charge, fire (or idle), then charging restarts - owner changes do not matter") {
+TEST_CASE("G2-B turret cycle: two charging ticks, then READY; a missed opportunity keeps it READY indefinitely") {
     Match m = setup(tw_map(), 2, {{1, 1}, {10, 1}});   // nobody in range
     play_round(m);
     auto charging = events_of(m, "TURRET_CHARGING");
@@ -165,17 +165,55 @@ TEST_CASE("G2-B turret cycle: charge, charge, fire (or idle), then charging rest
     CHECK(charging[0]->tick == 1);
     CHECK(pi(*charging[1], "charge") == 2);
     CHECK(charging[1]->tick == 2);
-    auto idle = events_of(m, "TURRET_IDLE");
-    REQUIRE(idle.size() == 1);
-    CHECK(idle[0]->tick == 3);
+    CHECK(events_of(m, "TURRET_FIRED").empty());   // tick 3 found nobody: no shot, no reset
+    CHECK(m.state().turrets[0].charge == 2);       // READY, including across the round boundary
+    for (int r = 0; r < 3; ++r) play_round(m);     // three more rounds with nobody in range
+    CHECK(events_of(m, "TURRET_CHARGING").size() == 2);   // it never charged again
     CHECK(events_of(m, "TURRET_FIRED").empty());
-    CHECK(m.state().turrets[0].charge == 0);
-    play_round(m);   // the cycle simply continues into the next round
-    CHECK(events_of(m, "TURRET_CHARGING").size() == 4);
-    CHECK(events_of(m, "TURRET_IDLE").size() == 2);
+    CHECK(m.state().turrets[0].charge == 2);
 }
 
-TEST_CASE("G2-B turret: fires exactly on the third tick at a robot in range, once, for 1 damage") {
+TEST_CASE("G2-B turret cycle: a READY turret fires the moment a target appears, then recharges for two ticks") {
+    // P1 walks into range on tick 2 of round 2 (the turret has been READY since round 1).
+    Match m = setup(tw_map(), 2, {{5, 1}, {10, 1}});   // (5,1) is distance 3 north: out of range
+    play_round(m);
+    REQUIRE(m.state().turrets[0].charge == 2);
+    CHECK(events_of(m, "TURRET_FIRED").empty());
+    play_round(m, {{"WAIT", "TURN_RIGHT", "WAIT"}});   // still out of range: nothing
+    CHECK(events_of(m, "TURRET_FIRED").empty());
+    // P1 (heading S after turning right) steps to (5,2) = distance 2 north on tick 1 of the next round
+    play_round(m, {{"FORWARD_1", "WAIT", "WAIT"}});
+    auto fired = events_of(m, "TURRET_FIRED");
+    REQUIRE(fired.size() == 1);
+    CHECK(fired[0]->round == 3);
+    CHECK(fired[0]->tick == 1);
+    CHECK(pi(*fired[0], "player") == 1);
+    CHECK(pi(*fired[0], "distance") == 2);
+    // reset to 0 on the firing tick, then two charging ticks, then READY again (one shot only, tick 1)
+    auto charging = events_of(m, "TURRET_CHARGING");
+    REQUIRE(charging.size() == 4);   // round 1: 1, 2; round 3 ticks 2 and 3: 1, 2
+    CHECK(charging[2]->round == 3);
+    CHECK(charging[2]->tick == 2);
+    CHECK(pi(*charging[2], "charge") == 1);
+    CHECK(charging[3]->tick == 3);
+    CHECK(pi(*charging[3], "charge") == 2);
+    CHECK(m.state().turrets[0].charge == 2);
+    CHECK(events_of(m, "TURRET_FIRED").size() == 1);   // P1 still in range on ticks 2-3, but it was recharging
+}
+
+TEST_CASE("G2-B turret cycle: a target that stays in range is hit once per recharge (every third tick)") {
+    Match m = setup(tw_map(), 2, {{5, 3}, {10, 1}}, Tur{2, 0});   // READY, P1 adjacent
+    play_round(m);   // fires tick 1, recharges ticks 2-3
+    play_round(m);   // READY after tick 3, so it fires again on tick 1
+    auto fired = events_of(m, "TURRET_FIRED");
+    REQUIRE(fired.size() == 2);
+    CHECK(fired[0]->round == 1);
+    CHECK(fired[0]->tick == 1);
+    CHECK(fired[1]->round == 2);
+    CHECK(fired[1]->tick == 1);
+}
+
+TEST_CASE("G2-B turret: a fresh turret fires on the first tick it is READY (tick 3), once, for 1 damage") {
     Match m = setup(tw_map(), 2, {{5, 3}, {10, 1}});   // P1 one tile north of the turret
     play_round(m);
     auto fired = events_of(m, "TURRET_FIRED");
@@ -211,7 +249,7 @@ TEST_CASE("G2-B turret targeting: a wall blocks the line of sight") {
     Match m = setup(walled, 2, {{7, 4}, {10, 1}}, Tur{2, 0});
     play_round(m);
     CHECK(events_of(m, "TURRET_FIRED").empty());
-    CHECK(events_of(m, "TURRET_IDLE").size() == 1);
+    CHECK(m.state().turrets[0].charge == 2);   // READY, held back by the wall
     // and the wall at (5,6) shortens the southern shot to the single tile (5,5), as designed
     auto plain = tw_map();
     CHECK(plain->blocked({5, 6}));
@@ -286,7 +324,7 @@ TEST_CASE("G2-B turret ownership: entering a pad claims; standing still, or an o
     REQUIRE(charging.size() == 2);   // 1 then 2: capturing did not pause or reset it
     CHECK(pi(*charging[0], "charge") == 1);
     CHECK(pi(*charging[1], "charge") == 2);
-    CHECK(pi(*events_of(m, "TURRET_IDLE")[0], "owner") == 2);   // the third tick fires with the new owner
+    CHECK(m.state().turrets[0].charge == 2);   // READY with its new owner, nobody in range
     // another round: P1 and P2 both just stand on pads -> no new capture
     play_round(m);
     CHECK(events_of(m, "TURRET_CAPTURED").size() == 2);
@@ -401,4 +439,23 @@ TEST_CASE("G2-B: bots play turretworks-01 to the end deterministically with 2-4 
         CHECK(a.state_hash == b.state_hash);
         CHECK(a.event_hash == b.event_hash);
     }
+}
+
+TEST_CASE("G2-B playback: a turret left READY across a round boundary replays to the authoritative board") {
+    Match m = setup(tw_map(), 2, {{1, 1}, {10, 1}});
+    const ui::BoardView before = ui::read_board(m.snapshot());
+    const int version = m.state_version();
+    play_round(m);
+    play_round(m);
+    const auto evs = m.events_since(version);
+    REQUIRE(evs.has_value());
+    Json events = Json::array();
+    for (const auto& e : *evs) events.push(event_to_json(e, "g2b"));
+    ui::Playback pb;
+    pb.set_speed(8);
+    pb.start(before, events);
+    while (pb.active()) pb.advance(50);
+    const ui::BoardView after = ui::read_board(m.snapshot());
+    CHECK_MESSAGE(pb.board().equals(after), pb.board().diff(after));
+    CHECK(after.turret(1)->charge == 2);
 }
