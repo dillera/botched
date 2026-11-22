@@ -13,7 +13,7 @@ Evolve Botched! from a twelve-round crate-delivery race into a factory competiti
 ## Existing behaviour vs new proposals
 
 - **Already implemented:** pits (`O`) disable robots on entry; conveyors and consoles (`C>A`, `TA`); three-hit durability and respawns; stationary directional ray emitters (`L>`, `L<`, `L^`, `Lv`) that fire each tick. Current playtest maps rarely exercise laser damage.
-- **Not implemented:** slowing tar, pit-push scoring or bot personalities. (Score-target victory, player-attributed traps, the proximity burst, the charging/targeting laser turret and sabotage points are done; see the status blocks below.)
+- **Not implemented:** pit-push scoring or bot personalities. (Score-target victory, player-attributed traps, the proximity burst, the charging/targeting laser turret, tar and sabotage points are done; see the status blocks below.)
 - **Compatibility:** New scoring, traps and end conditions change normative gameplay. Introduce an explicitly versioned rules contract (proposed `botched/2`) when approved; keep `botched/1` fixtures and semantics intact where practical. **Never reinterpret an existing `L>` ray emitter as the new targeting turret.**
 
 ## G1 — Score-target victory
@@ -83,7 +83,7 @@ Evolve Botched! from a twelve-round crate-delivery race into a factory competiti
 | **Charging laser turret** | Charges for two ticks and is then READY (2/2). While READY, on each machinery phase it targets the nearest eligible robot within two tiles along the cardinal directions, fires once for 1 damage, then resets to 0/2 and recharges. With no target it stays READY. Starts neutral; players can capture ownership by entering its associated control tile. |
 | **Continuous directional laser** | Existing `L>`, `L<`, `L^`, `Lv` emitters remain unchanged. They fire along a fixed ray every tick and cause 1 damage. They remain neutral environmental hazards and do not award sabotage points. |
 | **Pit** | Permanent open hole. Entering immediately disables a robot. Carried cargo drops on the last safe tile if possible. Existing behaviour remains unchanged. |
-| **Tar generator** | Affects the eight neighbouring tiles around the generator. Robots within its area have reduced voluntary movement: `F2` advances at most one tile, `F` remains one tile, and `B` does not translate. Turning, dropping, toggling and waiting remain unaffected. Tar causes no damage. |
+| **Tar generator** | Affects the eight neighbouring tiles around the generator. Robots within its area have reduced voluntary movement: `F2` advances at most one tile, while `F` and `B` cannot move. Turning, dropping, toggling and waiting remain unaffected. Tar causes no damage. |
 
 ### G2-A — Proximity trap rules
 
@@ -133,20 +133,18 @@ The charging turret is **not** a replacement for existing continuous directional
 
 ### G2-C — Tar rules
 
-Tar is a persistent movement hazard, not a damage source.
+Tar is a persistent movement hazard affecting the **eight neighbouring tiles** around a tar generator. It restricts voluntary movement immediately, not during the machinery phase.
 
-When a robot begins a voluntary movement instruction inside the eight-tile area surrounding a tar generator:
+- `FORWARD_2` moves at most one tile while in tar.
+- `FORWARD_1` and `BACK_1` cannot move while in tar.
+- Entering tar during `FORWARD_2` immediately cancels the remaining movement substep.
+- Rotations, `DROP`, `TOGGLE` and `WAIT` are unaffected.
+- Pushing remains possible through an allowed `FORWARD_2` movement.
+- Being pushed or moved by conveyors is unaffected by tar.
 
-- `FORWARD_2` becomes a one-tile forward attempt.
-- `FORWARD_1` remains unchanged.
-- `BACK_1` does not move.
-- Rotations, `DROP`, `TOGGLE` and `WAIT` behave normally.
-- Pushing remains possible through an allowed one-tile movement attempt.
-- Conveyor-induced movement and being pushed by another robot are not slowed.
+Tar is checked after each movement substep, so its effects apply immediately upon entering the affected area, including when entering from outside.
 
-No fractional speed, alternate-tick counters or real-time timing mechanics are required.
-
-Tar awards no points. It is intended to make movement planning less predictable and create opportunities for traps and interception.
+Tar causes no damage and awards no points. No fractional speed, timing counters or additional machinery phase is required.
 
 ### Sabotage scoring
 
@@ -291,6 +289,42 @@ Continuous lasers are accepted and unchanged (neutral, no points). This step add
 - Evidence: 242/242 test cases, 31 858 assertions, normal and ASan/UBSan; `training-01` hashes unchanged; `turretworks-01` with 2-4 bots deterministic. New/changed tests: READY held across a round boundary and for three further empty rounds (never recharges, never fires); a missed opportunity then a first shot when a robot steps into range (fires on that tick, recharges ticks 2-3 and is READY again); a target left in range is hit every third tick; wall-hidden robot leaves the turret READY; playback of a READY turret across a round boundary equals the authoritative board.
 
 **Stop gate:** playtest `turretworks-01` with humans before deciding anything further.
+
+### G2-C tar — implementation: **done, awaiting playtest** (2026-11-22)
+
+Implements the approved "G2-C — Tar rules" section as written. No damage, no points, no new world state, no bot changes; G2-D is not started.
+
+**What shipped**
+
+- Map token `A` (no id): a tar generator, solid like a wall or turret. The eight tiles around it (Chebyshev distance 1, walls do not shield, the generator's own tile is not tar) are tar, via `Map::in_tar`. Tar is a property of the map, so snapshots, checkpoints, hashes and every existing map are unchanged.
+- Rules, in the order the section lists them:
+  - `FORWARD_1` and `BACK_1` cannot move a robot that starts in tar: `ORDER_NO_OP` with `reason: "TAR"` (the robot stays put and pushes nothing). Entering tar from outside with them is fine.
+  - `FORWARD_2` makes its first one-tile substep as usual, then tar is checked: if the robot now stands in tar the second substep is cancelled (`TAR_SLOWED` event). Entering tar on the *second* substep leaves nothing to cancel.
+  - Rotations, `DROP`, `TOGGLE`, `WAIT` are untouched (they keep their normal no-op reasons).
+  - A robot in tar can push with an allowed `FORWARD_2`; pushed robots and conveyor movement ignore tar.
+- Interpretation recorded in `docs/rules-interpretations.md` #37-41. The one judgement call: tar is judged after each substep, so a `FORWARD_2` that *starts* in tar but whose first tile leaves it continues freely for the second tile (the section says "checked after each movement substep").
+- Map: `resources/maps/tarworks-01.map` (12x10, 2-4 players): generator at (5,4) with dispenser G1 inside the tar, so the central crate is a slow grab while the outer ring is fast.
+- SDL: a tar generator sprite, the eight tar tiles tinted purple with slow bubbles (always visible), tile hover text and the robot panel's "On: tar: F2 moves 1 tile, F and B cannot move", a replay step with a purple pulse and "TAR!" for `TAR_SLOWED` and for a no-op in tar, plus narration ("stuck in tar, cannot move", "slowed by tar: FORWARD_2 stops after one tile"). The terminal board shows `~` on tar and `A`.
+
+**Evidence**
+
+| Check | Result |
+|---|---|
+| Whole suite, normal and ASan/UBSan | 252/252 test cases, 32 118 assertions, both builds (8 new in `tests/test_tar.cpp`) |
+| Existing behaviour | `training-01` sim hashes still `8b9b82fb718c2751` / `415308a3742c5db6`; snapshots carry no tar, trap or turret keys on tar maps |
+| Map | validates for 2-4 players; exactly the 8 neighbours are tar, the generator tile and tiles two away are not; text round-trip; `A1` rejected |
+| Rules | `F`/`B` in tar: no move, `reason TAR`; `F` from outside into tar moves; `F2` from outside into tar stops after the first tile; entering tar only on the second substep ends there with no event; `F2` inside tar moves one tile; `F2` that leaves tar on its first tile continues; `F2` outside tar moves two; turns/`WAIT` unaffected and `DROP`/`TOGGLE` keep their usual no-op reasons |
+| Pushing / belts | a robot in tar pushes with `FORWARD_2` (pushed robot not restricted), `FORWARD_1` in tar cannot push; a belt inside tar carries a robot out unaffected; no damage and no `SCORE_AWARDED` |
+| Playback | slowed `F2` plus two stuck orders give 3 `TarSlow` steps and the replayed board equals the authoritative one |
+| Determinism | `tarworks-01` with 2, 3 and 4 bots finishes and re-runs identically |
+| Live SDL | server + two scripted clients on `tarworks-01`: tar tiles and generator drawn, P1 walks in, then `F2` from inside shows "P1 is slowed by tar: FORWARD_2 stops after one tile" and the "TAR!" pulse |
+
+**Notes for the playtest**
+
+- Server bots plan on the real rules engine, so they feel tar but do not seek or avoid it deliberately (G4).
+- The central dispenser G1 sits inside the tar; a crate carried out of it is slowed on the way, as intended.
+
+**Stop gate:** playtest `tarworks-01` before G2-D.
 
 ### Presentation requirements
 

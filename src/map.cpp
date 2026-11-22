@@ -111,6 +111,11 @@ std::optional<Tile> parse_token(const std::string& t, std::string& err) {
         tile.owner = v;
         return tile;
     }
+    if (k == 'A') {
+        if (t.size() != 1) return bad("expected A");
+        tile.terrain = Terrain::TarGenerator;
+        return tile;
+    }
     if (k == 'Y' || k == 'P') {
         int v = t.size() == 2 && t[1] >= '1' && t[1] <= '9' ? t[1] - '0' : -1;
         if (v < 1) return bad(k == 'Y' ? "expected Y<1-9>" : "expected P<1-9>");
@@ -155,6 +160,7 @@ std::string token_text(const Tile& t) {
         case Terrain::LaserEmitter: return std::string("L") + dir_arrow(t.dir);
         case Terrain::Trap: return "X" + std::to_string(t.owner);
         case Terrain::TrapConsole: return "K" + std::to_string(t.owner);
+        case Terrain::TarGenerator: return "A";
         case Terrain::Turret: return "Y" + std::to_string(t.owner);
         case Terrain::TurretPad: return "P" + std::to_string(t.owner);
     }
@@ -167,11 +173,17 @@ bool Map::blocked(Pos p) const {
     if (!in_bounds(p)) return true;
     Terrain t = tile(p).terrain;
     return t == Terrain::Wall || t == Terrain::LaserEmitter || t == Terrain::Trap ||
-           t == Terrain::Turret;
+           t == Terrain::Turret || t == Terrain::TarGenerator;
 }
 
 bool Map::walkable(Pos p) const {
     return !blocked(p) && tile(p).terrain != Terrain::Pit;
+}
+
+bool Map::in_tar(Pos p) const {
+    for (const Pos& g : tar_generators)
+        if (std::max(std::abs(p.x - g.x), std::abs(p.y - g.y)) == 1) return true;
+    return false;
 }
 
 void Map::finalize() {
@@ -184,6 +196,7 @@ void Map::finalize() {
     trap_consoles.clear();
     turrets.clear();
     turret_pads.clear();
+    tar_generators.clear();
     groups.clear();
     std::set<char> g;
     int console_index = 0;
@@ -210,6 +223,7 @@ void Map::finalize() {
                 case Terrain::LaserEmitter: lasers.push_back(p); break;
                 case Terrain::Trap: traps.push_back({t.owner, p}); break;
                 case Terrain::TrapConsole: trap_consoles.push_back({t.owner, p}); break;
+                case Terrain::TarGenerator: tar_generators.push_back(p); break;
                 case Terrain::Turret: turrets.push_back({t.owner, p}); break;
                 case Terrain::TurretPad: turret_pads.push_back({t.owner, p}); break;
                 default: break;

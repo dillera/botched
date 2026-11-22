@@ -18,6 +18,7 @@ char terrain_char(const Tile& t) {
         case Terrain::LaserEmitter: return 'L';
         case Terrain::Trap: return 'X';
         case Terrain::TrapConsole: return 'K';
+        case Terrain::TarGenerator: return 'A';
         case Terrain::Turret: return 'Y';
         case Terrain::TurretPad: return 'P';
         case Terrain::Conveyor:
@@ -214,6 +215,8 @@ Dir effective_dir(const Tile& t, const View& v) { return v.group_reversed(t.grou
 
 std::string pad3(const std::string& s) { return s.size() >= 3 ? s : s + std::string(3 - s.size(), ' '); }
 
+Pos t_pos(int x, int y) { return Pos{x, y}; }
+
 std::string cell_text(const Map& map, const View& v, const Style& st, int x, int y) {
     const Tile& t = map.tile({x, y});
     const Overlay& o = v.at(map, x, y);
@@ -226,7 +229,9 @@ std::string cell_text(const Map& map, const View& v, const Style& st, int x, int
         return paint(st, u ? " ■ " : " * ", "1;93");  // a loose crate hides the terrain beneath it
     switch (t.terrain) {
         case Terrain::Wall: return paint(st, u ? "███" : "###", "90");
-        case Terrain::Floor: return paint(st, u ? " · " : " . ", "90");
+        case Terrain::Floor:
+            if (map.in_tar(t_pos(x, y))) return paint(st, " ~ ", "1;35");  // tar: slows voluntary movement
+            return paint(st, u ? " · " : " . ", "90");
         case Terrain::Pit: return paint(st, u ? "░░░" : " O ", "31");
         case Terrain::Spawn: return paint(st, "S" + std::to_string(t.owner % 10) + " ", "1;" + std::to_string(player_fg(t.owner)));
         case Terrain::Dock: return paint(st, u ? "▣" + std::to_string(t.owner % 10) + " " : "D" + std::to_string(t.owner % 10) + " ", "1;" + std::to_string(player_fg(t.owner)));
@@ -241,6 +246,7 @@ std::string cell_text(const Map& map, const View& v, const Style& st, int x, int
             return ti.armed ? paint(st, "X" + id + "!", "1;" + std::to_string(player_fg(ti.owner))) : paint(st, "x" + id + " ", "90");
         }
         case Terrain::TrapConsole: return paint(st, "K" + std::to_string(t.owner % 10) + " ", "1;96");
+        case Terrain::TarGenerator: return paint(st, " A ", "1;35");
         case Terrain::Turret: {  // "Y1" plus charge dots, in the owner's colour (white = neutral)
             const auto& ti = v.turrets[static_cast<std::size_t>(t.owner % 10)];
             return paint(st, "Y" + std::to_string(t.owner % 10) + std::string(ti.charge >= 2 ? "!" : ti.charge == 1 ? "'" : " "),
@@ -350,7 +356,7 @@ std::string describe_tile(const Map& map, const Json& snap, Pos pos, int viewer)
     auto dname = [](Dir d) { return std::string(to_string(d)); };
     switch (t.terrain) {
         case Terrain::Wall: return "wall";
-        case Terrain::Floor: return "floor";
+        case Terrain::Floor: return map.in_tar(pos) ? "tar: F2 moves 1 tile, F and B cannot move" : "floor";
         case Terrain::Pit: return "pit";
         case Terrain::Spawn: return owner("spawn");
         case Terrain::Dock: return owner("dock") + " (carrying a crate here scores)";
@@ -366,6 +372,8 @@ std::string describe_tile(const Map& map, const Json& snap, Pos pos, int viewer)
             return "proximity trap " + std::to_string(t.owner) + " (" + (ti.armed ? "ARMED, " : "disarmed, ") + who +
                    ") - hits every robot on the 8 tiles around it, once, then disarms";
         }
+        case Terrain::TarGenerator:
+            return "tar generator: the 8 tiles around it slow robots (no damage)";
         case Terrain::Turret: {
             const auto& ti = v.turrets[static_cast<std::size_t>(t.owner % 10)];
             std::string who = ti.owner == 0 ? "neutral" : ti.owner == viewer ? "yours" : "owned by P" + std::to_string(ti.owner);

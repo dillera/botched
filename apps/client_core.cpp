@@ -170,7 +170,9 @@ std::vector<std::string> summarize_events(const Json& events) {
             const std::string why = p.get_string("reason").value_or("");
             ordered.emplace_back(pl, code);
             flush_pending();
-            lines.push_back("  " + who + " " + code + ": nothing happened" + (why.empty() ? "" : " (" + why + ")"));
+            lines.push_back("  " + who + " " + code + (why == "TAR" ? ": stuck in tar, cannot move" : ": nothing happened" + (why.empty() ? "" : " (" + why + ")")));
+        } else if (type == "TAR_SLOWED") {
+            plain("  " + who + " is slowed by tar: FORWARD_2 stops after one tile at " + xy(p, "x", "y"));
         } else if (type == "ORDER_SKIPPED_DISABLED") {
             plain(who + " is disabled: order skipped");
         } else if (type == "ROBOT_ROTATED") {

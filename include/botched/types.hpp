@@ -47,6 +47,7 @@ std::optional<Order> parse_order(std::string_view s);
 enum class Terrain : std::uint8_t {
     Floor, Wall, Spawn, Dock, Dispenser, Conveyor, Console, LaserEmitter, Pit,
     Trap,         // G2-A proximity trap device X<n>: blocks movement; hits the 8 surrounding tiles
+    TarGenerator, // G2-C A: tar generator device: blocks movement; the 8 tiles around it are tar
     Turret,       // G2-B charging laser turret Y<n>: blocks movement; charges 2 ticks, fires on the 3rd
     TurretPad,    // G2-B P<n>: a robot entering this tile claims turret n
     TrapConsole   // G2-A K<n>: a robot next to it that executes TOGGLE (T) arms/re-arms trap n and owns it

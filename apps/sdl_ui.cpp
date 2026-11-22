@@ -414,6 +414,30 @@ void draw_turret(Gfx& g, int x, int y, int s, int id, int charge, int owner, Uin
     if (ready) g.text(x + s / 2, y + s - g.line_h(g.small) - 1, "READY", mix(C(255, 200, 120), C(255, 255, 255), pulse), g.small, 1);
 }
 
+// G2-C tar generator: a squat tank with a dripping nozzle, in tar purple. The eight tiles around it are tar.
+void draw_tar_generator(Gfx& g, int x, int y, int s, Uint32 now) {
+    g.fill({x, y, s, s}, C(28, 24, 36));
+    const float cx = x + s / 2.f, cy = y + s / 2.f;
+    g.disc(cx, cy, s * 0.36f, C(46, 30, 60), 24);
+    g.ring(cx, cy, s * 0.36f, std::max(2.f, s * 0.06f), C(150, 80, 190), 24);
+    g.disc(cx, cy - s * 0.04f, s * 0.20f, C(18, 12, 24), 20);
+    const float drip = std::fmod(static_cast<float>(now) * 0.0012f, 1.f);
+    g.disc(cx, cy + s * (0.10f + 0.22f * drip), s * 0.06f * (1.f - 0.4f * drip), C(120, 60, 160), 10);
+    g.text(x + s / 2, y + 1, "TAR", C(190, 120, 230), g.small, 1);
+}
+
+// Tar tile overlay: a dark purple film with slow bubbles. Drawn over the floor on the eight tiles around a generator.
+void draw_tar_tile(Gfx& g, int x, int y, int s, int seed, Uint32 now) {
+    g.fill({x, y, s, s}, C(80, 30, 115, 140));
+    g.frame({x + 1, y + 1, s - 2, s - 2}, C(160, 90, 210, 110), 1);
+    for (int i = 0; i < 2; ++i) {
+        const float ph = std::fmod(static_cast<float>(now) * 0.0006f + 0.37f * static_cast<float>(seed + 3 * i), 1.f);
+        const float bx = x + s * (0.25f + 0.5f * static_cast<float>((seed * 7 + i * 5) % 10) / 10.f);
+        const float by = y + s * (0.85f - 0.6f * ph);
+        g.ring(bx, by, s * 0.05f * (0.5f + ph), 1, C(200, 140, 240, static_cast<int>(180 * (1.f - ph))), 8);
+    }
+}
+
 // G2-B turret control pad: step on it to claim the turret. The ring shows who owns it now.
 void draw_turret_pad(Gfx& g, int x, int y, int s, int id, int owner) {
     const SDL_Color oc = trap_color(owner);
@@ -930,6 +954,7 @@ void draw_board(App& a, Gfx& g, Uint32 now) {
                     draw_trap(g, px, py, s, t.owner, tv ? tv->armed : true, tv ? tv->owner : 0, now);
                     break;
                 }
+                case Terrain::TarGenerator: draw_tar_generator(g, px, py, s, now); break;
                 case Terrain::Turret: {
                     const TurretView* uv = sv.turret(t.owner);
                     draw_turret(g, px, py, s, t.owner, uv ? uv->charge : 0, uv ? uv->owner : 0, now);
@@ -953,6 +978,14 @@ void draw_board(App& a, Gfx& g, Uint32 now) {
                 }
             }
         }
+    // tar: the eight tiles around each generator (always visible; it is a permanent area)
+    for (const Pos& tg : m.tar_generators)
+        for (int dy = -1; dy <= 1; ++dy)
+            for (int dx = -1; dx <= 1; ++dx) {
+                const Pos q{tg.x + dx, tg.y + dy};
+                if ((!dx && !dy) || !m.in_bounds(q) || m.blocked(q) || m.tile(q).terrain == Terrain::Pit) continue;
+                draw_tar_tile(g, L.board.x + q.x * s, L.board.y + q.y * s, s, q.x * 5 + q.y * 3, now);
+            }
     // armed traps: tint the eight tiles they will hit, in the owner's colour
     for (const auto& tp : m.traps) {
         const TrapView* tv = sv.trap(tp.id);
@@ -1126,6 +1159,18 @@ void draw_board(App& a, Gfx& g, Uint32 now) {
                     }
                 g.ring(c0.x, c0.y, s * (0.3f + 1.4f * pr), 5, C(oc.r, oc.g, oc.b, static_cast<int>(255 * fade_out)), 40);
                 burst(c0, s * (0.5f + 0.9f * pr), C(255, 210, 120, static_cast<int>(255 * fade_out)), 12);
+                break;
+            }
+            case Step::TarSlow: {
+                const RobotView* rb = sv.robot(st->player);
+                if (rb && rb->active) {
+                    V2 c0 = cell_c(static_cast<float>(rb->x), static_cast<float>(rb->y));
+                    g.disc(c0.x, c0.y, s * 0.5f, C(90, 40, 130, static_cast<int>(150 * std::sin(pr * 3.14159f))));
+                    g.ring(c0.x, c0.y, s * (0.55f - 0.15f * pr), 3, C(190, 120, 240, static_cast<int>(255 * fade_out)), 28);
+                    g.alpha = std::min(1.f, 2.f * fade_out);
+                    g.text(static_cast<int>(c0.x), static_cast<int>(c0.y - s * (0.5f + 0.3f * pr)) - 10, "TAR!", C(210, 150, 255), g.body, 1);
+                    g.alpha = 1.f;
+                }
                 break;
             }
             case Step::TurretCapture: {

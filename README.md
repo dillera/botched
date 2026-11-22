@@ -35,7 +35,7 @@ Build once (`cmake -S . -B build && cmake --build build -j`), then:
 
 ### Maps
 
-Maps are plain files in `resources/maps/*.map` (shipped: `training-01`, the spec's example, `factory-01`, `crossroads-01` the G2-A playtest map `trapworks-01` and the laser map `laserworks-01` and the G2-B turret map `turretworks-01`).
+Maps are plain files in `resources/maps/*.map` (shipped: `training-01`, the spec's example, `factory-01`, `crossroads-01` the G2-A playtest map `trapworks-01` and the laser map `laserworks-01` the G2-B turret map `turretworks-01` and the G2-C tar map `tarworks-01`).
 The server loads and validates every `.map` file at startup and reports problems per file on stderr; valid
 maps stay available when another file is bad, and duplicate ids are rejected. Adding a map needs no rebuild:
 drop a file in the directory and restart the server.
@@ -139,6 +139,19 @@ victim with `-1`, a `CAPTURED` ring and the gold `+N`. Try it (server bots do no
 
 ```sh
 ./build/botched-client --ui --create --players 2 --map-id turretworks-01
+```
+
+### Tar (G2-C)
+
+A tar generator `A` (solid, no id) makes the eight tiles around it tar. In tar `FORWARD_1` and `BACK_1` cannot
+move you, and `FORWARD_2` moves you one tile (tar is checked after each substep, so a `FORWARD_2` that carries
+you into tar stops there). Turning, `DROP`, `TOGGLE` and `WAIT` are normal, a robot in tar can still push with
+`FORWARD_2`, and being pushed or carried by a belt is not slowed. Tar does no damage and scores nothing; it is a
+map feature, so snapshots and every existing map are unchanged. New events: `ORDER_NO_OP` with `reason: "TAR"` and
+`TAR_SLOWED`. The SDL client draws the generator and purple tar tiles and plays a "TAR!" pulse. Try it:
+
+```sh
+./build/botched-client --ui --create --players 2 --map-id tarworks-01
 ```
 
 ### Score-target matches

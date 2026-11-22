@@ -254,8 +254,15 @@ void Engine::run_order(GameState& s, int pid, Order o, int /*slot*/) {
         r.heading = to;
         log_.emit("ROBOT_ROTATED", obj({{"player", pid}, {"from", to_string(from)}, {"to", to_string(to)}}));
     };
+    // G2-C: FORWARD_1 and BACK_1 cannot move a robot that starts in tar.
+    auto tar_stuck = [&] {
+        if (!map_.in_tar(r.pos)) return false;
+        log_.emit("ORDER_NO_OP", obj({{"player", pid}, {"order", to_string(o)}, {"reason", "TAR"}}));
+        return true;
+    };
     switch (o) {
         case Order::Forward1:
+            if (tar_stuck()) break;
             executed();
             move_robot(s, pid, r.heading, Cause::Order);
             break;
@@ -264,9 +271,16 @@ void Engine::run_order(GameState& s, int pid, Order o, int /*slot*/) {
             for (int i = 0; i < 2; ++i) {
                 if (r.respawn_pending) break;
                 if (!move_robot(s, pid, r.heading, Cause::Order)) break;
+                // G2-C: tar is judged after every movement substep; a robot standing in tar after the
+                // first tile (entered or still inside) loses the second.
+                if (i == 0 && !r.respawn_pending && map_.in_tar(r.pos)) {
+                    log_.emit("TAR_SLOWED", obj({{"player", pid}, {"order", to_string(o)}, {"x", r.pos.x}, {"y", r.pos.y}}));
+                    break;
+                }
             }
             break;
         case Order::Back1:
+            if (tar_stuck()) break;
             executed();
             move_robot(s, pid, opposite(r.heading), Cause::Order);
             break;

@@ -1,0 +1,21 @@
+; Botched! map resource
+; id: tarworks-01
+; name: Tar Works
+; description: G2-C playtest: one tar generator (A) in the middle; the eight tiles around it are tar.
+; players: 2-4
+;
+; Tar slows voluntary movement and never hurts: a robot standing in tar cannot move with FORWARD_1 or BACK_1,
+; FORWARD_2 moves it one tile, and a FORWARD_2 that carries it into tar stops there. Turning, DROP, TOGGLE and
+; WAIT are normal, and pushes and belts ignore tar. The generator sits in the middle (columns 4-6, rows 3-5 are
+; tar, except the generator itself) with dispenser G1 inside the area, so the central crate is a slow grab,
+; while the outer ring is clear and fast. The walls give a corridor to each side of the tar.
+#   #   #   #   #   #   #   #   #   #   #   #
+#   S1  D1  .   .   .   .   .   .   D2  S2  #
+#   .   .   #   .   .   .   .   #   .   .   #
+#   .   .   .   .   G1  .   .   .   .   .   #
+#   .   #   .   .   A   .   .   .   #   .   #
+#   .   .   .   .   .   .   .   .   .   .   #
+#   .   #   .   .   .   .   .   .   #   .   #
+#   .   .   G2  .   .   .   G3  .   .   .   #
+#   S3  D3  .   .   .   .   .   .   D4  S4  #
+#   #   #   #   #   #   #   #   #   #   #   #

@@ -12,6 +12,7 @@
 //   Y<n>       charging laser turret n (1-9): charges two ticks, then fires once at the nearest robot
 //              within two tiles (N,E,S,W); not an L<d> emitter
 //   P<n>       control pad of turret n: a robot entering it claims the turret
+//   A          tar generator (G2-C): a device; the eight tiles around it are tar (movement restriction, no damage)
 // Blank lines and lines starting with ';' are ignored.
 #pragma once
 
@@ -78,6 +79,7 @@ struct Map {
     std::vector<Pos> lasers;            // ascending (y,x)
     std::vector<Trap> traps;            // ascending id
     std::vector<TrapConsole> trap_consoles;  // ascending (y,x)
+    std::vector<Pos> tar_generators;    // (y,x) scan order
     std::vector<Turret> turrets;        // ascending id
     std::vector<TurretPad> turret_pads; // ascending (y,x)
     std::vector<char> groups;           // ascending, every group referenced by any tile
@@ -88,7 +90,8 @@ struct Map {
 
     // Blocked for robots, pushes, crates and laser rays: out of bounds, wall, laser emitter, trap device.
     bool blocked(Pos p) const;
-    bool walkable(Pos p) const;  // in bounds and not blocked and not a pit
+    bool walkable(Pos p) const;
+    bool in_tar(Pos p) const;    // within the eight tiles around a tar generator (walls do not shield)  // in bounds and not blocked and not a pit
 
     void finalize();
 };

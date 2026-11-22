@@ -395,7 +395,17 @@ void Playback::build(const Json& batch, std::size_t first_event) {
             else if (t == "ORDER_NO_OP") s.caption = P(cur_player) + " " + cur_code + ": nothing to do (" + p.get_string("reason").value_or("?") + ")";
             else if (tok == "WAIT") s.caption = P(cur_player) + " waits";
             else s.caption = P(cur_player) + " executes " + cur_code;
+            const bool tar_stuck = t == "ORDER_NO_OP" && p.get_string("reason").value_or("") == "TAR";
+            if (tar_stuck) s.caption = P(cur_player) + " " + cur_code + ": stuck in tar, cannot move";
             push(std::move(s));
+            if (tar_stuck) {
+                Step ts = new_step(Step::TarSlow, 600);
+                ts.phase = Step::Orders;
+                ts.queue_index = order_q;
+                ts.player = cur_player;
+                ts.caption = P(cur_player) + " is stuck in tar";
+                push(std::move(ts));
+            }
             continue;
         }
         if (is_trigger(t, p, i)) start_machinery(true);
@@ -565,6 +575,16 @@ void Playback::build(const Json& batch, std::size_t first_event) {
             const std::string why = (reason == "TRAP_DISABLE" || reason == "TURRET_DISABLE") ? "disabling " : "damaging ";
             s.caption = "+" + std::to_string(s.points) + " for " + P(s.player) + ": " + why + P(gi(p, "victim")) +
                         (s.turret ? " with turret " : " with trap ") + std::to_string(s.trap) + " (score " + std::to_string(gi(p, "score")) + ")";
+            push(std::move(s));
+        } else if (t == "TAR_SLOWED") {
+            Step s = new_step(Step::TarSlow, 600);
+            s.phase = Step::Orders;
+            s.queue_index = order_q;
+            s.player = gi(p, "player");
+            s.cx = gi(p, "x");
+            s.cy = gi(p, "y");
+            s.events = {i};
+            s.caption = P(s.player) + " is slowed by tar: FORWARD_2 stops after one tile";
             push(std::move(s));
         } else if (t == "TURRET_CAPTURED") {
             Step s = new_step(Step::TurretCapture, 700);
