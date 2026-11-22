@@ -386,6 +386,46 @@ Implements the approved "G2-D — Pit-push scoring" section, including the persi
 
 **Stop gate:** playtest `shuntworks-01` before G3.
 
+### G3 map — implementation: **done, awaiting playtest** (2026-11-22)
+
+One new map, `resources/maps/foundry-01.map` ("The Foundry", 11x13, 2-4 players). **No engine, rules or bot change**: the map is built only from the G1-G2 tokens, and `training-01`, `crossroads-01`, `factory-01` and the G2 playtest maps are untouched. G4 is not started.
+
+**Design**
+
+- **Three dispensers for up to four players, none near a dock** (every dock-to-dispenser walk is at least 6 tiles, and the three journeys are different kinds of trouble):
+  - **G3, centre pocket (5,6)** - the contested prize. Pits (4,6)/(6,6) and walls close it on both sides; mouths (5,5) and (5,7), equally far from the north and south seats. No machinery, but the four flank tiles beside the pits are SHUNT lines (+8), so everyone's nearest crate is also the most dangerous place to stand.
+  - **G1, north dead end (5,1)** - top of a one-wide corridor (5,2)-(5,4) walled in by **two traps**, X1 (4,3) and X2 (6,3). Both rings cover the whole corridor: the trip up and the trip down are two passes through a murder passage. Armed from K1 (1,5) / K2 (9,5), far across the floor, so the owner has to guess when a carrier is inside.
+  - **G2, south dead end (5,11)** - the mirror corridor (5,8)-(5,10), walled in by **two tar generators** A (4,9) / A (6,9), so every tile crawls (FORWARD_2 moves one tile). **Turrets** Y1 (3,8) / Y2 (7,8) cover the corridor mouth and the lower belts; two pads each claim them (P1 (2,7), (4,7); P2 (6,7), (8,7)).
+- **Conveyor shortcuts home:** rows 3 and 9 each carry a short lane W/E straight onto the dock. Group A is the left pair, B the right; consoles TA (3,5) / TB (7,5) reverse their own group, so a rival can send your carrier back out, into the trap ring or the tar. Pits at (2,4)/(8,4) (above the upper lanes) and (2,8)/(8,8) (beside the lower) let someone standing next to a rider shove him in. The safe-but-slower alternative is walking the open floor beside the lanes.
+- **Symmetry:** exactly left-right mirrored; top-bottom mirrored in route structure (traps <-> tar), so every seat gets the same game.
+
+**Design iterations recorded (map-only; engine untouched)**
+
+1. First draft (13x13, one trap ring across the only route to the centre and the north dispenser): the neutral trap starts armed and the planner treats damage as a wall, so all bots stalled (about 1 delivery per match). Fix: keep trap rings off the centre pocket.
+2. A single-mouthed centre starved the south seats (P3/P4 near 0 points); a second mouth plus a south corridor mirroring the north one fixed it.
+3. The board was tightened to 11x13 for cycle length. 2-3 rounds per delivery is a guideline, not a rule.
+
+**Evidence**
+
+| Check | Result |
+|---|---|
+| Whole suite | 275/275 test cases, 32 744 assertions (11 new in `tests/test_foundry.cpp`) |
+| Existing behaviour | `training-01` sim hashes still `8b9b82fb718c2751` / `415308a3742c5db6`; the three reference maps still load |
+| Map | validates for 2, 3 and 4 players; 3 dispensers, 2 traps + 2 consoles, 2 turrets + 4 pads, 2 tar generators, 6 pits, both belt groups |
+| Layout | left-right terrain identical; walking distance from each seat to each dispenser matches its mirror; every dock >= 6 tiles from every dispenser |
+| Hazards | north corridor tiles inside both trap rings (dispenser outside); south corridor tiles tar (dispenser not); turrets cover the mouth and lower belts but not the pocket or either dispenser; the pocket touches no ring, tar or turret line |
+| Engine | one step into the north corridor: 2 `TRAP_TRIGGERED`, 2 hits; south corridor: `FORWARD_1` no-op x3, `FORWARD_2` moves one tile; a robot waiting at the mouth is shot once per round by the neutral turret; a push from above on a flank tile is a SHUNT (+8) |
+| Bots | 2-4 players finish and re-run identically; 6 seeds x 4 bots: at least 10 deliveries, sabotage points scored, **all four seats deliver** |
+| Bot balance (16 seeds, 4 bots, total score by seat) | P1 97, P2 109, P3 88, P4 126, with SHUNTs, trap and turret hits and crate drops happening; bots mostly fight over the centre and do not farm a corner |
+| Live SDL | server + 3 bots, headless screenshot: both trap rings, tar corridor, turrets and pit flanks all read clearly; spawns, docks and belts are as designed |
+
+**Notes for the playtest**
+
+- Bots do not use consoles or pads on purpose (G4): the traps and turrets they meet are the neutral, armed-at-start ones, so human players are the ones who can really exploit the north and south corridors.
+- Tune the map file, not the engine: candidate knobs are pit and wall placement near the pocket, lane length, and the pad positions.
+
+**Stop gate:** playtest `foundry-01` before G4.
+
 ### Presentation requirements
 
 Players should be able to understand each hazard's state by inspecting the map:
@@ -422,10 +462,9 @@ The goal is not to make every factory dangerous. It is to give map designers a s
 
 **Bounded implementation:**
 
-- Retain `training-01`, `crossroads-01` and `factory-01` as reference/playtest resources. Don't silently replace them.
-- Design **one** new external `.map` around contested pickups, short routes, meaningful conveyor shortcuts, trap-controlled pinch points / “murder passages,” and a safe but less efficient alternative.
-- Experiment with **N−1 dispensers** (three for four players), but do not require it universally.
-- Aim for an uncontested delivery cycle of around **2–3 rounds** so journeys don't consume half a match; favour choices and encounters over raw distance.
+- Retain all the test maps like `training-01`, `crossroads-01` and `factory-01` as reference/playtest resources. Don't silently replace them.
+- Design **one** new external `.map` around contested pickups, short routes, meaningful conveyor shortcuts, trap-controlled pinch points / “murder passages,” and a safe but less efficient alternative.  Utilize all the hazard elements created so far. Be creative, and don't just plonk dispensers next to delivery points like the test maps had. Have hazards be meaningful, imagine the journey a bot has to take to get its reward, and how an opponent could thwart it. This is the game design challenge. Interesting, fun, reward game play.
+- Have fewer dispensers than players, at locations difficult to get to, to encourage varied game play.
 - Test with 2–4 players including imperfect server bots. Avoid universal Manhattan-distance rules, procedural generation, map editor or hot-loading implementation.
 
 **Acceptance:** Human playtests show contested routes and meaningful machinery usage; bots do not merely farm isolated corners. Adjust the map resource, not the engine, to improve layout balance.
