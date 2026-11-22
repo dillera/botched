@@ -1,6 +1,9 @@
 #include "server.hpp"
 
 #include <chrono>
+#include <charconv>
+#include <limits>
+#include <algorithm>
 #include <random>
 #include <cstdio>
 #include <string_view>
@@ -285,7 +288,66 @@ bool token_equal(const std::string& a, const std::string& b) {
 }
 }  // namespace
 
-Json GameServer::join(const Json& req) {
+void GameServer::visit_map_info(const std::function<void(const MapInfo &)> &visitor) const {
+    for (const auto &[id, loaded] : maps_)
+        visitor(loaded.info);
+}
+const Map *GameServer::registered_map(const std::string &id) const {
+    auto i = maps_.find(id);
+    return i == maps_.end() ? nullptr : i->second.map.get();
+}
+const Map *GameServer::room_map(const std::string &id) const {
+    auto i = rooms_.find(id);
+    return i == rooms_.end() ? nullptr : i->second.map.get();
+}
+std::string GameServer::check_seat(const std::string &id, int player, const std::string &token) const {
+    auto i = rooms_.find(id);
+    if (i == rooms_.end())
+        return "UNKNOWN_MATCH";
+    const auto &r = i->second;
+    int count = r.match ? r.match->config().player_count : r.capacity;
+    if (player < 1 || player > count)
+        return "UNKNOWN_PLAYER";
+    if (player > (int)r.tokens.size() || !token_equal(token, r.tokens[(size_t)player - 1]))
+        return "UNAUTHORIZED";
+    return {};
+}
+std::pair<std::uint32_t, bool> GameServer::numeric_key_hint(const std::string &id, int player) const {
+    auto i = rooms_.find(id);
+    if (i == rooms_.end() || player < 1 || player > 4)
+        return {0, false};
+    auto n = i->second.numeric_high[(size_t)player - 1];
+    if (!n)
+        return {0, false};
+    return *n == UINT32_MAX ? std::pair<std::uint32_t, bool>{0, true}
+                            : std::pair<std::uint32_t, bool>{*n + 1, false};
+}
+void GameServer::observe_history(Room &r) {
+    if (!r.match)
+        return;
+    const auto &events = r.match->all_events();
+    // At most five new event-bearing publications per server action; retention is 512.
+    // Track version numbers only, so a binary query never copies the full retained event log.
+    std::int64_t first = events.empty() ? static_cast<std::int64_t>(r.match->state_version()) + 1
+                                        : events.front().state_version;
+    while (!r.observed_event_versions.empty() && r.observed_event_versions.front() < first) {
+        r.observed_trimmed_below = r.observed_event_versions.front();
+        r.observed_event_versions.pop_front();
+    }
+    int last =
+        r.observed_event_versions.empty() ? r.observed_trimmed_below : r.observed_event_versions.back();
+    for (const auto &e : events)
+        if (e.state_version > last) {
+            r.observed_event_versions.push_back(e.state_version);
+            last = e.state_version;
+        }
+}
+bool GameServer::retained_events_available(const std::string &id, int since) const {
+    auto i = rooms_.find(id);
+    return i != rooms_.end() && i->second.match && since >= i->second.observed_trimmed_below;
+}
+
+Json GameServer::join(const Json &req) {
     Json err;
     Room* r = room_for(req, err);
     if (!r) return err;
@@ -435,8 +497,9 @@ void GameServer::poll() {
     const std::int64_t now = clock_.now_unix_ms();
     for (auto& kv : rooms_) {
         Room& r = kv.second;
-        if (!r.match || r.match->finished()) continue;
-        if (r.deadline_ms != 0 && now >= r.deadline_ms) advance(r);
+        if (!r.match) continue;
+        if (!r.match->finished() && r.deadline_ms != 0 && now >= r.deadline_ms) advance(r);
+        observe_history(r);
     }
 }
 
@@ -475,6 +538,16 @@ Json GameServer::submit(const Json& req) {
 
     SubmitResult res = r->match->submit_program(static_cast<int>(player), static_cast<int>(round),
                                                 static_cast<int>(revision), toks, ready, request_id);
+    if (request_id.starts_with("b:")) {
+        std::uint32_t value = 0;
+        auto parsed = std::from_chars(request_id.data() + 2, request_id.data() + request_id.size(), value);
+        if (parsed.ec == std::errc{} && parsed.ptr == request_id.data() + request_id.size() &&
+            request_id == "b:" + std::to_string(value)) {
+            auto &high = r->numeric_high[(size_t)player - 1];
+            if (!high || value > *high)
+                high = value;
+        }
+    }
     Json out = Json::object();
     out.set("type", "SUBMIT_PROGRAM");
     out.set("ok", res.ok);

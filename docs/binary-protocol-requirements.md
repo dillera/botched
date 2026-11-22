@@ -1,6 +1,7 @@
 # Botched! binary wire protocol — normative requirements for M1
 
-**Status:** B1 COMPLETE — wire-v1 design for review, 2026-11-22. No codec implemented.
+**Status:** B1 accepted; B2 implemented for review, 2026-11-22. B3–B5 not started.
+B2 evidence and explicit budget deviations: [implementation review](binary-v1/b2-review.md).
 **Authority:** current G1–G4 game implementation and the owner-confirmed decisions below.
 **Rules version:** `botched/1`, the initial **unreleased** ruleset; no `botched/2` migration.
 **Binary wire:** major 1, minor 0, independent of the rules label. Existing JSON remains unchanged.
@@ -574,10 +575,9 @@ without making arbitrary unknown opcodes legal. B1 assigns ff to this sentinel; 
   A restarted host has no room/session persistence; report that failure rather than replaying
   an old submission into a newly created match.
 
-## 11. Bounded implementation sequence (B1 complete; B2–B5 not started)
+## 11. Bounded implementation sequence (B1 accepted; B2 for review; B3–B5 not started)
 
-Each step ends with a reviewable commit and its focused tests. This documentation change completes B1 and stops
-before B2. No renderer, bot/engine rewrite, new firmware game service or platform-wide rollout is
+Each step ends with a reviewable commit and its focused tests. B2 stops before transport integration in B3. No renderer, bot/engine rewrite, new firmware game service or platform-wide rollout is
 part of these steps.
 
 | Step | Deliverable / boundary | Required evidence before proceeding |
@@ -596,7 +596,7 @@ request-budget exhaustion, replay after close, transfer expiry/retention loss an
 admission without altering an existing match. Use a full-hazard scenario such as `foundry-01`
 in addition to baseline `training-01`; old random training-map maxima cannot bound current events.
 
-## 12. Verification of this documentation revision
+## 12. Historical B1 documentation verification
 
 Documentation only; no codec, game source, tests, firmware, library or workspace pins changed.
 Reviewed the complete server dispatch, engine emit sites, snapshot/status serializers and map

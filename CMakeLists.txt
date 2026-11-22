@@ -1,5 +1,5 @@
 cmake_minimum_required(VERSION 3.20)
-project(botched LANGUAGES CXX)
+project(botched LANGUAGES C CXX)
 
 set(CMAKE_CXX_STANDARD 20)
 set(CMAKE_CXX_STANDARD_REQUIRED ON)
@@ -26,6 +26,11 @@ add_library(botched_core STATIC
 )
 target_include_directories(botched_core PUBLIC include)
 
+# --- Portable, allocation-free payload codec. No transport or engine dependencies.
+add_library(botched_wire STATIC wire/v1.c)
+target_include_directories(botched_wire PUBLIC include)
+set_target_properties(botched_wire PROPERTIES C_STANDARD 99 C_STANDARD_REQUIRED YES C_EXTENSIONS NO)
+
 # --- Server orchestration (rooms, sessions, API dispatch). Transport-agnostic.
 add_library(botched_server STATIC
   server/server.cpp
@@ -37,6 +42,9 @@ target_include_directories(botched_server PUBLIC server apps)
 target_link_libraries(botched_server PUBLIC botched_core)
 # Last-resort default for the maps directory (the source tree); executables first look next to themselves.
 target_compile_definitions(botched_server PRIVATE BOTCHED_DEFAULT_MAPS_DIR="${CMAKE_CURRENT_SOURCE_DIR}/resources/maps")
+
+add_library(botched_binary STATIC server/binary_codec.cpp server/binary_bridge.cpp)
+target_link_libraries(botched_binary PUBLIC botched_server botched_wire)
 
 # --- POSIX reference apps: simulated players and the stdio server host.
 add_library(botched_sim_lib STATIC
@@ -114,10 +122,22 @@ if(BOTCHED_BUILD_TESTS)
   file(GLOB BOTCHED_TEST_SOURCES CONFIGURE_DEPENDS tests/test_*.cpp)
   add_executable(botched_tests tests/test_main.cpp ${BOTCHED_TEST_SOURCES})
   target_include_directories(botched_tests PRIVATE tests tests/third_party)
+  target_compile_definitions(botched_tests PRIVATE BOTCHED_WIRE_FIXTURES="${CMAKE_CURRENT_SOURCE_DIR}/docs/binary-v1/fixtures.json")
   target_compile_definitions(botched_tests PRIVATE BOTCHED_TEST_MAPS_DIR="${CMAKE_CURRENT_SOURCE_DIR}/resources/maps")
-  target_link_libraries(botched_tests PRIVATE botched_sim_lib botched_ui_model)
+  target_link_libraries(botched_tests PRIVATE botched_sim_lib botched_ui_model botched_binary)
   if(UNIX)
     target_link_libraries(botched_tests PRIVATE botched_tcp_host botched_client_lib)
   endif()
   add_test(NAME botched_tests COMMAND botched_tests)
+  add_executable(botched_wire_c_test tests/wire_c_test.c)
+  set_target_properties(botched_wire_c_test PROPERTIES C_STANDARD 99 C_STANDARD_REQUIRED YES C_EXTENSIONS NO)
+  target_link_libraries(botched_wire_c_test PRIVATE botched_wire)
+  if(CMAKE_C_COMPILER_ID MATCHES "GNU|Clang")
+    target_compile_options(botched_wire_c_test PRIVATE -Werror -pedantic-errors -Wvla)
+    if(UNIX AND NOT APPLE)
+      target_compile_definitions(botched_wire_c_test PRIVATE BW_WRAP_ALLOC=1)
+      target_link_options(botched_wire_c_test PRIVATE -Wl,--wrap=malloc -Wl,--wrap=calloc -Wl,--wrap=realloc -Wl,--wrap=free)
+    endif()
+  endif()
+  add_test(NAME botched_wire_c_test COMMAND botched_wire_c_test)
 endif()

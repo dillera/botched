@@ -6,6 +6,9 @@
 #pragma once
 
 #include <cstdint>
+#include <array>
+#include <functional>
+#include <deque>
 #include <iosfwd>
 #include <map>
 #include <memory>
@@ -104,6 +107,16 @@ public:
     // Direct access for hosts/tests.
     const Match* find_match(const std::string& id) const;
 
+    // Read-only orchestration seams for representation adapters. No requests are dispatched,
+    // deadlines polled, programmes submitted or game versions published by these accessors.
+    std::size_t registered_map_count() const { return maps_.size(); }
+    void visit_map_info(const std::function<void(const MapInfo&)>& visitor) const;
+    const Map* registered_map(const std::string& id) const;
+    const Map* room_map(const std::string& id) const;
+    std::string check_seat(const std::string& match, int player, const std::string& credential) const;
+    std::pair<std::uint32_t,bool> numeric_key_hint(const std::string& match,int player) const;
+    bool retained_events_available(const std::string& match,int since) const;
+
 private:
     struct Room {
         std::string id;
@@ -113,6 +126,10 @@ private:
         int rounds = kDefaultRounds;      // fixed length, or the safety cap when target_score > 0
         int target_score = 0;             // 0 = fixed-round mode
         int bots = 0;                     // seats played by the server (always the highest player ids)
+        // Adapter metadata only. Observe JSON as well as binary requests without touching H3.
+        std::array<std::optional<std::uint32_t>,4> numeric_high{};
+        std::deque<int> observed_event_versions;
+        int observed_trimmed_below = 0;
         std::vector<std::string> tokens;  // human seats only: index = player id - 1
         std::vector<std::unique_ptr<sim::Bot>> ai;  // created at start; ai[i] plays player (humans + 1 + i)
         std::unique_ptr<Match> match;
@@ -131,6 +148,7 @@ private:
 
     Room* room_for(const Json& req, Json& err);
     bool start_room(Room& r, std::string& error);
+    void observe_history(Room& r);
     void open_planning(Room& r);
     void plan_bots(Room& r);
     void advance(Room& r);
