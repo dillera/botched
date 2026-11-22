@@ -13,7 +13,7 @@ Evolve Botched! from a twelve-round crate-delivery race into a factory competiti
 ## Existing behaviour vs new proposals
 
 - **Already implemented:** pits (`O`) disable robots on entry; conveyors and consoles (`C>A`, `TA`); three-hit durability and respawns; stationary directional ray emitters (`L>`, `L<`, `L^`, `Lv`) that fire each tick. Current playtest maps rarely exercise laser damage.
-- **Not implemented:** score-target victory, player-attributed traps, a single-use proximity burst, charging/targeting laser turret, slowing tar, sabotage points or bot personalities.
+- **Not implemented:** slowing tar, pit-push scoring or bot personalities. (Score-target victory, player-attributed traps, the proximity burst, the charging/targeting laser turret and sabotage points are done; see the status blocks below.)
 - **Compatibility:** New scoring, traps and end conditions change normative gameplay. Introduce an explicitly versioned rules contract (proposed `botched/2`) when approved; keep `botched/1` fixtures and semantics intact where practical. **Never reinterpret an existing `L>` ray emitter as the new targeting turret.**
 
 ## G1 — Score-target victory
@@ -247,6 +247,42 @@ Scope was deliberately narrow: **no rules, scoring or mechanics changed** (the e
 Not started: charging or capturable turrets, any new mechanic, scoring or rule change, bots using lasers deliberately.
 
 **Stop gate:** review `laserworks-01` (and playtest it with humans if desired) before deciding whether to proceed to the charging turret.
+
+### G2-B charging turret — implementation: **done, awaiting playtest** (2026-11-22)
+
+Continuous lasers are accepted and unchanged (neutral, no points). This step adds the separate charging turret and nothing else: no tar, pit-push, G3/G4 work or bot changes.
+
+**What shipped**
+
+- Map tokens `Y<n>` (turret device, blocked) and `P<n>` (control pad, walkable), validated like trap/console pairs. New map `resources/maps/turretworks-01.map` (12x10, 2-4 players): `Y1` at (5,4), dispenser G1 one tile north of it, a wall at (5,6) shortening the southern shot, and a `P1` pad on each side at (2,4) and (9,4), both out of range.
+- Rules, as specified: neutral at the start; charge, charge, fire on a three-tick cycle (the counter is world state, so a turret fires on tick 3 of every round and ownership changes never touch it); target = nearest robot at distance 1-2 along N/E/S/W with no blocked tile between, ties N, E, S, W; one shot, 1 damage, or no shot when nothing is in range; the owner can be hit; capture by entering a pad; sabotage scoring identical to traps (+1 per damaged opponent, +3 more for the disabling hit, 0 for self or neutral).
+- Settled ordering (`docs/rules-interpretations.md` #31-36): 1 orders, 2 conveyors, 3 lasers, 3b traps, **3c turrets (ascending id: capture, cycle, fire)**, 4 disables. A robot already felled by a laser or trap this tick is not a turret target, so each disable has one source and one bonus. "Entering" means arriving on a pad this tick; standing on one claims nothing; with two entrants the owner keeps it, otherwise pad scan order decides.
+- Events (authoritative, nothing recomputed by clients): `TURRET_CAPTURED`, `TURRET_CHARGING` (1 or 2), `TURRET_FIRED` (victim, owner, direction, distance, damage, points), `TURRET_IDLE`, `SCORE_AWARDED` with reasons `TURRET_DAMAGE` / `TURRET_DISABLE` (carrying `turret`), `ROBOT_DISABLED` with `cause: "TURRET"`, `turret`, `by`. Snapshots and checkpoints gain `turrets: [{id, charge, owner}]` only on turret maps; `sabotage` now appears on trap or turret maps.
+- Versioning: still `botched/1`, additive and gated on the tokens, as with traps.
+- SDL: turret with a barrel on each side and two charge pips (glows at 2), owner colour, a faint cross over the tiles in range, pad with an owner-coloured ring, replay steps for charging (inward ring), capture ("CAPTURED"), firing (beam, impact, `-1`) and idle ("no target"), the gold `+N`, a `Turrets:` line in the robot panel, scoreboard `sabotage +N`, tile hover text, narration in both clients and the terminal board (`Y1` plus charge mark, `P1`).
+
+**Evidence**
+
+| Check | Result |
+|---|---|
+| Whole suite, normal and ASan/UBSan | 239/239 test cases, 31 826 assertions, both builds (15 new in `tests/test_turrets.cpp`) |
+| Existing behaviour | `training-01` sim hashes still `8b9b82fb718c2751` / `415308a3742c5db6`; all earlier pins and maps unchanged; training-01 snapshots carry no `turrets` or `sabotage` (tested) |
+| Map | validates for 2-4 players, text round-trip, orphan pad / orphan turret / duplicate id / bad id rejected, the device blocks and the pad does not, no `L` emitters |
+| Cycle | charge 1 on tick 1, charge 2 on tick 2, fire or idle on tick 3, and the cycle continues into the next round |
+| Targeting | nearest wins; N2 loses to E1; ties N > E > S > W; distance 3 and diagonals never hit; W2 is in range; a wall at distance 1 hides a robot at distance 2 |
+| Scoring and attribution | owned hit +1; disabling hit +1 and +3 once (`by`, `turret` on the event); crate drops where the robot fell; owner self-hit and self-disable score 0; neutral hit and disable score 0; a laser-felled robot is not targeted and its disable stays a laser disable with no bonus |
+| Ownership | entering a pad claims, a second player entering the other pad takes it (previous owner reported), charge unaffected, the capture on a firing tick owns that shot; standing on a pad from the start claims nothing; simultaneous entrants resolve by pad order |
+| Persistence / determinism | checkpoint restore round-trips `turrets`, rejects charge 3, owner 3 and a wrong id; `turretworks-01` with 2, 3 and 4 bots finishes 12 rounds and re-runs identically (`--check`) |
+| Playback | capture, two charges, fire, both scores, disable and crate drop replay to the authoritative board (field-by-field, including turret charge and owner) |
+| Live SDL | server + two scripted `--ui` clients on `turretworks-01`: P1 walks onto the pad (round 2), P2 walks into range; captured headlessly: replay "TURRET 1 (P1) fires W and hits P2 (damage 2)", the beam and `-1` on P2, owner-coloured turret and range cross, `+1 for P1`, then in round 4 "P2 DISABLED (TURRET)" and `+3` (score 6); P1 also shot by its own turret later with no points |
+
+**Notes for the playtest**
+
+- Because the cycle is three ticks and a round has three ticks, the turret always fires on tick 3. Players can count on it; say if you would rather desynchronise it (for example a per-turret starting charge).
+- Server bots do not claim turrets deliberately (G4). They plan on the real rules engine, so they see the damage but not the ownership opportunity.
+- The next roadmap items (G2-C tar, G2-D pit-push) are not started.
+
+**Stop gate:** playtest `turretworks-01` with humans before deciding anything further.
 
 ### Presentation requirements
 

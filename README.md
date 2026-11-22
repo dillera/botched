@@ -35,7 +35,7 @@ Build once (`cmake -S . -B build && cmake --build build -j`), then:
 
 ### Maps
 
-Maps are plain files in `resources/maps/*.map` (shipped: `training-01`, the spec's example, `factory-01`, `crossroads-01` the G2-A playtest map `trapworks-01` and the laser map `laserworks-01`).
+Maps are plain files in `resources/maps/*.map` (shipped: `training-01`, the spec's example, `factory-01`, `crossroads-01` the G2-A playtest map `trapworks-01` and the laser map `laserworks-01` and the G2-B turret map `turretworks-01`).
 The server loads and validates every `.map` file at startup and reports problems per file on stderr; valid
 maps stay available when another file is bad, and duplicate ids are rejected. Adding a map needs no rebuild:
 drop a file in the directory and restart the server.
@@ -122,6 +122,23 @@ the scoreboard lists `sabotage +N`. Server bots do not use traps yet (that is G4
 
 ```sh
 ./build/botched-client --ui --create --players 2 --map-id trapworks-01
+```
+
+### Charging laser turrets (G2-B)
+
+Maps may contain `Y<n>` (a turret, solid) and `P<n>` (its control pad). A turret is **neutral** at the start
+and cycles on its own: two charging ticks, then on the third tick it fires once at the nearest robot within two
+tiles north, east, south or west of it (a wall stops the shot; ties go N, E, S, W; nothing in range means no
+shot) for 1 damage, and starts charging again. A robot that **enters** a `P<n>` pad claims the turret; a rival
+can take it by entering a pad later, and neither affects the charge. Scoring matches the traps: +1 for hitting an
+opponent of the owner, +3 more for a disabling hit, nothing for self-inflicted or neutral damage. These are new
+tokens only: the existing `L>` lasers are unchanged and still neutral, and `turrets` (state) and the
+`TURRET_*` events only appear on maps with turrets. The SDL client shows two charge pips on the turret (it
+glows when the next tick fires), a faint cross over the tiles in range, the owner's colour, a beam to the
+victim with `-1`, a `CAPTURED` ring and the gold `+N`. Try it (server bots do not use turrets deliberately):
+
+```sh
+./build/botched-client --ui --create --players 2 --map-id turretworks-01
 ```
 
 ### Score-target matches

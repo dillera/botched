@@ -36,11 +36,18 @@ struct TrapView {
     int owner = 0;  // 0 = neutral
 };
 
+struct TurretView {
+    int id = 0;
+    int charge = 0;  // 0..2 completed charging ticks
+    int owner = 0;   // 0 = neutral
+};
+
 // The part of a snapshot the board draws.
 struct BoardView {
     std::vector<RobotView> robots;
     std::vector<CrateView> crates;  // loose crates only
     std::vector<TrapView> traps;    // proximity traps (G2-A); empty on maps without them
+    std::vector<TurretView> turrets;  // charging turrets (G2-B); empty on maps without them
     std::vector<bool> reversed = std::vector<bool>(26, false);
 
     RobotView* robot(int id);
@@ -48,6 +55,7 @@ struct BoardView {
     const RobotView* robot_at(int x, int y) const;
     const CrateView* crate_at(int x, int y) const;
     const TrapView* trap(int id) const;
+    const TurretView* turret(int id) const;
     bool group_reversed(char g) const { return g >= 'A' && g <= 'Z' && reversed[static_cast<std::size_t>(g - 'A')]; }
     bool equals(const BoardView& other) const;
     std::string diff(const BoardView& other) const;  // "" when equal (test diagnostics)
@@ -78,7 +86,8 @@ struct Step {
     enum Kind {
         Mark, Turn, Move, Push, Blocked, Pickup, Deliver, Drop, Toggle, CrateMove, CrateGone,
         Laser, Disable, Respawn, Spawn, Quiet, Instant,
-        TrapArm, TrapBurst, TrapHit, Score
+        TrapArm, TrapBurst, TrapHit, Score,
+        TurretCapture, TurretCharge, TurretFire, TurretIdle
     } kind = Instant;
     enum Phase { Orders, Machinery, RoundEdge } phase = Orders;
     int ms = 0;
@@ -92,6 +101,9 @@ struct Step {
     int trap = 0;                        // TrapArm/TrapBurst/TrapHit/Score: trap id (cx, cy = its tile)
     int owner = 0;                       // trap owner at the time (0 neutral); Score: who earned the points
     int points = 0;                      // Score: points awarded
+    bool turret = false;                 // Score: the source is a turret (then `trap` is the turret id)
+    int distance = 0;                    // TurretFire: tiles to the target (`to` = firing direction, `player` = victim)
+    int charge = 0;                      // TurretCharge: charge reached (1 or 2)
     std::vector<int> victims;            // TrapBurst: every robot in range
     struct Mover { int id; int fx, fy, tx, ty; bool crate; };
     std::vector<Mover> movers;

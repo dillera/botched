@@ -56,6 +56,7 @@ GameState make_initial_state(const Map& map, int player_count, int rounds, int t
     }
     for (char g : map.groups) s.groups.push_back({g, false});
     for (const Trap& t : map.traps) s.traps.push_back({t.id, true, 0});  // armed and neutral
+    for (const Turret& t : map.turrets) s.turrets.push_back({t.id, 0, 0});  // neutral, about to charge
     return s;
 }
 
@@ -105,9 +106,9 @@ void Engine::deliver_if_on_dock(GameState& s, int pid) {
 
 void Engine::disable_robot(GameState& s, int pid, Pos drop_cell, const char* cause, const TrapKill* kill) {
     Robot& r = s.robot(pid);
-    if (kill)  // attributed disable: say which trap and whose it was (0 = neutral)
+    if (kill)  // attributed disable: say which trap/turret and whose it was (0 = neutral)
         log_.emit("ROBOT_DISABLED", obj({{"player", pid}, {"cause", cause}, {"x", r.pos.x}, {"y", r.pos.y},
-                                         {"trap", kill->trap}, {"by", kill->owner}}));
+                                         {kill->turret ? "turret" : "trap", kill->trap}, {"by", kill->owner}}));
     else
         log_.emit("ROBOT_DISABLED", obj({{"player", pid}, {"cause", cause}, {"x", r.pos.x}, {"y", r.pos.y}}));
     if (r.carrying != 0) {
@@ -341,12 +342,81 @@ void Engine::phase_lasers(GameState& s) {
     }
 }
 
-void Engine::award_sabotage(GameState& s, int owner, int points, const char* reason, int victim, int trap) {
+void Engine::award_sabotage(GameState& s, int owner, int points, const char* reason, int victim, int device,
+                            bool turret) {
     Robot& o = s.robot(owner);
     o.score += points;
     o.sabotage += points;
     log_.emit("SCORE_AWARDED", obj({{"player", owner}, {"points", points}, {"reason", reason}, {"victim", victim},
-                                    {"trap", trap}, {"score", o.score}}));
+                                    {turret ? "turret" : "trap", device}, {"score", o.score}}));
+}
+
+// G2-B. After orders, conveyors, lasers and proximity traps, each turret (ascending id) in turn:
+//  1. capture: a robot that entered one of its pads this tick claims it. If the current owner is among
+//     the entrants they keep it; otherwise the first entrant in pad scan order (y, then x) claims it.
+//     Standing on a pad claims nothing, and a capture never resets the cycle.
+//  2. cycle: charge 0 -> 1 -> 2 on two ticks, then the third tick fires and the charge returns to 0.
+//  3. fire: the nearest active robot at distance 1 or 2 along N, E, S, W with no blocked tile between
+//     takes 1 damage; ties break N, E, S, W. A robot already at 3 damage (felled this tick) is neither
+//     a target nor an obstruction, so every disable has exactly one source. No target, no shot.
+// Points follow the trap rules: +1 for damaging an opponent of the owner, +3 more for the disabling hit,
+// nothing for self-damage or a neutral turret.
+void Engine::phase_turrets(GameState& s) {
+    static constexpr Pos kDirs[4] = {{0, -1}, {1, 0}, {0, 1}, {-1, 0}};  // N, E, S, W
+    static constexpr const char* kDirNames[4] = {"N", "E", "S", "W"};
+    for (const Turret& t : map_.turrets) {  // ascending id
+        TurretState* ts = s.turret(t.id);
+        if (!ts) continue;
+        // 1. capture
+        std::vector<int> entrants;
+        for (const TurretPad& pad : map_.turret_pads) {  // (y,x) scan order
+            if (pad.turret != t.id) continue;
+            const Robot* r = s.robot_at(pad.pos);
+            // "entering": the robot arrived on the pad this tick (by order, push or belt), not merely stands on it
+            if (r && r->damage < kMaxHealth && tick_start_pos_[static_cast<std::size_t>(r->id - 1)] != pad.pos)
+                entrants.push_back(r->id);
+        }
+        if (!entrants.empty() && std::find(entrants.begin(), entrants.end(), ts->owner) == entrants.end()) {
+            const int previous = ts->owner;
+            ts->owner = entrants.front();
+            log_.emit("TURRET_CAPTURED", obj({{"player", ts->owner}, {"turret", t.id}, {"x", t.pos.x}, {"y", t.pos.y},
+                                              {"previous_owner", previous}, {"owner", ts->owner}}));
+        }
+        // 2. cycle
+        if (ts->charge < 2) {
+            ts->charge += 1;
+            log_.emit("TURRET_CHARGING", obj({{"turret", t.id}, {"x", t.pos.x}, {"y", t.pos.y}, {"charge", ts->charge}, {"owner", ts->owner}}));
+            continue;
+        }
+        ts->charge = 0;
+        // 3. fire
+        const Robot* target = nullptr;
+        int best_dist = 0, best_dir = 0;
+        for (int d = 0; d < 4; ++d) {
+            for (int dist = 1; dist <= 2; ++dist) {
+                const Pos p{t.pos.x + kDirs[d].x * dist, t.pos.y + kDirs[d].y * dist};
+                if (map_.blocked(p)) break;
+                const Robot* r = s.robot_at(p);
+                if (!r || r->damage >= kMaxHealth) continue;
+                if (!target || dist < best_dist) { target = r; best_dist = dist; best_dir = d; }
+                break;
+            }
+        }
+        if (!target) {
+            log_.emit("TURRET_IDLE", obj({{"turret", t.id}, {"x", t.pos.x}, {"y", t.pos.y}, {"owner", ts->owner}}));
+            continue;
+        }
+        Robot& r = s.robot(target->id);
+        r.damage += 1;
+        r.damage_taken += 1;
+        const int owner = ts->owner;
+        const int points = (owner != 0 && owner != r.id) ? 1 : 0;
+        log_.emit("TURRET_FIRED", obj({{"turret", t.id}, {"x", t.pos.x}, {"y", t.pos.y}, {"owner", owner},
+                                       {"player", r.id}, {"dir", kDirNames[best_dir]}, {"distance", best_dist},
+                                       {"damage", r.damage}, {"points", points}}));
+        if (points) award_sabotage(s, owner, points, "TURRET_DAMAGE", r.id, t.id, true);
+        if (r.damage >= kMaxHealth) trap_kills_.push_back({r.id, t.id, owner, true});
+    }
 }
 
 // G2-A. After orders, conveyors and lasers: every armed trap with at least one robot on its eight
@@ -390,8 +460,9 @@ void Engine::phase_disable(GameState& s) {
         if (r.respawn_pending || r.damage < kMaxHealth) continue;
         const TrapKill* kill = nullptr;
         for (const auto& k : trap_kills_) if (k.victim == r.id) kill = &k;
-        disable_robot(s, r.id, r.pos, kill ? "TRAP" : "LASER", kill);
-        if (kill && kill->owner != 0 && kill->owner != r.id) award_sabotage(s, kill->owner, 3, "TRAP_DISABLE", r.id, kill->trap);
+        disable_robot(s, r.id, r.pos, kill ? (kill->turret ? "TURRET" : "TRAP") : "LASER", kill);
+        if (kill && kill->owner != 0 && kill->owner != r.id)
+            award_sabotage(s, kill->owner, 3, kill->turret ? "TURRET_DISABLE" : "TRAP_DISABLE", r.id, kill->trap, kill->turret);
     }
 }
 
@@ -399,6 +470,8 @@ void Engine::run_tick(GameState& s, const Programmes& programmes, int tick) {
     s.phase = Phase::Executing;
     s.tick = tick;
     trap_kills_.clear();
+    tick_start_pos_.clear();
+    for (const Robot& r : s.robots) tick_start_pos_.push_back(r.respawn_pending ? Pos{-1, -1} : r.pos);
     log_.begin(s.round, tick);
     const int abs_tick = absolute_tick(s.round, tick);
 
@@ -416,6 +489,7 @@ void Engine::run_tick(GameState& s, const Programmes& programmes, int tick) {
     phase_conveyors(s);   // Phase 2
     phase_lasers(s);      // Phase 3
     phase_traps(s);       // Phase 3b (G2-A): proximity traps, after lasers and before disables
+    phase_turrets(s);     // Phase 3c (G2-B): charging turrets, after traps and before disables
     phase_disable(s);     // Phase 4
 }
 

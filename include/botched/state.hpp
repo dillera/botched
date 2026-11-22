@@ -47,6 +47,14 @@ struct TrapState {
     friend bool operator==(const TrapState&, const TrapState&) = default;
 };
 
+// G2-B charging turret state (device positions come from the map).
+struct TurretState {
+    int id = 0;
+    int charge = 0;  // 0..2 = completed charging ticks; the tick after charge 2 fires and resets to 0
+    int owner = 0;   // player id, 0 = neutral
+    friend bool operator==(const TurretState&, const TurretState&) = default;
+};
+
 // The world. Everything the rules engine reads or writes.
 struct GameState {
     Phase phase = Phase::Planning;
@@ -59,6 +67,7 @@ struct GameState {
     std::vector<Crate> crates;   // ascending id
     std::vector<Group> groups;   // ascending id
     std::vector<TrapState> traps;  // ascending id; empty on maps without traps
+    std::vector<TurretState> turrets;  // ascending id; empty on maps without turrets
 
     int player_count() const { return static_cast<int>(robots.size()); }
     Robot& robot(int id) { return robots[static_cast<std::size_t>(id - 1)]; }
@@ -69,6 +78,8 @@ struct GameState {
     const Group* group(char id) const;
     TrapState* trap(int id);
     const TrapState* trap(int id) const;
+    TurretState* turret(int id);
+    const TurretState* turret(int id) const;
     Robot* robot_at(Pos p);                 // active robot on tile
     Crate* loose_crate_at(Pos p);
     void remove_crate(int id);

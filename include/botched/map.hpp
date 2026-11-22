@@ -9,6 +9,9 @@
 //   L<d>       laser emitter, d in > < ^ v
 //   X<n>       proximity trap n (1-9): a device that hits all robots on its 8 neighbouring tiles
 //   K<n>       control console of trap n: TOGGLE next to it arms/re-arms the trap and claims it
+//   Y<n>       charging laser turret n (1-9): charges two ticks, then fires once at the nearest robot
+//              within two tiles (N,E,S,W); not an L<d> emitter
+//   P<n>       control pad of turret n: a robot entering it claims the turret
 // Blank lines and lines starting with ';' are ignored.
 #pragma once
 
@@ -46,6 +49,16 @@ struct TrapConsole {
     Pos pos;
 };
 
+struct Turret {
+    int id;
+    Pos pos;
+};
+
+struct TurretPad {
+    int turret;  // the turret this pad claims
+    Pos pos;
+};
+
 struct Dispenser {
     int id;
     Pos pos;
@@ -65,6 +78,8 @@ struct Map {
     std::vector<Pos> lasers;            // ascending (y,x)
     std::vector<Trap> traps;            // ascending id
     std::vector<TrapConsole> trap_consoles;  // ascending (y,x)
+    std::vector<Turret> turrets;        // ascending id
+    std::vector<TurretPad> turret_pads; // ascending (y,x)
     std::vector<char> groups;           // ascending, every group referenced by any tile
 
     bool in_bounds(Pos p) const { return p.x >= 0 && p.y >= 0 && p.x < width && p.y < height; }

@@ -111,6 +111,13 @@ std::optional<Tile> parse_token(const std::string& t, std::string& err) {
         tile.owner = v;
         return tile;
     }
+    if (k == 'Y' || k == 'P') {
+        int v = t.size() == 2 && t[1] >= '1' && t[1] <= '9' ? t[1] - '0' : -1;
+        if (v < 1) return bad(k == 'Y' ? "expected Y<1-9>" : "expected P<1-9>");
+        tile.terrain = k == 'Y' ? Terrain::Turret : Terrain::TurretPad;
+        tile.owner = v;
+        return tile;
+    }
     if (k == 'L') {
         if (t.size() != 2) return bad("expected L<dir>");
         auto d = arrow_dir(t[1]);
@@ -148,6 +155,8 @@ std::string token_text(const Tile& t) {
         case Terrain::LaserEmitter: return std::string("L") + dir_arrow(t.dir);
         case Terrain::Trap: return "X" + std::to_string(t.owner);
         case Terrain::TrapConsole: return "K" + std::to_string(t.owner);
+        case Terrain::Turret: return "Y" + std::to_string(t.owner);
+        case Terrain::TurretPad: return "P" + std::to_string(t.owner);
     }
     return "?";
 }
@@ -157,7 +166,8 @@ std::string token_text(const Tile& t) {
 bool Map::blocked(Pos p) const {
     if (!in_bounds(p)) return true;
     Terrain t = tile(p).terrain;
-    return t == Terrain::Wall || t == Terrain::LaserEmitter || t == Terrain::Trap;
+    return t == Terrain::Wall || t == Terrain::LaserEmitter || t == Terrain::Trap ||
+           t == Terrain::Turret;
 }
 
 bool Map::walkable(Pos p) const {
@@ -172,6 +182,8 @@ void Map::finalize() {
     lasers.clear();
     traps.clear();
     trap_consoles.clear();
+    turrets.clear();
+    turret_pads.clear();
     groups.clear();
     std::set<char> g;
     int console_index = 0;
@@ -198,6 +210,8 @@ void Map::finalize() {
                 case Terrain::LaserEmitter: lasers.push_back(p); break;
                 case Terrain::Trap: traps.push_back({t.owner, p}); break;
                 case Terrain::TrapConsole: trap_consoles.push_back({t.owner, p}); break;
+                case Terrain::Turret: turrets.push_back({t.owner, p}); break;
+                case Terrain::TurretPad: turret_pads.push_back({t.owner, p}); break;
                 default: break;
             }
         }
@@ -205,6 +219,7 @@ void Map::finalize() {
     std::stable_sort(dispensers.begin(), dispensers.end(),
                      [](const Dispenser& a, const Dispenser& b) { return a.id < b.id; });
     std::stable_sort(traps.begin(), traps.end(), [](const Trap& a, const Trap& b) { return a.id < b.id; });
+    std::stable_sort(turrets.begin(), turrets.end(), [](const Turret& a, const Turret& b) { return a.id < b.id; });
     groups.assign(g.begin(), g.end());
 }
 
@@ -303,6 +318,18 @@ std::vector<std::string> validate_map(const Map& m, const ValidationOptions& opt
         }
         for (int id : trap_ids)
             if (!controlled.count(id)) e.push_back("trap X" + std::to_string(id) + " has no control console K" + std::to_string(id));
+    }
+    {   // G2-B charging turrets: unique ids, and every turret has at least one control pad (and vice versa)
+        std::set<int> turret_ids;
+        for (const Turret& t : m.turrets)
+            if (!turret_ids.insert(t.id).second) e.push_back("duplicate turret id " + std::to_string(t.id));
+        std::set<int> claimed;
+        for (const TurretPad& c : m.turret_pads) {
+            claimed.insert(c.turret);
+            if (!turret_ids.count(c.turret)) e.push_back("turret pad P" + std::to_string(c.turret) + " has no turret Y" + std::to_string(c.turret));
+        }
+        for (int id : turret_ids)
+            if (!claimed.count(id)) e.push_back("turret Y" + std::to_string(id) + " has no control pad P" + std::to_string(id));
     }
     for (int p = 1; p <= kMaxPlayers; ++p) {
         auto i = static_cast<std::size_t>(p);

@@ -20,6 +20,14 @@ const Group* GameState::group(char id) const {
     for (const auto& g : groups) if (g.id == id) return &g;
     return nullptr;
 }
+TurretState* GameState::turret(int id) {
+    for (auto& t : turrets) if (t.id == id) return &t;
+    return nullptr;
+}
+const TurretState* GameState::turret(int id) const {
+    for (const auto& t : turrets) if (t.id == id) return &t;
+    return nullptr;
+}
 TrapState* GameState::trap(int id) {
     for (auto& t : traps) if (t.id == id) return &t;
     return nullptr;

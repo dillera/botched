@@ -18,6 +18,8 @@ char terrain_char(const Tile& t) {
         case Terrain::LaserEmitter: return 'L';
         case Terrain::Trap: return 'X';
         case Terrain::TrapConsole: return 'K';
+        case Terrain::Turret: return 'Y';
+        case Terrain::TurretPad: return 'P';
         case Terrain::Conveyor:
             switch (t.dir) {
                 case Dir::E: return '>';
@@ -76,7 +78,8 @@ std::string render_board(const Map& map, const Json& snap) {
             const Cell& c = cells[static_cast<std::size_t>(y * map.width + x)];
             out += terrain_char(t);
             bool owned = t.terrain == Terrain::Spawn || t.terrain == Terrain::Dock || t.terrain == Terrain::Dispenser ||
-                         t.terrain == Terrain::Trap || t.terrain == Terrain::TrapConsole;
+                         t.terrain == Terrain::Trap || t.terrain == Terrain::TrapConsole ||
+                         t.terrain == Terrain::Turret || t.terrain == Terrain::TurretPad;
             out += owned ? static_cast<char>('0' + t.owner % 10) : ' ';
             out += c.crate ? '*' : ' ';
             out += c.robot;
@@ -161,6 +164,8 @@ struct View {
     std::vector<bool> reversed;  // by group letter A..Z
     struct TrapInfo { bool armed = true; int owner = 0; };
     std::vector<TrapInfo> traps = std::vector<TrapInfo>(10);  // by trap id 1..9
+    struct TurretInfo { int charge = 0; int owner = 0; };
+    std::vector<TurretInfo> turrets = std::vector<TurretInfo>(10);  // by turret id 1..9
     View(const Map& map, const Json& snap) : cells(map.tiles.size()), reversed(26, false) {
         auto at = [&](int x, int y) -> Overlay* {
             if (x < 0 || y < 0 || x >= map.width || y >= map.height) return nullptr;
@@ -186,6 +191,13 @@ struct View {
             for (const auto& t : ts->items()) {
                 const auto id = t.get_int("id").value_or(0);
                 if (id >= 1 && id <= 9) traps[static_cast<std::size_t>(id)] = {t.get_bool("armed").value_or(true), static_cast<int>(t.get_int("owner").value_or(0))};
+            }
+        if (const Json* ts = snap.find("turrets"))
+            for (const auto& t : ts->items()) {
+                const auto id = t.get_int("id").value_or(0);
+                if (id >= 1 && id <= 9)
+                    turrets[static_cast<std::size_t>(id)] = {static_cast<int>(t.get_int("charge").value_or(0)),
+                                                             static_cast<int>(t.get_int("owner").value_or(0))};
             }
         if (const Json* gs = snap.find("groups"))
             for (const auto& g : gs->items()) {
@@ -229,6 +241,12 @@ std::string cell_text(const Map& map, const View& v, const Style& st, int x, int
             return ti.armed ? paint(st, "X" + id + "!", "1;" + std::to_string(player_fg(ti.owner))) : paint(st, "x" + id + " ", "90");
         }
         case Terrain::TrapConsole: return paint(st, "K" + std::to_string(t.owner % 10) + " ", "1;96");
+        case Terrain::Turret: {  // "Y1" plus charge dots, in the owner's colour (white = neutral)
+            const auto& ti = v.turrets[static_cast<std::size_t>(t.owner % 10)];
+            return paint(st, "Y" + std::to_string(t.owner % 10) + std::string(ti.charge >= 2 ? "!" : ti.charge == 1 ? "'" : " "),
+                         "1;" + std::to_string(player_fg(ti.owner)));
+        }
+        case Terrain::TurretPad: return paint(st, "P" + std::to_string(t.owner % 10) + " ", "1;95");
         case Terrain::Conveyor:
             return paint(st, std::string(" ") + belt_glyph(effective_dir(t, v), u) + " ", std::to_string(group_fg(t.group)));
     }
@@ -302,6 +320,15 @@ std::string render_legend(const Map& map, const Json& snap, const Style& st) {
                  (ti.owner == 0 ? std::string("neutral") : "P" + std::to_string(ti.owner));
     }
     if (!traps.empty()) out += "Traps:" + traps + "   (hit the 8 tiles around; TOGGLE next to K<n> arms and claims)\n";
+    // charging turrets
+    std::string turrets;
+    for (const auto& tp : map.turrets) {
+        const auto& ti = v.turrets[static_cast<std::size_t>(tp.id % 10)];
+        turrets += "  Y" + std::to_string(tp.id) + "(" + std::to_string(tp.pos.x) + "," + std::to_string(tp.pos.y) + ") charge " +
+                   std::to_string(ti.charge) + "/2, " + (ti.owner == 0 ? std::string("neutral") : "P" + std::to_string(ti.owner));
+    }
+    if (!turrets.empty())
+        out += "Turrets:" + turrets + "   (fire every 3rd tick at the nearest robot within 2 tiles N/E/S/W; step on P<n> to claim)\n";
     // dispensers
     std::string disp;
     for (const auto& d : map.dispensers) {
@@ -339,6 +366,14 @@ std::string describe_tile(const Map& map, const Json& snap, Pos pos, int viewer)
             return "proximity trap " + std::to_string(t.owner) + " (" + (ti.armed ? "ARMED, " : "disarmed, ") + who +
                    ") - hits every robot on the 8 tiles around it, once, then disarms";
         }
+        case Terrain::Turret: {
+            const auto& ti = v.turrets[static_cast<std::size_t>(t.owner % 10)];
+            std::string who = ti.owner == 0 ? "neutral" : ti.owner == viewer ? "yours" : "owned by P" + std::to_string(ti.owner);
+            return "charging laser turret " + std::to_string(t.owner) + " (charge " + std::to_string(ti.charge) + "/2, " + who +
+                   ") - fires every 3rd tick at the nearest robot within 2 tiles N/E/S/W";
+        }
+        case Terrain::TurretPad:
+            return "control pad of turret " + std::to_string(t.owner) + " - step onto it to claim the turret";
         case Terrain::TrapConsole:
             return "control console of trap " + std::to_string(t.owner) + " - stand next to it and TOGGLE (T) to arm the trap and claim it";
         case Terrain::Conveyor:

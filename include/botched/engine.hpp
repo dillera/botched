@@ -45,11 +45,14 @@ private:
     void resolve_tile(GameState& s, int pid, Pos last_safe);
     void pick_up_and_deliver(GameState& s, int pid);
     void deliver_if_on_dock(GameState& s, int pid);
-    struct TrapKill { int victim; int trap; int owner; };  // a trap hit that crossed the disable threshold
+    // A trap or turret hit that crossed the disable threshold. `turret` selects which device id `trap` names.
+    struct TrapKill { int victim; int trap; int owner; bool turret = false; };
     void disable_robot(GameState& s, int pid, Pos drop_cell, const char* cause, const TrapKill* kill = nullptr);
-    void award_sabotage(GameState& s, int owner, int points, const char* reason, int victim, int trap);
+    void award_sabotage(GameState& s, int owner, int points, const char* reason, int victim, int device,
+                        bool turret = false);
     void arm_trap(GameState& s, int pid, const TrapConsole& console);
     void phase_traps(GameState& s);
+    void phase_turrets(GameState& s);
     void run_order(GameState& s, int pid, Order o, int slot);
     void toggle(GameState& s, int pid);
     void drop(GameState& s, int pid);
@@ -60,6 +63,7 @@ private:
     const Map& map_;
     EventLog& log_;
     std::vector<TrapKill> trap_kills_;   // this tick only
+    std::vector<Pos> tick_start_pos_;    // where each robot stood when the tick began (turret pad "entering")
     std::vector<int> moved_this_phase_;  // robots displaced during the conveyor phase
 };
 

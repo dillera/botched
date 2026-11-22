@@ -33,6 +33,10 @@ const TrapView* BoardView::trap(int id) const {
     for (const auto& t : traps) if (t.id == id) return &t;
     return nullptr;
 }
+const TurretView* BoardView::turret(int id) const {
+    for (const auto& t : turrets) if (t.id == id) return &t;
+    return nullptr;
+}
 const CrateView* BoardView::crate_at(int x, int y) const {
     for (const auto& c : crates) if (c.x == x && c.y == y) return &c;
     return nullptr;
@@ -69,6 +73,10 @@ std::string BoardView::diff(const BoardView& o) const {
     else for (std::size_t i = 0; i < traps.size(); ++i)
         if (traps[i].id != o.traps[i].id || traps[i].armed != o.traps[i].armed || traps[i].owner != o.traps[i].owner)
             add("trap " + std::to_string(traps[i].id));
+    if (turrets.size() != o.turrets.size()) add("turret count");
+    else for (std::size_t i = 0; i < turrets.size(); ++i)
+        if (turrets[i].id != o.turrets[i].id || turrets[i].charge != o.turrets[i].charge || turrets[i].owner != o.turrets[i].owner)
+            add("turret " + std::to_string(turrets[i].id));
     return d;
 }
 bool BoardView::equals(const BoardView& o) const { return diff(o).empty(); }
@@ -99,6 +107,8 @@ BoardView read_board(const Json& snap) {
         }
     if (const Json* ts = snap.find("traps"))
         for (const auto& t : ts->items()) v.traps.push_back({gi(t, "id"), t.get_bool("armed").value_or(true), gi(t, "owner")});
+    if (const Json* ts = snap.find("turrets"))
+        for (const auto& t : ts->items()) v.turrets.push_back({gi(t, "id"), gi(t, "charge"), gi(t, "owner")});
     if (const Json* gs = snap.find("groups"))
         for (const auto& g : gs->items()) {
             auto id = g.get_string("id");
@@ -147,6 +157,15 @@ void apply_event(BoardView& b, const Json& e) {
         for (auto& tv : b.traps) if (tv.id == gi(p, "trap")) { tv.armed = true; tv.owner = gi(p, "owner"); }
     } else if (t == "TRAP_TRIGGERED") {
         for (auto& tv : b.traps) if (tv.id == gi(p, "trap")) tv.armed = false;
+    } else if (t == "TURRET_CAPTURED") {
+        for (auto& tv : b.turrets) if (tv.id == gi(p, "turret")) tv.owner = gi(p, "owner");
+    } else if (t == "TURRET_CHARGING") {
+        for (auto& tv : b.turrets) if (tv.id == gi(p, "turret")) tv.charge = gi(p, "charge");
+    } else if (t == "TURRET_IDLE") {
+        for (auto& tv : b.turrets) if (tv.id == gi(p, "turret")) tv.charge = 0;
+    } else if (t == "TURRET_FIRED") {
+        for (auto& tv : b.turrets) if (tv.id == gi(p, "turret")) tv.charge = 0;
+        if (r) r->damage = gi(p, "damage");
     } else if (t == "SCORE_AWARDED") {
         if (r) { r->score = gi(p, "score"); r->sabotage += gi(p, "points"); }
     } else if (t == "ROBOT_DISABLED") {
@@ -289,7 +308,9 @@ void Playback::build(const Json& batch, std::size_t first_event) {
         if (t == "CRATE_MOVED" || t == "LASER_HIT") return true;
         if (t == "ROBOT_MOVED" || t == "MOVE_BLOCKED") return p.get_string("cause").value_or("") == "CONVEYOR";
         if (t == "TRAP_TRIGGERED" || t == "TRAP_HIT" || t == "SCORE_AWARDED") return true;
-        if (t == "ROBOT_DISABLED") return p.get_string("cause").value_or("") == "LASER" || p.get_string("cause").value_or("") == "TRAP";
+        if (t == "TURRET_CAPTURED" || t == "TURRET_CHARGING" || t == "TURRET_FIRED" || t == "TURRET_IDLE") return true;
+        if (t == "ROBOT_DISABLED") return p.get_string("cause").value_or("") == "LASER" || p.get_string("cause").value_or("") == "TRAP" ||
+                                          p.get_string("cause").value_or("") == "TURRET";
         if (t == "ROBOT_PUSHED") {  // caused by the pusher's own move: look ahead for it
             for (std::size_t j = i + 1; j < events_.size(); ++j) {
                 if (type_of(events_[j]) != "ROBOT_MOVED") continue;
@@ -511,12 +532,62 @@ void Playback::build(const Json& batch, std::size_t first_event) {
             Step s = new_step(Step::Score, 800);
             s.player = gi(p, "player");   // who earned it
             s.points = gi(p, "points");
-            s.trap = gi(p, "trap");
+            const std::string reason = p.get_string("reason").value_or("");
+            s.turret = reason.rfind("TURRET", 0) == 0;
+            s.trap = gi(p, s.turret ? "turret" : "trap");
             s.events = {i};
             s.commit_first = true;
-            const std::string why = p.get_string("reason").value_or("") == "TRAP_DISABLE" ? "disabling " : "damaging ";
-            s.caption = "+" + std::to_string(s.points) + " for " + P(s.player) + ": " + why + P(gi(p, "victim")) + " with trap " + std::to_string(s.trap) +
-                        " (score " + std::to_string(gi(p, "score")) + ")";
+            const std::string why = (reason == "TRAP_DISABLE" || reason == "TURRET_DISABLE") ? "disabling " : "damaging ";
+            s.caption = "+" + std::to_string(s.points) + " for " + P(s.player) + ": " + why + P(gi(p, "victim")) +
+                        (s.turret ? " with turret " : " with trap ") + std::to_string(s.trap) + " (score " + std::to_string(gi(p, "score")) + ")";
+            push(std::move(s));
+        } else if (t == "TURRET_CAPTURED") {
+            Step s = new_step(Step::TurretCapture, 700);
+            s.player = gi(p, "player");
+            s.trap = gi(p, "turret");
+            s.owner = gi(p, "owner");
+            s.cx = gi(p, "x");
+            s.cy = gi(p, "y");
+            s.events = {i};
+            s.commit_first = true;
+            s.caption = P(s.player) + " captures turret " + std::to_string(s.trap) +
+                        (gi(p, "previous_owner") != 0 ? " (was P" + std::to_string(gi(p, "previous_owner")) + "'s)" : "");
+            push(std::move(s));
+        } else if (t == "TURRET_CHARGING") {
+            Step s = new_step(Step::TurretCharge, 380);
+            s.trap = gi(p, "turret");
+            s.owner = gi(p, "owner");
+            s.charge = gi(p, "charge");
+            s.cx = gi(p, "x");
+            s.cy = gi(p, "y");
+            s.events = {i};
+            s.commit_first = true;
+            s.caption = "turret " + std::to_string(s.trap) + " charging " + std::to_string(s.charge) + "/2";
+            push(std::move(s));
+        } else if (t == "TURRET_IDLE") {
+            Step s = new_step(Step::TurretIdle, 350);
+            s.trap = gi(p, "turret");
+            s.owner = gi(p, "owner");
+            s.cx = gi(p, "x");
+            s.cy = gi(p, "y");
+            s.events = {i};
+            s.commit_first = true;
+            s.caption = "turret " + std::to_string(s.trap) + " fires its cycle: no target in range";
+            push(std::move(s));
+        } else if (t == "TURRET_FIRED") {
+            Step s = new_step(Step::TurretFire, 900);
+            s.player = gi(p, "player");  // the victim
+            s.trap = gi(p, "turret");
+            s.owner = gi(p, "owner");
+            s.cx = gi(p, "x");
+            s.cy = gi(p, "y");
+            s.to = parse_dir(p.get_string("dir").value_or("N")).value_or(Dir::N);
+            s.distance = gi(p, "distance");
+            s.events = {i};
+            s.commit_first = true;
+            s.caption = "TURRET " + std::to_string(s.trap) + " (" + (s.owner ? P(s.owner) : std::string("neutral")) + ") fires " +
+                        to_string(s.to) + " and hits " + P(s.player) + " (damage " + std::to_string(gi(p, "damage")) + ")" +
+                        (s.owner == 0 ? " - neutral, no points" : s.owner == s.player ? " - own turret, no points" : "");
             push(std::move(s));
         } else if (t == "GROUP_TOGGLED") {
             Step s = new_step(Step::Toggle, 600);

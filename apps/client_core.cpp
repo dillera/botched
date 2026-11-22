@@ -225,10 +225,23 @@ std::vector<std::string> summarize_events(const Json& events) {
             plain("TRAP " + std::to_string(pint(p, "trap")) + " (" + (owner ? P(owner) : std::string("neutral")) + ") fires and catches " + who_caught);
         } else if (type == "TRAP_HIT") {
             plain("  " + who + " hit by the trap (damage " + std::to_string(pint(p, "damage")) + ")");
+        } else if (type == "TURRET_CAPTURED") {
+            act(pl, "captures turret " + std::to_string(pint(p, "turret")));
+        } else if (type == "TURRET_CHARGING") {
+            plain("turret " + std::to_string(pint(p, "turret")) + " charging " + std::to_string(pint(p, "charge")) + "/2");
+        } else if (type == "TURRET_IDLE") {
+            plain("turret " + std::to_string(pint(p, "turret")) + " fires its cycle but has no target");
+        } else if (type == "TURRET_FIRED") {
+            const int owner = pint(p, "owner");
+            plain("TURRET " + std::to_string(pint(p, "turret")) + " (" + (owner ? P(owner) : std::string("neutral")) + ") fires " +
+                  p.get_string("dir").value_or("?") + " and hits " + who + " (damage " + std::to_string(pint(p, "damage")) + ")");
         } else if (type == "SCORE_AWARDED") {
+            const std::string reason = p.get_string("reason").value_or("");
+            const bool tur = reason.rfind("TURRET", 0) == 0;
             plain("  +" + std::to_string(pint(p, "points")) + " for " + who + ": " +
-                  (p.get_string("reason").value_or("") == "TRAP_DISABLE" ? "disabling " : "damaging ") + P(pint(p, "victim")) +
-                  " with trap " + std::to_string(pint(p, "trap")) + " (score " + std::to_string(pint(p, "score")) + ")");
+                  ((reason == "TRAP_DISABLE" || reason == "TURRET_DISABLE") ? "disabling " : "damaging ") + P(pint(p, "victim")) +
+                  (tur ? " with turret " + std::to_string(pint(p, "turret")) : " with trap " + std::to_string(pint(p, "trap"))) +
+                  " (score " + std::to_string(pint(p, "score")) + ")");
         } else if (type == "ROBOT_DISABLED") {
             plain(who + " DISABLED (" + p.get_string("cause").value_or("?") + ")");
         } else if (type == "ROBOT_RESPAWNED") {

@@ -26,7 +26,7 @@ void write_world(const GameState& s, Json& out) {
         p.set("deliveries", r.deliveries);
         p.set("damage_taken", r.damage_taken);
         p.set("respawn_pending", r.respawn_pending);
-        if (!s.traps.empty()) p.set("sabotage", r.sabotage);  // only on maps with traps (hashes elsewhere unchanged)
+        if (!s.traps.empty() || !s.turrets.empty()) p.set("sabotage", r.sabotage);  // only on maps with traps (hashes elsewhere unchanged)
         players.push(std::move(p));
     }
     out.set("players", std::move(players));
@@ -61,6 +61,17 @@ void write_world(const GameState& s, Json& out) {
             traps.push(std::move(j));
         }
         out.set("traps", std::move(traps));
+    }
+    if (!s.turrets.empty()) {
+        Json turrets = Json::array();
+        for (const auto& t : s.turrets) {
+            Json j = Json::object();
+            j.set("id", t.id);
+            j.set("charge", t.charge);
+            j.set("owner", t.owner ? Json(t.owner) : Json(nullptr));
+            turrets.push(std::move(j));
+        }
+        out.set("turrets", std::move(turrets));
     }
 }
 
@@ -205,6 +216,22 @@ bool read_world(const Json& in, GameState& s, std::string& error) {
             if (!opt_int(tj, "owner", 1, kMaxPlayers, owner, ctx, error)) return false;
             t.owner = owner.value_or(0);
             g.traps.push_back(t);
+        }
+    }
+    if (const Json* turrets = in.find("turrets")) {
+        if (!turrets->is_array()) return fail(error, "turrets must be an array");
+        if (turrets->items().size() > 9) return fail(error, "too many turrets");
+        for (std::size_t i = 0; i < turrets->items().size(); ++i) {
+            const Json& tj = turrets->items()[i];
+            const std::string ctx = "turrets[" + std::to_string(i) + "]";
+            if (!tj.is_object()) return fail(error, ctx + " must be an object");
+            TurretState t;
+            if (!need_int(tj, "id", 1, 9, t.id, ctx, error)) return false;
+            if (!need_int(tj, "charge", 0, 2, t.charge, ctx, error)) return false;
+            std::optional<int> owner;
+            if (!opt_int(tj, "owner", 1, kMaxPlayers, owner, ctx, error)) return false;
+            t.owner = owner.value_or(0);
+            g.turrets.push_back(t);
         }
     }
     s = std::move(g);

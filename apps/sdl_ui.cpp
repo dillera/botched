@@ -391,6 +391,39 @@ void draw_trap_console(Gfx& g, int x, int y, int s, int id, bool armed, int owne
     g.ring(x + s * 0.5f, y + s * 0.74f, s * 0.11f, 2, C(200, 204, 214), 14);
 }
 
+// G2-B charging turret: a square emplacement with a barrel on each side. Two pips show the charge (0, 1, 2);
+// at 2 the whole thing glows, because the next tick fires. The owner colour is white for a neutral turret.
+void draw_turret(Gfx& g, int x, int y, int s, int id, int charge, int owner, Uint32 now) {
+    g.fill({x, y, s, s}, C(28, 30, 38));
+    const float cx = x + s / 2.f, cy = y + s / 2.f;
+    const SDL_Color oc = trap_color(owner);
+    const bool ready = charge >= 2;
+    const float pulse = ready ? 0.5f + 0.5f * std::sin(static_cast<float>(now) * 0.014f) : 0.f;
+    for (int i = 0; i < 4; ++i) {  // barrels N, E, S, W
+        const float a = 6.2831853f * static_cast<float>(i) / 4.f;
+        g.line(cx + std::cos(a) * s * 0.18f, cy + std::sin(a) * s * 0.18f, cx + std::cos(a) * s * 0.46f, cy + std::sin(a) * s * 0.46f,
+               std::max(3.f, s * 0.11f), ready ? mix(oc, C(255, 255, 255), pulse) : C(120, 126, 142));
+    }
+    g.disc(cx, cy, s * 0.27f, C(44, 48, 60), 24);
+    g.ring(cx, cy, s * 0.27f, std::max(2.f, s * 0.06f), oc, 24);
+    for (int i = 0; i < 2; ++i) {
+        const bool lit = charge > i;
+        g.disc(cx + (i == 0 ? -0.09f : 0.09f) * s, cy, s * 0.065f, lit ? mix(C(255, 90, 60), C(255, 230, 150), pulse) : C(66, 70, 82), 12);
+    }
+    g.text(x + s / 2, y + 1, "Y" + std::to_string(id), oc, g.small, 1);
+}
+
+// G2-B turret control pad: step on it to claim the turret. The ring shows who owns it now.
+void draw_turret_pad(Gfx& g, int x, int y, int s, int id, int owner) {
+    const SDL_Color oc = trap_color(owner);
+    g.fill({x, y, s, s}, C(34, 36, 50));
+    g.frame({x + 2, y + 2, s - 4, s - 4}, oc, 2);
+    const float cx = x + s / 2.f, cy = y + s / 2.f;
+    g.ring(cx, cy, s * 0.26f, std::max(2.f, s * 0.05f), oc, 24);
+    g.disc(cx, cy, s * 0.08f, oc, 12);
+    g.text(x + s / 2, y + s - g.line_h(g.small) - 1, "P" + std::to_string(id), oc, g.small, 1);
+}
+
 void draw_floor(Gfx& g, int x, int y, int s, bool alt) {
     g.fill({x, y, s, s}, alt ? C(34, 42, 54) : C(30, 37, 48));
     g.frame({x, y, s, s}, C(24, 30, 40), 1);
@@ -896,6 +929,16 @@ void draw_board(App& a, Gfx& g, Uint32 now) {
                     draw_trap(g, px, py, s, t.owner, tv ? tv->armed : true, tv ? tv->owner : 0, now);
                     break;
                 }
+                case Terrain::Turret: {
+                    const TurretView* uv = sv.turret(t.owner);
+                    draw_turret(g, px, py, s, t.owner, uv ? uv->charge : 0, uv ? uv->owner : 0, now);
+                    break;
+                }
+                case Terrain::TurretPad: {
+                    const TurretView* uv = sv.turret(t.owner);
+                    draw_turret_pad(g, px, py, s, t.owner, uv ? uv->owner : 0);
+                    break;
+                }
                 case Terrain::TrapConsole: {
                     const TrapView* tv = sv.trap(t.owner);
                     draw_trap_console(g, px, py, s, t.owner, tv ? tv->armed : true, tv ? tv->owner : 0);
@@ -923,6 +966,21 @@ void draw_board(App& a, Gfx& g, Uint32 now) {
                 const int qx = L.board.x + q.x * s, qy = L.board.y + q.y * s;
                 g.fill({qx, qy, s, s}, C(oc.r, oc.g, oc.b, static_cast<int>(26 + 26 * pulse)));
                 g.frame({qx + 1, qy + 1, s - 2, s - 2}, C(oc.r, oc.g, oc.b, 110), 1);
+            }
+    }
+    // turret ranges: a faint cross two tiles long (stopped by blocked tiles), brighter when the next tick fires
+    for (const auto& tr : m.turrets) {
+        const TurretView* uv = sv.turret(tr.id);
+        const SDL_Color oc = trap_color(uv ? uv->owner : 0);
+        const int alpha = uv && uv->charge >= 2 ? 64 : 24;
+        static constexpr int dxs[4] = {0, 1, 0, -1}, dys[4] = {-1, 0, 1, 0};
+        for (int d = 0; d < 4; ++d)
+            for (int k = 1; k <= 2; ++k) {
+                const Pos q{tr.pos.x + dxs[d] * k, tr.pos.y + dys[d] * k};
+                if (m.blocked(q)) break;
+                const int qx = L.board.x + q.x * s, qy = L.board.y + q.y * s;
+                g.fill({qx, qy, s, s}, C(oc.r, oc.g, oc.b, alpha));
+                g.frame({qx + 1, qy + 1, s - 2, s - 2}, C(oc.r, oc.g, oc.b, 90), 1);
             }
     }
     // laser beams
@@ -1067,6 +1125,45 @@ void draw_board(App& a, Gfx& g, Uint32 now) {
                     }
                 g.ring(c0.x, c0.y, s * (0.3f + 1.4f * pr), 5, C(oc.r, oc.g, oc.b, static_cast<int>(255 * fade_out)), 40);
                 burst(c0, s * (0.5f + 0.9f * pr), C(255, 210, 120, static_cast<int>(255 * fade_out)), 12);
+                break;
+            }
+            case Step::TurretCapture: {
+                const RobotView* rb = sv.robot(st->player);
+                const SDL_Color oc = trap_color(st->owner);
+                if (rb && rb->active) {
+                    V2 c0 = cell_c(static_cast<float>(rb->x), static_cast<float>(rb->y));
+                    g.ring(c0.x, c0.y, s * (0.4f + 0.9f * pr), 4, C(oc.r, oc.g, oc.b, static_cast<int>(255 * fade_out)), 40);
+                    g.alpha = std::min(1.f, 2.f * fade_out);
+                    g.text(static_cast<int>(c0.x), static_cast<int>(c0.y - s * (0.7f + 0.4f * pr)) - 10, "CAPTURED", oc, g.body, 1);
+                    g.alpha = 1.f;
+                }
+                break;
+            }
+            case Step::TurretCharge: {
+                V2 c0 = cell_c(static_cast<float>(st->cx), static_cast<float>(st->cy));
+                const SDL_Color oc = trap_color(st->owner);
+                g.ring(c0.x, c0.y, s * (0.95f - 0.4f * pr), 3, C(oc.r, oc.g, oc.b, static_cast<int>(200 * pr)), 36);  // energy drawn in
+                break;
+            }
+            case Step::TurretIdle: {
+                V2 c0 = cell_c(static_cast<float>(st->cx), static_cast<float>(st->cy));
+                g.alpha = std::min(1.f, 2.f * fade_out);
+                g.text(static_cast<int>(c0.x), static_cast<int>(c0.y - s * 0.8f) - 10, "no target", kMuted, g.small, 1);
+                g.alpha = 1.f;
+                break;
+            }
+            case Step::TurretFire: {
+                V2 c0 = cell_c(static_cast<float>(st->cx), static_cast<float>(st->cy));
+                const SDL_Color oc = trap_color(st->owner);
+                const V2 f = fwd(st->to);
+                const V2 c1{c0.x + f.x * static_cast<float>(st->distance) * static_cast<float>(s), c0.y + f.y * static_cast<float>(st->distance) * static_cast<float>(s)};
+                const int fl = static_cast<int>(255 * std::sin(pr * 3.14159f));
+                g.line(c0.x, c0.y, c1.x, c1.y, std::max(6.f, s * 0.18f), C(oc.r, oc.g, oc.b, fl / 2));
+                g.line(c0.x, c0.y, c1.x, c1.y, std::max(2.f, s * 0.07f), C(255, 255, 255, fl));
+                g.disc(c1.x, c1.y, s * 0.45f, C(255, 90, 40, static_cast<int>(170 * std::sin(pr * 3.14159f))));
+                g.alpha = std::min(1.f, 2.f * fade_out);
+                g.text(static_cast<int>(c1.x), static_cast<int>(c1.y - s * (0.5f + 0.4f * pr)) - 10, "-1", kRed, g.big, 1);
+                g.alpha = 1.f;
                 break;
             }
             case Step::TrapHit: {
@@ -1235,8 +1332,9 @@ void draw_robot_panel(App& a, Gfx& g) {
     if (a.snap.is_null() || !a.map) return;
     const BoardView& sv = a.auth;
     const bool has_traps = !a.map->traps.empty();
-    const int lh = has_traps ? 16 : 18;  // one more line when the map has traps
-    int y = L.robot.y + (has_traps ? 25 : 28);
+    const bool has_turrets = !a.map->turrets.empty();
+    const int lh = has_traps && has_turrets ? 14 : (has_traps || has_turrets) ? 16 : 18;  // one more line per hazard kind
+    int y = L.robot.y + (has_traps || has_turrets ? 25 : 28);
     for (const auto& r : sv.robots) {
         if (r.id != a.me) continue;
         if (r.disabled) { g.text(L.robot.x + 12, y, "Disabled - respawning at the end of the round", kRed, g.small); break; }
@@ -1263,6 +1361,15 @@ void draw_robot_panel(App& a, Gfx& g) {
             tr += "  X" + std::to_string(tp.id) + (tv && tv->armed ? " ARMED" : " off") + (tv && tv->owner ? " (P" + std::to_string(tv->owner) + ")" : " (neutral)");
         }
         g.text(L.robot.x + 12, y + 4 * lh, tr, kRed, g.small);
+    }
+    if (has_turrets) {
+        std::string tr = "Turrets:";
+        for (const auto& tp : a.map->turrets) {
+            const TurretView* tv = a.shown().turret(tp.id);
+            tr += "  Y" + std::to_string(tp.id) + " " + std::to_string(tv ? tv->charge : 0) + "/2" +
+                  (tv && tv->owner ? " (P" + std::to_string(tv->owner) + ")" : " (neutral)");
+        }
+        g.text(L.robot.x + 12, y + (has_traps ? 5 : 4) * lh, tr, kRed, g.small);
     }
 }
 

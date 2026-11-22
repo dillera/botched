@@ -1,0 +1,22 @@
+; Botched! map resource
+; id: turretworks-01
+; name: Turret Works
+; description: G2-B playtest: one charging laser turret (Y1) in the middle, claimed by stepping on either P1 pad.
+; players: 2-4
+;
+; Y1 charges for two ticks and fires on the third (so once per round), at the nearest robot within two tiles
+; north, east, south or west of it; a wall stops the shot. Dispenser G1 sits one tile north of Y1, so
+; grabbing its crate is a gamble. Stepping onto a P1 pad (left and right of the arena, both out of range)
+; claims the turret; the other pad lets a rival take it back without resetting the charge. Hits on opponents
+; score for the owner (+1, +3 more for a disable); neutral or self-inflicted damage scores nothing.
+; The wall at (5,6) shortens the southern shot; walls at (2,2), (8,2), (2,6), (8,6) give cover.
+#   #   #   #   #   #   #   #   #   #   #   #
+#   S1  D1  .   .   .   .   .   .   D2  S2  #
+#   .   #   .   .   .   .   .   #   .   .   #
+#   .   .   .   .   G1  .   .   .   .   .   #
+#   .   P1  .   .   Y1  .   .   .   P1  .   #
+#   .   .   .   .   .   .   .   .   .   .   #
+#   .   #   .   .   #   .   .   #   .   .   #
+#   .   .   G2  .   .   .   G3  .   .   .   #
+#   S3  D3  .   .   .   .   .   .   D4  S4  #
+#   #   #   #   #   #   #   #   #   #   #   #
