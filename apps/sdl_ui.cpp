@@ -1227,13 +1227,20 @@ void draw_board(App& a, Gfx& g, Uint32 now) {
 
 void draw_queue(App& a, Gfx& g, Uint32 now) {
     const Layout& L = a.lay;
-    const auto& q = a.play.queue();
+    // While planning (and no replay still running) show the coming round's order instead of the last round's.
+    const bool preview = a.phase == "PLANNING" && !a.play.active() && !a.snap.is_null() && !a.auth.robots.empty();
+    std::vector<QueueEntry> pq;
+    if (preview)
+        pq = build_preview_queue(static_cast<int>(a.snap.get_int("round").value_or(a.last_round)),
+                                 static_cast<int>(a.auth.robots.size()), a.me,
+                                 std::vector<std::string>(a.program.begin(), a.program.end()));
+    const auto& q = preview ? pq : a.play.queue();
     g.fill(L.queue, C(14, 19, 29));
     g.frame(L.queue, kPanelEdge, 1);
     if (q.empty()) {
         g.text(L.queue.x + 10, L.queue.y + 14, "Execution order appears here when a round resolves", kMuted, g.small);
     } else {
-        const int live = a.play.queue_live(), done = a.play.queue_done();
+        const int live = preview ? -1 : a.play.queue_live(), done = preview ? 0 : a.play.queue_done();
         int x = L.queue.x + 6;
         for (std::size_t i = 0; i < q.size(); ++i) {
             const QueueEntry& e = q[i];
@@ -1248,9 +1255,9 @@ void draw_queue(App& a, Gfx& g, Uint32 now) {
             } else {
                 const SDL_Color pc = player_color(e.player);
                 g.fill(c, is_live ? shade(pc, 0.55f) : shade(pc, 0.22f));
-                g.frame(c, is_live ? C(255, 255, 255) : pc, is_live ? 3 : 1);
+                g.frame(c, is_live ? C(255, 255, 255) : pc, is_live ? 3 : (e.preview && !e.hidden) ? 2 : 1);  // my own preview chips stand out
                 g.text(c.x + c.w / 2, c.y + 1, "P" + std::to_string(e.player) + "(" + std::to_string(e.tick) + ")", is_live ? C(255, 255, 255) : pc, g.small, 1);
-                std::string code = e.skipped ? "-" : e.order.empty() ? "?" : client::order_code(e.order);
+                std::string code = e.skipped ? "-" : e.order.empty() ? (e.preview && !e.hidden ? "_" : "?") : client::order_code(e.order);
                 g.text(c.x + c.w / 2, c.y + c.h - g.line_h(g.small) - 1, code, e.no_op || e.skipped ? kMuted : kGold, g.small, 1);
             }
             g.alpha = 1.f;

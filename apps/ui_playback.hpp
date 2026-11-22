@@ -73,11 +73,17 @@ struct QueueEntry {
     std::string order;       // order token ("FORWARD_2"); empty for machinery
     bool no_op = false;      // ORDER_NO_OP: could not act
     bool skipped = false;    // ORDER_SKIPPED_DISABLED
+    bool preview = false;    // planning-phase preview entry (nothing has executed yet)
+    bool hidden = false;     // preview of another player's order: not public until the round runs
 };
 
 // Entries in the exact order the server executed them, derived from ORDER_* events only:
 // per tick one entry per player, then one machinery entry.
 std::vector<QueueEntry> build_queue(const Json& events);
+// Planning-phase preview of `round`: per tick the engine's rotating-priority player order
+// (priority_order(absolute_tick(round, tick))) then one machinery entry. Only seat `me` shows its orders
+// (`my_program[tick-1]`, an order token or "" for an empty slot); every other player is `hidden`.
+std::vector<QueueEntry> build_preview_queue(int round, int player_count, int me, const std::vector<std::string>& my_program);
 // "P1(1) P2(1) * P2(2) P1(2) * ..." ('*' = machinery) for tests and logs.
 std::string queue_text(const std::vector<QueueEntry>& q, int round);
 

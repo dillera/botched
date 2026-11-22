@@ -167,7 +167,7 @@ fill the three slots; they save when complete; `Enter` or LOCK IN commits. Hover
 When a round resolves the window **replays it**: an execution queue under the board (`P1(1) P2(1) ⚙ P2(2) ...`,
 ⚙ = conveyors/hazards phase) highlights the live instruction while the board animates the server's own events
 (moves, turns, pushes, belt rides, blocked moves, pickups, deliveries, pit falls, respawns). `Space` or SKIP jumps
-to the final state, `[` / `]` change the speed, `--anim-speed X` / `--no-anim` set it at start. Scroll the log with the mouse wheel, `PgUp`/`PgDn`, `Home`/`End` or by dragging its bar; `Esc` quits.
+to the final state, `[` / `]` change the speed, `--anim-speed X` / `--no-anim` set it at start. While you are **planning**, the same strip previews the coming round instead: the exact tick order (rotating priority, with a ⚙ after each tick), your own chips showing the orders in your slots (`_` for an empty slot) and every other player's chip showing `?`, since their orders are hidden until the round runs. It switches back to the live replay strip once the round executes. Scroll the log with the mouse wheel, `PgUp`/`PgDn`, `Home`/`End` or by dragging its bar; `Esc` quits.
 `--bot` makes the window play automatically (`--think-ms N` slows it down for demos). It needs SDL2 and
 SDL2_ttf at build time (found automatically; disable with `-DBOTCHED_SDL=OFF`) and a TrueType font
 (DejaVu Sans, or set `BOTCHED_FONT`). Headless check: `SDL_VIDEODRIVER=dummy botched-client --ui --frames 300

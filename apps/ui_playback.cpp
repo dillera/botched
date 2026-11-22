@@ -1,6 +1,7 @@
 #include "ui_playback.hpp"
 
 #include <algorithm>
+#include "botched/engine.hpp"
 #include <cstdio>
 
 namespace botched::ui {
@@ -222,6 +223,32 @@ std::vector<QueueEntry> build_queue(const Json& events) {
         q.push_back(en);
     }
     close();
+    return q;
+}
+
+std::vector<QueueEntry> build_preview_queue(int round, int player_count, int me, const std::vector<std::string>& my_program) {
+    std::vector<QueueEntry> q;
+    for (int tick = 1; tick <= 3; ++tick) {
+        for (int pid : botched::priority_order(botched::absolute_tick(round, tick), player_count)) {
+            QueueEntry e;
+            e.preview = true;
+            e.round = round;
+            e.tick = tick;
+            e.player = pid;
+            if (pid == me) {
+                if (static_cast<std::size_t>(tick - 1) < my_program.size()) e.order = my_program[static_cast<std::size_t>(tick - 1)];
+            } else {
+                e.hidden = true;
+            }
+            q.push_back(e);
+        }
+        QueueEntry m;
+        m.preview = true;
+        m.machinery = true;
+        m.round = round;
+        m.tick = tick;
+        q.push_back(m);
+    }
     return q;
 }
 
