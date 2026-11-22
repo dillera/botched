@@ -299,10 +299,10 @@ Implements the approved "G2-C — Tar rules" section as written. No damage, no p
 - Map token `A` (no id): a tar generator, solid like a wall or turret. The eight tiles around it (Chebyshev distance 1, walls do not shield, the generator's own tile is not tar) are tar, via `Map::in_tar`. Tar is a property of the map, so snapshots, checkpoints, hashes and every existing map are unchanged.
 - Rules, in the order the section lists them:
   - `FORWARD_1` and `BACK_1` cannot move a robot that starts in tar: `ORDER_NO_OP` with `reason: "TAR"` (the robot stays put and pushes nothing). Entering tar from outside with them is fine.
-  - `FORWARD_2` makes its first one-tile substep as usual, then tar is checked: if the robot now stands in tar the second substep is cancelled (`TAR_SLOWED` event). Entering tar on the *second* substep leaves nothing to cancel.
+  - `FORWARD_2` makes its first one-tile substep as usual. A robot that **started in tar** is limited to that one substep even if it steps out of the tar (the allowance is fixed at instruction start, so `FORWARD_2` is the way out). A robot that started outside has the second substep cancelled if the first tile put it in tar (`TAR_SLOWED` event); entering tar on the *second* substep leaves nothing to cancel.
   - Rotations, `DROP`, `TOGGLE`, `WAIT` are untouched (they keep their normal no-op reasons).
   - A robot in tar can push with an allowed `FORWARD_2`; pushed robots and conveyor movement ignore tar.
-- Interpretation recorded in `docs/rules-interpretations.md` #37-41. The one judgement call: tar is judged after each substep, so a `FORWARD_2` that *starts* in tar but whose first tile leaves it continues freely for the second tile (the section says "checked after each movement substep").
+- Interpretation recorded in `docs/rules-interpretations.md` #37-41. (Fixed after the first playtest: a `FORWARD_2` that starts in tar is limited to one tile even when that tile leaves the tar; my first reading let it continue.)
 - Map: `resources/maps/tarworks-01.map` (12x10, 2-4 players): generator at (5,4) with dispenser G1 inside the tar, so the central crate is a slow grab while the outer ring is fast.
 - SDL: a tar generator sprite, the eight tar tiles tinted purple with slow bubbles (always visible), tile hover text and the robot panel's "On: tar: F2 moves 1 tile, F and B cannot move", a replay step with a purple pulse and "TAR!" for `TAR_SLOWED` and for a no-op in tar, plus narration ("stuck in tar, cannot move", "slowed by tar: FORWARD_2 stops after one tile"). The terminal board shows `~` on tar and `A`.
 
@@ -313,7 +313,7 @@ Implements the approved "G2-C — Tar rules" section as written. No damage, no p
 | Whole suite, normal and ASan/UBSan | 252/252 test cases, 32 118 assertions, both builds (8 new in `tests/test_tar.cpp`) |
 | Existing behaviour | `training-01` sim hashes still `8b9b82fb718c2751` / `415308a3742c5db6`; snapshots carry no tar, trap or turret keys on tar maps |
 | Map | validates for 2-4 players; exactly the 8 neighbours are tar, the generator tile and tiles two away are not; text round-trip; `A1` rejected |
-| Rules | `F`/`B` in tar: no move, `reason TAR`; `F` from outside into tar moves; `F2` from outside into tar stops after the first tile; entering tar only on the second substep ends there with no event; `F2` inside tar moves one tile; `F2` that leaves tar on its first tile continues; `F2` outside tar moves two; turns/`WAIT` unaffected and `DROP`/`TOGGLE` keep their usual no-op reasons |
+| Rules | `F`/`B` in tar: no move, `reason TAR`; `F` from outside into tar moves; `F2` from outside into tar stops after the first tile; entering tar only on the second substep ends there with no event; `F2` inside tar moves one tile; **`F2` that starts in tar moves one tile even when that tile leaves the tar (regression test), after which a normal `F2` moves two; repeated `F2` is the way out**; `F2` outside tar moves two; turns/`WAIT` unaffected and `DROP`/`TOGGLE` keep their usual no-op reasons |
 | Pushing / belts | a robot in tar pushes with `FORWARD_2` (pushed robot not restricted), `FORWARD_1` in tar cannot push; a belt inside tar carries a robot out unaffected; no damage and no `SCORE_AWARDED` |
 | Playback | slowed `F2` plus two stuck orders give 3 `TarSlow` steps and the replayed board equals the authoritative one |
 | Determinism | `tarworks-01` with 2, 3 and 4 bots finishes and re-runs identically |
@@ -323,6 +323,8 @@ Implements the approved "G2-C — Tar rules" section as written. No damage, no p
 
 - Server bots plan on the real rules engine, so they feel tar but do not seek or avoid it deliberately (G4).
 - The central dispenser G1 sits inside the tar; a crate carried out of it is slowed on the way, as intended.
+
+**Fix after playtest (2026-11-22).** `F2` starting in tar previously moved two tiles when the first tile left the tar; it now stops after one. Only the instruction-start allowance changed: entry from outside (immediate stop), stuck `F`/`B`, pushing and belts are as before. Evidence: 252/252 test cases, 32 123 assertions (normal and ASan/UBSan), `training-01` hashes unchanged, `tarworks-01` 2-4 bot runs deterministic.
 
 **Stop gate:** playtest `tarworks-01` before G2-D.
 

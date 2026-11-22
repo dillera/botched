@@ -126,11 +126,18 @@ TEST_CASE("G2-C tar: FORWARD_2 stops after one tile once the robot stands in tar
         CHECK(at(m, 1, 5, 5));
         CHECK(events_of(m, "TAR_SLOWED").size() == 1);
     }
-    {   // starting in tar but leaving it with the first tile: tar is judged per substep, so the second tile is free
+    {   // starting in tar and leaving it with the first tile: still only one tile (the allowance is set at the start)
         Match m = setup(tar_map(), 2, {{6, 5, "E"}, {10, 1}});
         play_round(m, {{"FORWARD_2"}});
-        CHECK(at(m, 1, 8, 5));
-        CHECK(events_of(m, "TAR_SLOWED").empty());
+        CHECK(at(m, 1, 7, 5));   // out of the tar, but no second tile
+        CHECK(events_of(m, "TAR_SLOWED").size() == 1);
+        play_round(m, {{"FORWARD_2"}});   // now outside tar: a normal two-tile move
+        CHECK(at(m, 1, 9, 5));
+    }
+    {   // F2 is the way out: from inside, repeated F2 gets a robot clear one tile at a time
+        Match m = setup(tar_map(), 2, {{4, 5, "W"}, {10, 1}});
+        play_round(m, {{"FORWARD_2", "FORWARD_2", "FORWARD_2"}});
+        CHECK(at(m, 1, 1, 5));   // 1st: one tile to (3,5) (out of tar); 2nd: two tiles to (1,5); 3rd: the wall at (0,5) stops it
     }
     {   // outside tar entirely: unchanged behaviour
         Match m = setup(tar_map(), 2, {{7, 5, "E"}, {10, 1}});

@@ -268,15 +268,18 @@ void Engine::run_order(GameState& s, int pid, Order o, int /*slot*/) {
             break;
         case Order::Forward2:
             executed();
+            {
+            // G2-C: a robot that starts FORWARD_2 in tar is limited to one substep, even if that step leaves
+            // the tar. Otherwise tar is judged after the first substep: entering it cancels the second.
+            const bool started_in_tar = map_.in_tar(r.pos);
             for (int i = 0; i < 2; ++i) {
                 if (r.respawn_pending) break;
                 if (!move_robot(s, pid, r.heading, Cause::Order)) break;
-                // G2-C: tar is judged after every movement substep; a robot standing in tar after the
-                // first tile (entered or still inside) loses the second.
-                if (i == 0 && !r.respawn_pending && map_.in_tar(r.pos)) {
+                if (i == 0 && !r.respawn_pending && (started_in_tar || map_.in_tar(r.pos))) {
                     log_.emit("TAR_SLOWED", obj({{"player", pid}, {"order", to_string(o)}, {"x", r.pos.x}, {"y", r.pos.y}}));
                     break;
                 }
+            }
             }
             break;
         case Order::Back1:

@@ -144,8 +144,8 @@ victim with `-1`, a `CAPTURED` ring and the gold `+N`. Try it (server bots do no
 ### Tar (G2-C)
 
 A tar generator `A` (solid, no id) makes the eight tiles around it tar. In tar `FORWARD_1` and `BACK_1` cannot
-move you, and `FORWARD_2` moves you one tile (tar is checked after each substep, so a `FORWARD_2` that carries
-you into tar stops there). Turning, `DROP`, `TOGGLE` and `WAIT` are normal, a robot in tar can still push with
+move you, and `FORWARD_2` moves you one tile, even if that tile leaves the tar (it is the way out); a `FORWARD_2` that
+carries you into tar from outside stops there. Turning, `DROP`, `TOGGLE` and `WAIT` are normal, a robot in tar can still push with
 `FORWARD_2`, and being pushed or carried by a belt is not slowed. Tar does no damage and scores nothing; it is a
 map feature, so snapshots and every existing map are unchanged. New events: `ORDER_NO_OP` with `reason: "TAR"` and
 `TAR_SLOWED`. The SDL client draws the generator and purple tar tiles and plays a "TAR!" pulse. Try it:
