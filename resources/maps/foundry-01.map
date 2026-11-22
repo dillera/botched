@@ -21,8 +21,10 @@
 ;
 ; Home: each side has two short belt lanes (rows 3 and 9) that carry you W/E straight onto your own dock. Group A
 ; is the left pair, B the right pair; consoles TA (3,5) / TB (7,5) reverse their own group, so a rival can carry
-; your load back out, into the trap ring or the tar. The pits at (2,4) and (8,4) sit just under the upper belts:
-; stand on row 2 above a rider and push him in (the lower belts have the same pits at (2,8) and (8,8), reached from row 10).
+; your load back out, into the trap ring or the tar. TOGGLE activates every console in reach, so standing at (2,5)
+; or (8,5) fires the trap console (K1 / K2) and the belt console (TA / TB) together. The pits at (2,4) and (8,4) sit
+; just under the upper belts: stand on row 2 above a rider and push him in (the lower belts have the same pits at
+; (2,8) and (8,8), reached from row 10).
 #   #   #   #   #   #   #   #   #   #   #
 #   S1  .   .   #   G1  #   .   .   S2  #
 #   .   .   .   #   .   #   .   .   .   #

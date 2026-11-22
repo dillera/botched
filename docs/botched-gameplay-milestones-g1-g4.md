@@ -90,7 +90,7 @@ Evolve Botched! from a twelve-round crate-delivery race into a factory competiti
 **Activation and timing**
 
 1. At the start of a match, map-defined proximity traps are armed but have no player owner.
-2. A player adjacent to the trap's associated control console may execute `T` to arm or rearm it, gaining ownership. Rearming an already-armed trap transfers ownership without triggering it.
+2. A player on or adjacent to the trap's associated control console may execute `T` to arm or rearm it, gaining ownership (`T` activates every console in range, see *Multi-console TOGGLE* below). Rearming an already-armed trap transfers ownership without triggering it.
 3. Proximity traps are evaluated during the machinery phase of each tick, **after all player instructions and conveyor movement**, so robots moved voluntarily, pushed or transported by conveyors are evaluated at their resulting positions.
 4. If at least one robot occupies any of the eight neighbouring tiles, the trap activates once and deals 1 damage to every robot in the affected area, including its owner if present.
 5. The trap then becomes disarmed and remains inactive until rearmed.
@@ -427,6 +427,12 @@ One new map, `resources/maps/foundry-01.map` ("The Foundry", 11x13, 2-4 players)
 **SDL layout fixes (after the first playtest of `foundry-01`, UI only):** the hover/replay caption now wraps onto two lines to the right of the "FACTORY FLOOR" label instead of running over it; the right column (scoreboard / your robot / your orders) is sized to its content (scoreboard by player count, robot panel by its status lines, `compute_layout(w, h, players, robot_lines)`) and always ends on the board panel's bottom edge, so the log sits cleanly underneath; the score-target progress bar no longer touches the deliveries line. New `--hover x,y` client flag places the mouse on a board tile for headless screenshots. Covered by a layout test (276/276 test cases); no rules change.
 
 **Stop gate:** playtest `foundry-01` before G4.
+
+### Multi-console TOGGLE (after the `foundry-01` playtest) — **done, awaiting playtest** (2026-11-22)
+
+`TOGGLE` now activates **every** console (belt `T` or trap `K`) on the robot's own tile or any of the four orthogonally adjacent tiles, each exactly once per instruction, in row-major order (y, then x). Each console emits its normal event (`GROUP_TOGGLED` / `TRAP_ARMED`) after the single `ORDER_EXECUTED`; with no console in range the order is still `ORDER_NO_OP` `NO_CONSOLE`. It replaces the old "one console wins" rule (belt console first, then lowest id). Motivation: on `foundry-01`, standing at (2,5) between K1 and TA used to toggle only the belts; now it does both, which is a map-design matter rather than a rule one. Two belt consoles of the same group in range cancel out (per-console rule). Still `botched/1`; no snapshot or event shape changes. Details: `rules-interpretations.md` #47.
+
+Evidence: 282/282 test cases (new `tests/test_toggle.cpp`: K1+TA at (2,5) in row-major order, own-tile console, row-then-column ordering, once-per-console incl. same-group cancel, NO_CONSOLE, lone consoles unchanged; the old "smallest id" test in `test_machinery.cpp` now asserts both toggle); `training-01` hashes unchanged (bots never TOGGLE).
 
 ### Presentation requirements
 

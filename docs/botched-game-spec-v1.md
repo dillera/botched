@@ -78,7 +78,7 @@ Each round every active player submits an ordered array of **exactly three** ord
 | `TURN_RIGHT` | None | Rotate heading 90° clockwise; no translation |
 | `TURN_AROUND` | None | Rotate heading 180°; no translation |
 | `DROP` | None | If carrying, place crate on robot's current tile **if there is no loose crate already there**; otherwise do nothing. Does not score |
-| `TOGGLE` | None | If currently orthogonally adjacent to one or more consoles, toggle the group of the console with the lexicographically smallest console ID; otherwise do nothing |
+| `TOGGLE` | None | Activate every console on the robot's tile or the four orthogonally adjacent tiles, once each, in row-major order (superseded from "smallest console ID only"; see `rules-interpretations.md` #47); otherwise do nothing |
 | `WAIT` | None | No voluntary movement or action; machinery still affects robot |
 
 Robots do **not** need a separate pick-up command. Collection and delivery are automatic. No energy economy, attack command, movement cards, upgrades, or randomness in player orders in v1. Invalid order tokens cause submission rejection; a syntactically valid order that cannot act becomes a logged no-op.

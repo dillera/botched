@@ -79,7 +79,7 @@ go            lock in: the round runs as soon as everyone is locked in, or when 
 |---|---|---|---|
 | `F` / `F2` | forward 1 / 2 | `U` | turn around |
 | `B` | back 1 | `D` | drop the crate |
-| `L` / `R` | turn left / right | `T` | toggle the console next to you |
+| `L` / `R` | turn left / right | `T` | toggle every console on your tile or next to you |
 | `W` | wait | | |
 
 Other commands: `help`, `show` (redraw), `quit`. Players who do not lock in before the timer simply
