@@ -80,6 +80,7 @@ int main(int argc, char** argv) {
         else if (a == "--anim-speed") opt.anim_speed = std::atof(next());
         else if (a == "--frames") opt.ui_frames = std::atoi(next());
         else if (a == "--screenshot") opt.ui_screenshot = next();
+        else if (a == "--hover") { std::sscanf(next(), "%d,%d", &opt.ui_hover_x, &opt.ui_hover_y); }
         else if (a == "--ascii") ascii = true;
         else if (a == "--no-color") no_color = true;
         else { usage(); return 2; }

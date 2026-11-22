@@ -36,6 +36,7 @@ struct ClientOptions {
     bool ui = false;               // graphical (SDL) client instead of the terminal one
     int ui_frames = 0;             // ui: stop after this many frames (tests, screenshots); 0 = run until closed
     std::string ui_screenshot;     // ui: with ui_frames, save the last frame here (BMP)
+    int ui_hover_x = -1, ui_hover_y = -1;  // ui: pretend the mouse rests on this board tile (headless screenshots)
     std::vector<std::string> programs;  // ui: scripted orders per round, e.g. "F2 R T" (demos and tests)
     bool animate = true;           // ui: replay resolved rounds step by step (false: jump to the result)
     double anim_speed = 1.0;       // ui: playback speed multiplier

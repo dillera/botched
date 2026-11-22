@@ -41,7 +41,12 @@ struct Layout {
     Rect skip_button;   // skips round playback
 };
 
-Layout compute_layout(int map_w, int map_h);
+// The right-hand column (scoreboard / robot status / orders) is sized to its content: the scoreboard by the number
+// of players, the robot panel by how many status lines it prints, and all three end on the board panel's bottom
+// edge so the message log sits cleanly underneath.
+inline constexpr int kRobotLineH = 16;
+inline int robot_panel_lines(bool has_traps, bool has_turrets) { return 4 + (has_traps ? 1 : 0) + (has_turrets ? 1 : 0); }
+Layout compute_layout(int map_w, int map_h, int players = 4, int robot_lines = 6);
 
 // Append-only log with a bounded history and a scroll position. offset 0 means "following the
 // newest line"; scrolling up pins the view so arriving lines do not move what you are reading.

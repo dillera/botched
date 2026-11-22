@@ -4,7 +4,7 @@
 
 namespace botched::ui {
 
-Layout compute_layout(int map_w, int map_h) {
+Layout compute_layout(int map_w, int map_h, int players, int robot_lines) {
     Layout l;
     const int m = 8;
     l.title = {m, m, kScreenW - 2 * m, 48};
@@ -22,9 +22,16 @@ Layout compute_layout(int map_w, int map_h) {
     l.skip_button = {l.queue.x + l.queue.w + 8, l.queue.y + 6, 76, 34};
 
     const int rx = l.board_panel.x + l.board_panel.w + m, rw = kScreenW - m - rx;
-    l.scores = {rx, 64, rw, 250};
-    l.robot = {rx, 322, rw, 106};
-    l.orders = {rx, 436, rw, 260};
+    const int cg = 8, column = l.board_panel.h;
+    players = std::max(1, std::min(players, 4));
+    robot_lines = std::max(2, std::min(robot_lines, 8));
+    const int robot_h = 25 + robot_lines * kRobotLineH + 8;
+    const int scores_need = 30 + players * 52 + 6;
+    const int orders_h = std::max(240, std::min(260, column - 2 * cg - robot_h - scores_need));
+    const int scores_h = column - 2 * cg - robot_h - orders_h;  // whatever is left, so the bases line up
+    l.scores = {rx, l.board_panel.y, rw, scores_h};
+    l.robot = {rx, l.scores.y + scores_h + cg, rw, robot_h};
+    l.orders = {rx, l.robot.y + robot_h + cg, rw, orders_h};
     l.messages = {m, 704, kScreenW - 2 * m, kScreenH - 704 - m};
     l.log_text = {l.messages.x + 10, l.messages.y + 34, l.messages.w - 10 - 26, l.messages.h - 34 - 8};
     l.scrollbar = {l.messages.x + l.messages.w - 18, l.log_text.y, 10, l.log_text.h};

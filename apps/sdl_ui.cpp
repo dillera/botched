@@ -621,6 +621,12 @@ struct App {
         return true;
     }
 
+    void relayout() {
+        if (!map) return;
+        lay = compute_layout(map->width, map->height, capacity > 0 ? capacity : 4,
+                             robot_panel_lines(!map->traps.empty(), !map->turrets.empty()));
+    }
+
     bool load_map() {
         Json q = make("GET_MAP"), r;
         q.set("match_id", match_id);
@@ -629,7 +635,7 @@ struct App {
         MapLoad ml = mj ? map_from_json(*mj) : MapLoad{};
         if (!ml.map) { fatal = "could not read the map from the server"; return false; }
         map = std::make_shared<const Map>(std::move(*ml.map));
-        lay = compute_layout(map->width, map->height);
+        relayout();
         bot = std::make_unique<sim::Bot>(me, *map, opt.seed * 1000003ULL + static_cast<std::uint64_t>(me));
         return true;
     }
@@ -641,7 +647,10 @@ struct App {
         if (const Json* s = r.find("status")) {
             status = *s;
             joined = static_cast<int>(s->get_int("joined").value_or(0));
-            capacity = static_cast<int>(s->get_int("capacity").value_or(0));
+            const int cap = static_cast<int>(s->get_int("capacity").value_or(0));
+            const bool cap_changed = cap != capacity;
+            capacity = cap;
+            if (cap_changed) relayout();   // the scoreboard is sized by the number of players
             phase = s->get_string("phase").value_or(phase);
             bots = static_cast<int>(s->get_int("bots").value_or(0));
             bot_ids.clear();
@@ -903,6 +912,40 @@ void draw_title(App& a, Gfx& g, Uint32 now) {
         g.text(L.title.x + L.title.w - 16, L.title.y + 26, t, kAmber, g.small, 2);
     }
     (void)now;
+}
+
+// Draws `text` word-wrapped into at most two lines inside [x0, x1) on the board panel's caption row, so a long
+// description can never run into the "FACTORY FLOOR" label or off the panel. A third line is cut with "...".
+void caption_text(Gfx& g, const Rect& panel_rect, int x0, int x1, const std::string& text, SDL_Color c) {
+    const int maxw = std::max(40, x1 - x0);
+    std::vector<std::string> lines;
+    std::string cur;
+    std::size_t i = 0;
+    while (i < text.size()) {
+        std::size_t j = text.find(' ', i);
+        if (j == std::string::npos) j = text.size();
+        const std::string word = text.substr(i, j - i);
+        const std::string trial = cur.empty() ? word : cur + " " + word;
+        if (!cur.empty() && g.text_w(trial, g.small) > maxw) { lines.push_back(cur); cur = word; }
+        else cur = trial;
+        i = j + 1;
+    }
+    if (!cur.empty()) lines.push_back(cur);
+    if (lines.size() > 2) {
+        std::string last = lines[1] + " " + lines[2];
+        lines.resize(2);
+        lines[1] = last;
+    }
+    if (!lines.empty()) {
+        std::string& l = lines.back();
+        if (g.text_w(l, g.small) > maxw) {
+            while (l.size() > 1 && g.text_w(l + "...", g.small) > maxw) l.pop_back();
+            l += "...";
+        }
+    }
+    const int lh = g.line_h(g.small);
+    const int top = lines.size() > 1 ? panel_rect.y + 3 : panel_rect.y + 7;
+    for (std::size_t k = 0; k < lines.size(); ++k) g.text(x0, top + static_cast<int>(k) * lh, lines[k], c, g.small);
 }
 
 void draw_board(App& a, Gfx& g, Uint32 now) {
@@ -1260,7 +1303,7 @@ void draw_board(App& a, Gfx& g, Uint32 now) {
         const char* ph = st->phase == Step::Machinery ? "MACHINERY" : st->phase == Step::RoundEdge ? "NEW ROUND" : "ORDERS";
         const SDL_Color pc = st->phase == Step::Machinery ? kAmber : st->phase == Step::RoundEdge ? kViolet : kCyan;
         g.text(L.board_panel.x + 160, L.board_panel.y + 7, std::string("round ") + std::to_string(st->round) + " tick " + std::to_string(st->tick) + " - " + ph, pc, g.small);
-        g.text(L.board_panel.x + L.board_panel.w - 12, L.board_panel.y + 7, st->caption, kInk, g.small, 2);
+        caption_text(g, L.board_panel, L.board_panel.x + 340, L.board_panel.x + L.board_panel.w - 12, st->caption, kInk);
     } else {
         const int hx = (a.mouse_x - L.board.x), hy = (a.mouse_y - L.board.y);
         if (hx >= 0 && hy >= 0 && hx < L.board.w && hy < L.board.h) {
@@ -1268,7 +1311,7 @@ void draw_board(App& a, Gfx& g, Uint32 now) {
             std::string d = "(" + std::to_string(cx) + "," + std::to_string(cy) + ")  " + sim::describe_tile(m, a.snap, {cx, cy}, a.me);
             if (const auto* r = sv.robot_at(cx, cy)) d += "   |   robot P" + std::to_string(r->id);
             else if (sv.crate_at(cx, cy) && m.tile({cx, cy}).terrain != Terrain::Dispenser) d += "   |   loose crate";
-            g.text(L.board_panel.x + L.board_panel.w - 12, L.board_panel.y + 7, d, kInk, g.small, 2);
+            caption_text(g, L.board_panel, L.board_panel.x + 160, L.board_panel.x + L.board_panel.w - 12, d, kInk);
         } else {
             g.text(L.board_panel.x + L.board_panel.w - 12, L.board_panel.y + 7, "hover a tile for details", kMuted, g.small, 2);
         }
@@ -1352,7 +1395,7 @@ void draw_scores(App& a, Gfx& g) {
         g.text(card.x + 18, card.y + 26, "deliveries " + std::to_string(r.deliveries) + (r.sabotage > 0 ? "  sabotage +" + std::to_string(r.sabotage) : ""), kMuted, g.small);
         if (const int tgt = a.target_score(); tgt > 0) {
             // progress toward the target score
-            Rect bar{card.x + 18, card.y + card.h - 8, 150, 5};
+            Rect bar{card.x + 18, card.y + card.h - 5, 150, 3};
             g.fill(bar, C(30, 36, 48));
             const int fill = std::min(bar.w, bar.w * std::min(r.score, tgt) / tgt);
             g.fill({bar.x, bar.y, fill, bar.h}, r.score >= tgt ? kGold : pc);
@@ -1385,8 +1428,8 @@ void draw_robot_panel(App& a, Gfx& g) {
     const BoardView& sv = a.auth;
     const bool has_traps = !a.map->traps.empty();
     const bool has_turrets = !a.map->turrets.empty();
-    const int lh = has_traps && has_turrets ? 14 : (has_traps || has_turrets) ? 16 : 18;  // one more line per hazard kind
-    int y = L.robot.y + (has_traps || has_turrets ? 25 : 28);
+    const int lh = kRobotLineH;  // the panel is sized for exactly these lines (compute_layout)
+    int y = L.robot.y + 25;
     for (const auto& r : sv.robots) {
         if (r.id != a.me) continue;
         if (r.disabled) { g.text(L.robot.x + 12, y, "Disabled - respawning at the end of the round", kRed, g.small); break; }
@@ -1585,6 +1628,10 @@ client::ClientResult run_ui(const client::ClientOptions& opt) {
             const Uint32 t0 = SDL_GetTicks();
             SDL_Event e;
             while (SDL_PollEvent(&e)) if (!app.handle(e)) running = false;
+            if (opt.ui_hover_x >= 0 && app.map) {   // scripted hover for headless screenshots
+                app.mouse_x = app.lay.board.x + opt.ui_hover_x * app.lay.cell + app.lay.cell / 2;
+                app.mouse_y = app.lay.board.y + opt.ui_hover_y * app.lay.cell + app.lay.cell / 2;
+            }
             app.play.advance(static_cast<int>(t0 - last_frame));
             last_frame = t0;
             app.release_logs();

@@ -424,6 +424,8 @@ One new map, `resources/maps/foundry-01.map` ("The Foundry", 11x13, 2-4 players)
 - Bots do not use consoles or pads on purpose (G4): the traps and turrets they meet are the neutral, armed-at-start ones, so human players are the ones who can really exploit the north and south corridors.
 - Tune the map file, not the engine: candidate knobs are pit and wall placement near the pocket, lane length, and the pad positions.
 
+**SDL layout fixes (after the first playtest of `foundry-01`, UI only):** the hover/replay caption now wraps onto two lines to the right of the "FACTORY FLOOR" label instead of running over it; the right column (scoreboard / your robot / your orders) is sized to its content (scoreboard by player count, robot panel by its status lines, `compute_layout(w, h, players, robot_lines)`) and always ends on the board panel's bottom edge, so the log sits cleanly underneath; the score-target progress bar no longer touches the deliveries line. New `--hover x,y` client flag places the mouse on a board tile for headless screenshots. Covered by a layout test (276/276 test cases); no rules change.
+
 **Stop gate:** playtest `foundry-01` before G4.
 
 ### Presentation requirements
