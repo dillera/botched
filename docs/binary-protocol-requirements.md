@@ -1,13 +1,15 @@
 # Botched! binary wire protocol — normative requirements for M1
 
-**Status:** DESIGN FOR REVIEW — reconciled 2026-11-22 against `f81b91ef`.
-Binary codecs and adapters are not implemented. This revision includes the pending baseline edits.
-Requirements below constrain implementation; proposed decisions are reviewable, not frozen byte layouts.
-**Authority:** `docs/botched-game-spec-v1.md` section 9 ("exact serialization may be compact binary or
-JSON, but semantic types and fields are normative") and section 10 (client minimums).
-**Rules version:** the implementation advertises `botched/1` for both protocol and rules.
-The binary protocol is a second *representation* of the completed G1–G4 semantics; it must not alter gameplay.
-The discrepancy with the original rules-freeze requirement is explicitly tracked under O10.
+**Status:** B1 COMPLETE — wire-v1 design for review, 2026-11-22. No codec implemented.
+**Authority:** current G1–G4 game implementation and the owner-confirmed decisions below.
+**Rules version:** `botched/1`, the initial **unreleased** ruleset; no `botched/2` migration.
+**Binary wire:** major 1, minor 0, independent of the rules label. Existing JSON remains unchanged.
+
+The normative B1 deliverables are [wire layouts and state machines](binary-v1/wire.md),
+[annotated byte examples](binary-v1/examples.md), [literal fixtures](binary-v1/fixtures.json),
+and [resource budgets and map census](binary-v1/resources.md). These supersede the earlier
+proposal details in sections 5 and 10 wherever noted. B1 freezes the design for this review;
+B2 must implement it or propose an explicit correction, not silently choose different bytes.
 
 **Keywords.** MUST, SHOULD and MAY are used as in the game spec. "Target" means a budget proposed here
 that M1 must validate with measurements and may revise by an approved change to this document.
@@ -31,10 +33,10 @@ The protocol MUST support:
 - The binary message format MUST remain independent of transport. Support ordinary TCP clients as well as FujiNet/NIO transport adapters without introducing gameplay-specific framing into the codec.
 - The format MUST be practical for Amiga C clients and constrained 6502-class clients, with bounded buffers and no required heap allocation.
 - The existing size, memory and CPU budgets remain targets to measure and validate, not assumptions.
-- Binary wire version and gameplay rules version are separate. Resolve the current `botched/1` versus proposed `botched/2` contract before freezing the wire format.
+- Binary wire version and gameplay rules version are separate: binary 1.0 carries the initial unreleased `botched/1` ruleset, as confirmed by the owner.
 - Preserve existing JSON behaviour, engine determinism and authoritative event ordering.
 
-Before implementation, reconcile the existing requirements, message inventory, event types, field widths, map encoding and open design choices against the current code. Resolve or explicitly record any remaining decisions. Do not silently discard existing requirements.
+B1 has reconciled the message/event inventory and resolved O1–O13 below. Future read-only spectators have a reserved role but are not implemented. No firmware changes, codec or client implementation is authorised by this document revision.
 
 ## 1. Principle
 
@@ -81,7 +83,7 @@ tokeniser with dynamic memory. A 1 MHz 6502 with a few KB of free RAM cannot aff
 Section 5 retains the earlier size/CPU aspirations for comparison. No reduction factor is established
 for the current game; full-hazard maps, long matches and metadata must be measured.
 
-## 3. Transport baseline and proposed binding
+## 3. Transport baseline and binding
 
 The existing [NetworkDevice TCP contract](../../../repos/fujinet-nio/docs/network_device_tcp.md)
 and [NetworkDevice command layouts](../../../repos/fujinet-nio/docs/network_device_protocol.md)
@@ -91,8 +93,8 @@ FujiNet/NIO client. A new Botched firmware device is unnecessary for this sequen
 * Direct TCP and TCP reached through NIO are byte streams. Neither a socket read nor a FujiBus
   Read response is a game-message boundary. The transport adapter MUST assemble partial reads,
   retain partial writes, and handle several messages arriving together.
-* Proposed stream envelope: `u16 LE payload_length` followed by one binary game payload, length
-  1..negotiated maximum. The codec receives only that payload. A future native message transport
+* Stream envelope: `u16 LE payload_length` followed by one binary game payload, length
+  3..negotiated maximum. The codec receives only that payload. A future native message transport
   supplies its existing length instead; no second envelope is needed there.
 * No game CRC, sync, escaping or link retransmission. FujiBus/SLIP/packet-link integrity remains
   below NetworkDevice. A stream length is necessary here because those frames do not delimit
@@ -103,7 +105,7 @@ FujiNet/NIO client. A new Botched firmware device is unnecessary for this sequen
 * 240 bytes is a maximum **game payload**, not a guaranteed single FujiBus transaction. Account
   for NetworkDevice prefixes, parameters, cursor fields and link overhead; split reads/writes to
   fit the actual target buffer. A 256-byte client buffer must not be justified by `240 + 6` alone.
-* Keep existing JSON-line TCP behavior. Propose a separate configurable binary listener sharing
+* Keep existing JSON-line TCP behavior. Use a separate configurable binary listener sharing
   the same `GameServer` and rooms, avoiding byte sniffing or changes to the JSON handshake.
 
 ## 4. Requirements
@@ -119,7 +121,7 @@ FujiNet/NIO client. A new Botched firmware device is unnecessary for this sequen
   The JSON string names (`FORWARD_2`, `ROBOT_MOVED`, `REQUEST_LIMIT`...) map 1:1 to those values.
   Numeric values MUST never be reused or renumbered within a major protocol version.
 * **R-N4** Gameplay traffic MUST use compact numeric references after binding a match/seat.
-  Do not renumber authoritative entity IDs: use u16 crate IDs, u8 player/group/hazard IDs and
+  Do not renumber authoritative entity IDs: B1 selects u32 crate IDs (including restored state), u8 player/group/hazard IDs and
   u16 dispenser/console references. Coordinates need a signed representation for off-board
   `MOVE_BLOCKED` targets (section 10.4). Lobby strings and credential exchange remain bounded.
 * **R-N5** Messages SHOULD consist of fixed-size, fixed-offset fields so a client decodes with byte loads and
@@ -127,8 +129,9 @@ FujiNet/NIO client. A new Botched firmware device is unnecessary for this sequen
 * **R-N6** Bit-packing MAY be used selectively, only where it is plain shifts and masks on a single byte
   (for example heading in 2 bits plus flags, or two 4-bit order codes). It MUST NOT cross byte boundaries,
   use variable-length (varint) integer encodings, or need multiply/divide on the client.
-* **R-N7** Every message MUST be decodable by a bounded, non-allocating single pass that never reads
-  beyond the declared length, and malformed input (truncated, over-long, unknown opcode, out-of-range value)
+* **R-N7** Every message MUST be decodable with bounded, non-allocating work over one packet
+  buffer. Validate the complete packet before applying callbacks; a second bounded scan of that same
+  buffer is allowed by B1 to preserve atomic rejection. Never read beyond the declared length; malformed input (truncated, over-long, unknown opcode, out-of-range value)
   MUST be rejected, not partially applied. Equivalent of the H2 input limits for JSON.
 
 ### 4.2 Content of the protocol
@@ -190,7 +193,7 @@ FujiNet/NIO client. A new Botched firmware device is unnecessary for this sequen
   correlation and idempotency (R-X3).
 * **R-X3** **Request correlation and idempotency** follow the approved H3 contract
   (`docs/request-id-contract.md`): `(player, request id)` single-use, replay, `REQUEST_ID_REUSED`,
-  per-round budget, `REQUEST_LIMIT`. A compact binary **per-player request key** (proposed
+  per-round budget, `REQUEST_LIMIT`. A compact binary **per-player request key** (B1:
   u32) MAY be offered instead of arbitrary ASCII ids, provided it maps into the same keyspace and
   preserves exactly those semantics. H3 is **not** changed here to anticipate the binary format (O5).
 * **R-X4** Session identification MUST NOT require a long ASCII token on every message. A token (or
@@ -233,7 +236,7 @@ via R-M4 and R-T6.
 ### 5.1 Historical size aspirations — superseded as hard limits
 
 The table below is retained to make the budget change explicit, not as an implementable layout.
-The only proposed hard per-message limit is 240 bytes, with pagination. In particular, revision is
+The hard per-message limit is 240 bytes, with pagination. In particular, revision is
 not u8, complete events are not universally 2–6 bytes, full snapshots need not fit 240 bytes, and
 terrain-only sizes omit all tile attributes and metadata. R-T6 must enforce measured, approved
 layouts from step B1, not these historical estimates.
@@ -258,9 +261,9 @@ allows up to 320 board cells plus four carried crates, not 16 live crates; terra
 hazards, full score counters and paging state cost additional RAM. Do not cap the engine or
 silently omit entities to meet this table. O3/O7/O10 require a measured constrained-client profile
 and admission check before joining/starting a match; unrestricted clients must retain all legal
-semantics. Derive worst-case live storage, not just initial crate count. If the 1 KB profile cannot
-support every shipped map, name the unsupported maps and obtain review before freezing it.
-No heap, bounded single-pass decoding and one receive packet remain mandatory even on larger clients.
+semantics. Derive worst-case live storage, not just initial crate count. The B1 census names every shipped map as outside K1 under the conservative complete-mirror
+allocation; all fit K4. This explicit budget result is part of the current review.
+No heap, bounded decoding over one packet and one receive packet remain mandatory even on larger clients.
 
 Earlier allocation aspirations:
 
@@ -298,26 +301,26 @@ Measure full-hazard pages and chunked snapshots; clients decode while animating 
 * **Idempotency** is H3. **Checkpoint/recovery** (M1-02) is separate and unaffected by encoding.
 * **No M0 code change** is needed for this document; M1 adds a codec layer beside the JSON one.
 
-## 7. Open design choices for M1
+## 7. B1 decision register — O1–O13 resolved
 
-“Proposed” means selected for review in this document. “Open gate” must be settled in B1 before
-byte layouts/fixtures freeze; it does not authorise a gameplay change.
+No B1 technical choice remains deferred to codec implementation. Details and limits are in
+[wire.md](binary-v1/wire.md); measurements that require code remain B2/B5 acceptance, not design gaps.
 
-| # | Choice | Disposition and remaining gate |
-|---|---|---|
-| **O1** | Framing/device | **Proposed:** existing NetworkDevice TCP and direct TCP, same u16-LE length envelope outside codec (section 3). No new device ID or firmware game operations. Native packet binding deferred. |
-| **O2** | Session identification | **Proposed; open gate:** bind one match/seat per connection using the existing credential once; subsequent submissions infer identity. Read-only match binding must not grant seat authority. Define BIND/resume response and credential retention/disconnect lifecycle in B1. JOIN must return a credential for recovery; network handle alone grants nothing. No room restart persistence or new seat allocation on resume. |
-| **O3** | Packet/buffer limits | **Proposed; open gate:** max 240-byte payload, one outstanding game request, pull pagination, 256-byte receive buffer. Freeze minimum negotiated payload, per-record maxima and NIO overhead accounting in B1. Large logical responses never require reassembly in a second full buffer. |
-| **O4** | Byte order | **Resolved proposal:** little-endian for every multibyte field. |
-| **O5** | Idempotency/correlation | **Proposed; open gate:** u32 submission key, mapped exactly to ASCII `b:<unsigned decimal>` server-side in the existing per-player keyspace. Same spelling from JSON intentionally denotes the same key, not an isolated namespace; cross-encoding retry must work. No monotonic-only acceptance rule, eviction or reset on rebind. Zero is a valid key; an explicit presence flag represents unkeyed requests. Never wrap/reuse; client retains its counter across reconnect or uses explicit ASCII-ID mode. B1 must freeze that bounded compatibility mode and counter persistence policy. u16 rejected: accepted-record budgets do not bound attempted IDs, including REQUEST_LIMIT refusals. Per-exchange correlation is separate and never consumes H3 budget. |
-| **O6** | Map encoding | **Proposed; open gate:** row-major 4-bit terrain (14 kinds), low nibble first, plus counted typed attribute records. No RLE. Include every attribute in section 10.3, with paged metadata. Freeze record offsets, map cache identity and exact attribute RAM cost in B1. |
-| **O7** | IDs/widths | **Proposed; open gate:** widths in section 10.4; no crate recycling. u16 is sufficient for newly created matches (at most 320 dispensers × 200 rounds = 64,000 spawns; next ID <=64,001). Restored states can contain larger IDs; B1 must choose an extended profile or explicit unsupported-range refusal without narrowing. Prove score/counter bounds before reducing conservative u32 values. |
-| **O8** | Events/versions | **Resolved proposal:** absolute u32 version and sequence; exact ordered event records, common batch headers only for identical version/round/tick. No delta-snapshot format. Status/snapshot reads handle eventless state changes. Never infer missing data from a numerical version gap alone. |
-| **O9** | Oversize results | **Proposed; open gate:** paged events, snapshots, maps, map lists, status/error text. Stable transfer identity and high-water version, explicit next cursor and final flag (section 10.5). B1 freezes transfer lifetime, server memory caps, retry semantics and expiry error. Never silently truncate or substitute a snapshot for promised events. |
-| **O10** | Capabilities/rules | **Open gate:** code still says `botched/1`; original spec §14 freeze and milestone proposal say gameplay changes require a bump. Recommend retaining existing JSON labels/hashes and negotiating an explicit completed-G1–G4 capability profile for binary wire v1. This documents the discrepancy, not a retrospective `botched/2` implementation. Review must choose that profile or a separately scoped rules-version migration before freeze. Negotiate required hazards, target mode, bot labels, payload and board/entity/storage limits; features cannot change engine behavior. |
-| **O11** | Codes | **Proposed; open gate:** distinct numeric game codes, diagnostic variants and adapter failures; inventory in 10.1. Preserve accepted versus unchanged and the different INVALID_ORDERS reasons. Freeze numbers and text/diagnostic representation in B1; NetworkDevice errors remain below game protocol. |
-| **O12** | Lobby | **Resolved proposal:** all nine current API operations have binary forms, including LIST_MAPS and CREATE_MATCH with bots, targets, caps and planning time. No JSON-only setup prerequisite for retro clients. |
-| **O13** | Coexistence | **Resolved proposal:** separate JSON and binary connections/listeners share rooms and the same authoritative engine, clock and H3 store. Tests must exercise mixed seats and switching representation with the same credential/key. JSON defaults, responses and hashes remain unchanged. |
+| # | Decision |
+|---|---|
+| **O1** | Existing NIO NetworkDevice TCP and direct TCP use identical u16-LE stream envelopes. No new device, command or firmware change. |
+| **O2** | One bound player seat per adapter session; existing credentials authenticate BIND. Server-generated recovery secret and one-exchange replay cache recover lost JOIN/CREATE replies within a bounded lease. Future spectator role 2 is reserved and rejected; explicit public query scope preserves today's API. |
+| **O3** | Payload negotiated 128..240, 256-byte receive buffer, pull pages; complete records <=101 bytes. Fixed K1/K4/K8 ceilings with immutable-map admission and explicit measured implementation gates. |
+| **O4** | All multibyte integers little-endian. |
+| **O5** | u32 keys map to canonical `b:N`; optional exact ASCII key mode and unkeyed mode. Same H3 keyspace, budget and outcomes across JSON/binary. Retain pending bytes/counter on reconnect; server supplies next-key hint, no wrap. Exchange IDs are separate bounded adapter replay. |
+| **O6** | Row-major low-nibble-first terrain plus five-byte sparse attributes, complete map metadata and streamed text. Cache by server epoch/map handle; no RLE, collision-prone hash or ID renumbering. |
+| **O7** | u32 crate IDs/next ID preserve restored values; u8 players/groups/hazards, u16 dispensers/consoles/counts, i8 coordinates, i32 request numeric domains, u32 scores/counters/version/sequence. No score truncation or crate recycling. |
+| **O8** | Exact event records with absolute version/round/tick/sequence; no delta-snapshot format. Existing status/snapshot queries refresh eventless state. |
+| **O9** | One frozen transfer/session, greedy whole-record pages, byte cursors, immutable high-water, explicit final/expiry. GET_EVENTS windows cover 1..16 complete versions; repeated windows reconstruct the JSON result. Fixed 4 MiB transfer/64 MiB global caps and 1800-second idle lease. |
+| **O10** | Owner confirmed initial unreleased ruleset `botched/1`, wire 1.0; mandatory completed-G1–G4 capabilities. No retrospective rules-version bump or JSON hash changes. |
+| **O11** | Frozen numeric tables and exact diagnostic TEXT records preserve all outcome/error distinctions. Adapter faults and NetworkDevice statuses are separate namespaces. |
+| **O12** | All nine API operations have binary forms including full lobby creation/bots/target/cap/planning defaults. No JSON-only setup. |
+| **O13** | Mixed JSON/binary connections share GameServer, rooms, clock and H3. Separate binary listener; representation never changes gameplay. |
 
 ## 8. M1 acceptance criteria for this requirement
 
@@ -373,7 +376,7 @@ new adapter controls, not engine messages. Negotiation, binding and paging must 
 state version or consume a submission ID budget.
 
 ERROR replies have `ok=false,code,message` and conditionally echo valid `request_type,request_id`.
-Complete game-code inventory (code numbers still gated by O11):
+Complete game-code inventory (B1 numeric assignments are in wire.md §5):
 
 * Server errors: `REQUEST_TOO_LARGE`, `BAD_REQUEST`, `UNKNOWN_REQUEST`, `UNKNOWN_MATCH`,
   `UNKNOWN_MAP`, `TOO_MANY_MATCHES`, `INVALID_MAP`, `ALREADY_STARTED`, `MATCH_FULL`,
@@ -389,7 +392,7 @@ replay, even after the server has advanced. The last ready submission can trigge
 round **after** its reply is constructed. A malformed request cannot apply its submitted action;
 the existing server may still advance a previously expired deadline when handling it.
 Adapter-only failures (unsupported version/profile, bad frame, expired transfer, invalid binding)
-need a separate numeric namespace. Diagnostic strings may be streamed; do not discard their
+have a separate numeric namespace in wire.md. Diagnostic strings may be streamed; do not discard their
 semantic distinctions to meet the obsolete four-byte error aspiration.
 
 ### 10.2 All authoritative events
@@ -440,7 +443,7 @@ with 0 meaning neutral; snapshot owners instead use null. A neutral attributed d
 present `by=0`, while an ordinary laser/pit disable may omit `by`. SHUNT has `by` on disable and
 no device key on SCORE_AWARDED. Preserve these differences in presence flags/tagged variants.
 
-Numeric value tables must cover these distinct vocabularies before freeze:
+B1 numeric value tables cover these distinct vocabularies:
 
 * Orders: `FORWARD_1,FORWARD_2,BACK_1,TURN_LEFT,TURN_RIGHT,TURN_AROUND,DROP,TOGGLE,WAIT`.
 * Headings: `N,E,S,W`; phases: `PLANNING,EXECUTING,FINISHED`, plus server-only `LOBBY`.
@@ -497,37 +500,37 @@ Tar influence can be derived locally from generator positions without re-running
 Cache identity must include content revision or a server-instance-scoped immutable map handle:
 textual `map_id` alone is unsafe across restarts. Name/description and player bounds come from
 LIST_MAPS, not GET_MAP. Paginate list entries and long text without requiring full-list storage;
-limits for externally supplied metadata are an explicit B1 layout gate.
+B1 fixes 65535-byte streamed text and transfer limits without changing JSON metadata behavior.
 
 ### 10.4 Widths and boundary cases
 
-These are proposed semantic widths; opcode assignments, offsets, presence bits and maxima still
-need the B1 byte-layout pass. Never serialize a C/C++ struct by copying its padded memory.
+These semantic widths are finalized by the B1 wire tables, with u32 crate IDs replacing the old
+u16 proposal and explicit presence bits and maxima. Never serialize a C/C++ struct by copying its padded memory.
 
-| Value | Proposed representation and reason |
+| Value | B1 representation and reason |
 |---|---|
 | player, owner, hazard ID | u8; players 1–4, owner 0–4, trap/turret IDs 1–9 |
 | group | u8 index 0–25 mapping exactly to A–Z |
 | coordinates | i8 for event positions, including -1 off-board; board width <=20, height <=16. Snapshot null uses presence flags, not a coordinate collision |
-| crate ID / next ID | u16 for newly created matches; no recycling; restored-range gate O7 |
+| crate ID / next ID | u32, preserving both new-match and restored legal IDs; no recycling |
 | dispenser ID / console ordinal | u16; parsed dispenser IDs can be 1–999, console count can exceed 255 |
 | live crate count / tile and attribute counts | u16; board cells <=320, live crates conservatively <=324 |
 | round / rounds_total / tick | u8 for valid state (rounds <=200, tick 0–3) |
 | revision; submitted round/player; since_version | signed i32 in requests to preserve current rules-level rejection domain; do not turn a valid 32-bit negative value into a decoder range failure |
 | state_version / sequence | u32 absolute, preserving current nonnegative int range; refuse exhaustion, never wrap; restored cursor/version permit up to 10^9 |
-| score, sabotage, deliveries, damage_taken | conservative u32 until full engine bounds proved; target_score u16 (0–1000) |
+| score, sabotage, deliveries, damage_taken | u32 preserving current live and restored counters; target_score u16 (0–1000) |
 | damage, turret charge, boolean / enums | u8 or explicitly documented single-byte masks |
 | planning_seconds | u32 (86400 does not fit u16) |
 | deadline | nullable signed i64 Unix seconds, lossless for server-produced UTC seconds; server does the text conversion. No decimal parse or 64-bit arithmetic required on retro client; optional numeric remaining-time hint must not replace the absolute deadline |
-| request key | u32 plus explicit key-present flag, with bounded ASCII compatibility mode under O5 |
+| request key | u32 plus explicit key-present flag, with frozen bounded ASCII compatibility mode under O5 |
 
 A legal JSON revision can be INT32_MAX even in round 1. Requests without IDs can publish
 arbitrarily many accepted revisions within the available integer range, so neither H3's budget
-nor 200 rounds proves u16 versions sufficient. Binding supplies valid identity for the compact submission form; B1 must specify an explicit
-identity/compatibility form if testing the full request error domain through binary. Snapshot restore
+nor 200 rounds proves u16 versions sufficient. Binding supplies valid identity for the compact submission form; B1 provides an explicit-player form for the same signed numeric request domain; structurally invalid
+JSON types/order counts are not tunneled through the fixed-slot binary request. Snapshot restore
 limits differ from live request limits; do not use one as the other. Wire decoding must validate enum/length/count structure
 before dispatch; a defined invalid-order value can map to the existing unknown-token refusal
-without making arbitrary unknown opcodes legal. Freeze its treatment with the other code tables.
+without making arbitrary unknown opcodes legal. B1 assigns ff to this sentinel; all other unknown order bytes are malformed.
 
 ### 10.5 Pagination, consistency and recovery contract
 
@@ -551,7 +554,7 @@ without making arbitrary unknown opcodes legal. Freeze its treatment with the ot
   callbacks/state mutation; staging a complete logical snapshot is not required.
 * Preserve the existing 512-version event-retention policy. Missing history yields
   SNAPSHOT_REQUIRED. Bounded server-side transfer storage, expiry and outstanding-transfer count
-  are B1 gates: pinning a transfer must not pin unlimited history. Expired transfers explicitly
+  are fixed in wire.md §4: pinning a transfer must not pin unlimited history. Expired transfers explicitly
   restart or require snapshot; never splice newer data into an older transfer.
 * Submissions publish readiness without events; deadline updates have no independent event and
   can change without a version bump. Query MATCH_STATUS for submitted/ready sets and bot labels,
@@ -566,20 +569,21 @@ without making arbitrary unknown opcodes legal. Freeze its treatment with the ot
 * Reconnect to a surviving room uses the retained seat credential, never another JOIN. Rebind,
   retry any uncertain submission with the exact original key/payload, then catch up or snapshot.
   JOIN/CREATE have no H3 idempotency: do not blindly retry them after an ambiguous lost reply.
-  Initial JOIN-response loss and rebind authentication details remain an explicit B1/O2 gate.
+  B1 adapter-session recovery handles initial JOIN-response loss within its bounded lease;
+  after expiry ambiguous lobby operations are not retried automatically.
   A restarted host has no room/session persistence; report that failure rather than replaying
   an old submission into a newly created match.
 
-## 11. Bounded implementation sequence (proposal; not started)
+## 11. Bounded implementation sequence (B1 complete; B2–B5 not started)
 
-Each step ends with a reviewable commit and its focused tests. This documentation change stops
-before B1. No renderer, bot/engine rewrite, new firmware game service or platform-wide rollout is
+Each step ends with a reviewable commit and its focused tests. This documentation change completes B1 and stops
+before B2. No renderer, bot/engine rewrite, new firmware game service or platform-wide rollout is
 part of these steps.
 
 | Step | Deliverable / boundary | Required evidence before proceeding |
 |---|---|---|
-| **B1 — freeze representation** | Resolve the explicit O2/O3/O5/O6/O7/O9/O10/O11 gates; assign stable numeric tables for the complete inventories; specify every layout, optional/null variant, message maximum, negotiation and transfer state machine. Derive full-game resource bounds and define the 1 KB profile with an admission rule. | Annotated byte examples for every type/variant; budget worksheet including attribute tables, hazards, counters, stack/scratch and NIO overhead; approved rules-profile decision; no codec yet. |
-| **B2 — codec and server bridge** | Pure binary encoder/decoder and portable C99 bounded decoder/encoder; bridge to existing server semantic API. Add negotiation, binding and bounded page production outside Match/Engine. No socket dependency in codec. | Fixtures for all 30 events and nine operations, every code/variant; malformed/truncation/no-allocation checks; exact semantic round trips and JSON fixture/hash regressions. Include negative i32 requests, IDs >255, signed off-board targets and restoration-range refusal. |
+| **B1 — freeze representation (complete)** | Resolved the explicit O2/O3/O5/O6/O7/O9/O10/O11 gates; assigned stable numeric tables for the complete inventories; specified every layout, optional/null variant, message maximum, negotiation and transfer state machine. Derived conservative full-game resource bounds and defined K1/K4/K8 profiles with admission rules. See binary-v1 companions; measured source-map census is included. | Annotated byte examples for every type/variant; budget worksheet including attribute tables, hazards, counters, stack/scratch and NIO overhead; approved rules-profile decision; no codec yet. |
+| **B2 — codec and server bridge** | Pure binary encoder/decoder and portable C99 bounded decoder/encoder; bridge to existing server semantic API. Add negotiation, binding and bounded page production outside Match/Engine. No socket dependency in codec. | Fixtures for all 30 events and nine operations, every code/variant; malformed/truncation/no-allocation checks; exact semantic round trips and JSON fixture/hash regressions. Include negative i32 requests, IDs >255, signed off-board targets and restored IDs above 65535. |
 | **B3 — direct TCP vertical slice** | Separate binary listener sharing the JSON server; optional Linux client binary mode; all lobby, submit, map/status/snapshot/event operations. Preserve poll/deadline scheduling. | Real socket full matches with mixed JSON/binary seats and bots, target/cap/fixed endings, every hazard map; split/coalesced frames, partial writes, EOF, bounded slow-client queues; H3 cross-encoding retries and reconnect; pagination through busy versions and eventless readiness updates. |
 | **B4 — FujiNet/NIO vertical slice** | C client transport adapter using existing NetworkDevice TCP Open/Read/Write/Info/Close and the B3 endpoint. Reuse the same codec and stream envelope; handle NIO resource/cursor lifecycle. | Same semantic scenario corpus over NIO, partial I/O, NotReady/DeviceBusy, lower-link duplicate-response recovery and disconnect; demonstrate real configured NIO path separately from mocks. Measure actual per-transfer buffer use; do not claim hardware acceptance from direct TCP alone. |
 | **B5 — constrained-client acceptance** | Measure and tune representation only within approved layouts/profile; publish byte/RAM/CPU results. Retro renderers remain later work. | Allocation-failing C tests, worst-case supported-map admission tests, cc65/ca65 or soft65c02 fixture evidence as appropriate, measured 1 MHz decode costs, packet-budget assertions and full-match equivalence. Record any unattained historical target explicitly for review. |
@@ -598,6 +602,22 @@ Documentation only; no codec, game source, tests, firmware, library or workspace
 Reviewed the complete server dispatch, engine emit sites, snapshot/status serializers and map
 parser against sections 7 and 10. A source-inventory check verifies that all dispatched request
 names, emitted event names and literal server/submit codes occur in this document; Markdown local
-links are checked for existence. Run `git diff --check` in `external/botched`. Gameplay suites are
+links are checked for existence. Run `git diff --check` in `external/botched`. B1 additionally checks fixture byte counts, record lengths, request maxima, inventory coverage,
+local links and resource arithmetic against the actual map files. Gameplay suites are
 not a meaningful gate for prose-only changes and are not claimed as run. Implementation tests and
 measurements above remain future acceptance gates, not results of this review.
+
+
+### B1 verification record (2026-11-22)
+
+After sourcing the workspace environment, the documentation audit passed for **167 literal byte
+examples**: lengths, fixed record/event sizes, payload maxima, nested page record boundaries,
+complete event/request inventory and local links. The map census was recomputed from all nine
+`resources/maps/*.map` files; its formulas and profile results matched. `git diff --check` passed.
+These checks inspect static documentation data; no encoder/decoder, server adapter or game test
+was implemented or exercised. Runtime RAM, CPU and stack measurements remain B2/B5 evidence.
+
+The review-visible budget result is explicit: under this conservative packed worksheet every
+shipped map exceeds K1 but fits K4 (1484–1752 bytes). K8 covers the 4993-byte independent global
+upper bound. No engine limit was reduced to satisfy the historical 1 KB aspiration. The confirmed
+240-byte payload is retained, with 128 as the negotiated minimum and NIO raw I/O chunked below it.

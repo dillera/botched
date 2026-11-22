@@ -1,0 +1,1177 @@
+{
+  "format": "botched-binary-v1-design-examples",
+  "wire": "1.0",
+  "rules": "botched/1",
+  "note": "Literal design examples, not codec-generated tests. Individual records may require sibling records to form a logical response.",
+  "examples": [
+    {
+      "name": "HELLO-new",
+      "kind": "payload",
+      "bytes": 30,
+      "hex": "01 00 00 01 01 00 f0 00 02 3f 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00",
+      "annotation": "major 1..1, minor 0, P=240, K4, mandatory features, new session"
+    },
+    {
+      "name": "HELLO-resume",
+      "kind": "payload",
+      "bytes": 30,
+      "hex": "01 00 00 01 01 00 f0 00 02 3f 00 00 00 01 11 11 11 11 11 11 11 11 11 11 11 11 11 11 11 11",
+      "annotation": "Resume secret 16 bytes of 11; fixture-only secret"
+    },
+    {
+      "name": "HELLO_OK",
+      "kind": "payload",
+      "bytes": 48,
+      "hex": "81 00 00 01 00 f0 00 02 3f 00 00 00 22 22 22 22 22 22 22 22 22 22 22 22 22 22 22 22 11 11 11 11 11 11 11 11 11 11 11 11 11 11 11 11 00 00 08 07",
+      "annotation": "v1.0 P240 K4, epoch22*, secret11*, last=0, lease1800s"
+    },
+    {
+      "name": "BIND-player",
+      "kind": "payload",
+      "bytes": 15,
+      "hex": "02 01 00 01 02 6d 31 01 00 00 00 03 61 62 63",
+      "annotation": "role1; match m1; player1; credential abc (illustrative test credential)"
+    },
+    {
+      "name": "BIND-spectator-refused",
+      "kind": "payload",
+      "bytes": 12,
+      "hex": "02 01 00 02 02 6d 31 00 00 00 00 00",
+      "annotation": "role2 reserved: expect UNSUPPORTED; no binding"
+    },
+    {
+      "name": "FETCH",
+      "kind": "payload",
+      "bytes": 11,
+      "hex": "03 01 00 01 00 00 00 10 00 00 00",
+      "annotation": "transfer1 offset16 (must have been a returned page boundary)"
+    },
+    {
+      "name": "CANCEL",
+      "kind": "payload",
+      "bytes": 7,
+      "hex": "04 01 00 01 00 00 00",
+      "annotation": "transfer1"
+    },
+    {
+      "name": "CANCELLED",
+      "kind": "payload",
+      "bytes": 7,
+      "hex": "83 01 00 01 00 00 00",
+      "annotation": "transfer1 released"
+    },
+    {
+      "name": "LIST_MAPS",
+      "kind": "payload",
+      "bytes": 3,
+      "hex": "10 01 00",
+      "annotation": "no fields"
+    },
+    {
+      "name": "CREATE-defaults",
+      "kind": "payload",
+      "bytes": 14,
+      "hex": "11 01 00 00 00 00 00 00 00 00 00 00 00 00",
+      "annotation": "presence0, empty map and zero absent fixed slots"
+    },
+    {
+      "name": "CREATE-all",
+      "kind": "payload",
+      "bytes": 24,
+      "hex": "11 01 00 3f 0a 66 6f 75 6e 64 72 79 2d 30 31 04 03 c8 e8 03 80 51 01 00",
+      "annotation": "foundry-01, four players, three bots, cap200, target1000, planning86400"
+    },
+    {
+      "name": "JOIN_MATCH",
+      "kind": "payload",
+      "bytes": 6,
+      "hex": "12 01 00 02 6d 31",
+      "annotation": "match m1"
+    },
+    {
+      "name": "START-bound",
+      "kind": "payload",
+      "bytes": 4,
+      "hex": "13 01 00 00",
+      "annotation": "bound match"
+    },
+    {
+      "name": "START-explicit",
+      "kind": "payload",
+      "bytes": 7,
+      "hex": "13 01 00 01 02 6d 31",
+      "annotation": "public scope m1, no seat authority added"
+    },
+    {
+      "name": "SUBMIT-numeric",
+      "kind": "payload",
+      "bytes": 21,
+      "hex": "14 01 00 00 03 00 00 00 01 00 00 00 01 04 07 01 01 07 00 00 00",
+      "annotation": "bound player, round3 revision1, F2/right/toggle, ready, numeric key7 -> b:7"
+    },
+    {
+      "name": "SUBMIT-unkeyed",
+      "kind": "payload",
+      "bytes": 17,
+      "hex": "14 01 00 00 03 00 00 00 01 00 00 00 08 08 08 00 00",
+      "annotation": "WAITx3, draft, no key"
+    },
+    {
+      "name": "SUBMIT-ascii",
+      "kind": "payload",
+      "bytes": 21,
+      "hex": "14 01 00 00 03 00 00 00 01 00 00 00 08 08 08 00 02 03 63 2d 31",
+      "annotation": "exact ASCII key c-1"
+    },
+    {
+      "name": "SUBMIT-i32-boundaries",
+      "kind": "payload",
+      "bytes": 25,
+      "hex": "14 01 00 01 ff ff ff ff 00 00 00 80 ff ff ff 7f ff 08 08 01 01 ff ff ff ff",
+      "annotation": "explicit player -1, round INT32_MIN, revision INT32_MAX, defined invalid-order sentinel; numeric key UINT32_MAX; server UNKNOWN_PLAYER precedes order checking"
+    },
+    {
+      "name": "GET_SNAPSHOT",
+      "kind": "payload",
+      "bytes": 4,
+      "hex": "15 01 00 00",
+      "annotation": "bound scope"
+    },
+    {
+      "name": "GET_MAP",
+      "kind": "payload",
+      "bytes": 4,
+      "hex": "17 01 00 00",
+      "annotation": "bound scope"
+    },
+    {
+      "name": "GET_MATCH_STATUS",
+      "kind": "payload",
+      "bytes": 4,
+      "hex": "18 01 00 00",
+      "annotation": "bound scope"
+    },
+    {
+      "name": "GET_EVENTS",
+      "kind": "payload",
+      "bytes": 10,
+      "hex": "16 01 00 00 29 00 00 00 10 00",
+      "annotation": "since41, max16 versions"
+    },
+    {
+      "name": "GET_EVENTS-negative",
+      "kind": "payload",
+      "bytes": 13,
+      "hex": "16 01 00 01 02 6d 31 ff ff ff ff 01 00",
+      "annotation": "explicit m1 since -1, one version; SNAPSHOT_REQUIRED"
+    },
+    {
+      "name": "FAULT-UNSUPPORTED",
+      "kind": "payload",
+      "bytes": 4,
+      "hex": "ff 01 00 01",
+      "annotation": "UNSUPPORTED"
+    },
+    {
+      "name": "FAULT-BAD_MESSAGE",
+      "kind": "payload",
+      "bytes": 4,
+      "hex": "ff 01 00 02",
+      "annotation": "BAD_MESSAGE"
+    },
+    {
+      "name": "FAULT-BAD_BINDING",
+      "kind": "payload",
+      "bytes": 4,
+      "hex": "ff 01 00 03",
+      "annotation": "BAD_BINDING"
+    },
+    {
+      "name": "FAULT-SESSION_EXPIRED",
+      "kind": "payload",
+      "bytes": 4,
+      "hex": "ff 01 00 04",
+      "annotation": "SESSION_EXPIRED"
+    },
+    {
+      "name": "FAULT-EXCHANGE_REUSED",
+      "kind": "payload",
+      "bytes": 4,
+      "hex": "ff 01 00 05",
+      "annotation": "EXCHANGE_REUSED"
+    },
+    {
+      "name": "FAULT-BAD_SEQUENCE",
+      "kind": "payload",
+      "bytes": 4,
+      "hex": "ff 01 00 06",
+      "annotation": "BAD_SEQUENCE"
+    },
+    {
+      "name": "FAULT-BAD_CURSOR",
+      "kind": "payload",
+      "bytes": 4,
+      "hex": "ff 01 00 07",
+      "annotation": "BAD_CURSOR"
+    },
+    {
+      "name": "FAULT-TRANSFER_EXPIRED",
+      "kind": "payload",
+      "bytes": 4,
+      "hex": "ff 01 00 08",
+      "annotation": "TRANSFER_EXPIRED"
+    },
+    {
+      "name": "FAULT-LIMIT",
+      "kind": "payload",
+      "bytes": 4,
+      "hex": "ff 01 00 09",
+      "annotation": "LIMIT"
+    },
+    {
+      "name": "FAULT-PROFILE_LIMIT",
+      "kind": "payload",
+      "bytes": 4,
+      "hex": "ff 01 00 0a",
+      "annotation": "PROFILE_LIMIT"
+    },
+    {
+      "name": "CONTEXT",
+      "kind": "record",
+      "bytes": 5,
+      "hex": "01 03 02 6d 31",
+      "annotation": "match_id=m1"
+    },
+    {
+      "name": "CREATED",
+      "kind": "record",
+      "bytes": 7,
+      "hex": "02 05 04 03 c8 e8 03",
+      "annotation": "players4 bots3 rounds200 target1000"
+    },
+    {
+      "name": "JOINED",
+      "kind": "record",
+      "bytes": 8,
+      "hex": "03 06 01 01 03 61 62 63",
+      "annotation": "player1 started=true credential=abc"
+    },
+    {
+      "name": "STARTED",
+      "kind": "record",
+      "bytes": 3,
+      "hex": "04 01 04",
+      "annotation": "four players"
+    },
+    {
+      "name": "SUBMITTED-accepted",
+      "kind": "record",
+      "bytes": 26,
+      "hex": "05 18 01 00 00 00 03 00 00 00 01 00 00 00 2a 00 00 00 01 00 00 01 07 00 00 00",
+      "annotation": "P1 round3 rev1 response version42, accepted, numeric b:7; append exact diagnostic TEXT"
+    },
+    {
+      "name": "SUBMITTED-unchanged",
+      "kind": "record",
+      "bytes": 26,
+      "hex": "05 18 01 00 00 00 03 00 00 00 01 00 00 00 2a 00 00 00 01 00 01 01 07 00 00 00",
+      "annotation": "P1 round3 rev1 response version42, unchanged, numeric b:7; append exact diagnostic TEXT"
+    },
+    {
+      "name": "SUBMITTED-bad-count",
+      "kind": "record",
+      "bytes": 26,
+      "hex": "05 18 01 00 00 00 03 00 00 00 01 00 00 00 2a 00 00 00 00 0e 02 01 07 00 00 00",
+      "annotation": "P1 round3 rev1 response version42, bad-count, numeric b:7; append exact diagnostic TEXT"
+    },
+    {
+      "name": "SUBMITTED-bad-token",
+      "kind": "record",
+      "bytes": 26,
+      "hex": "05 18 01 00 00 00 03 00 00 00 01 00 00 00 2a 00 00 00 00 0e 03 01 07 00 00 00",
+      "annotation": "P1 round3 rev1 response version42, bad-token, numeric b:7; append exact diagnostic TEXT"
+    },
+    {
+      "name": "SUBMITTED-closed",
+      "kind": "record",
+      "bytes": 26,
+      "hex": "05 18 01 00 00 00 03 00 00 00 01 00 00 00 2a 00 00 00 00 10 04 01 07 00 00 00",
+      "annotation": "P1 round3 rev1 response version42, closed, numeric b:7; append exact diagnostic TEXT"
+    },
+    {
+      "name": "ERROR-REQUEST_TOO_LARGE",
+      "kind": "record",
+      "bytes": 3,
+      "hex": "06 01 01",
+      "annotation": "REQUEST_TOO_LARGE; ERROR context, followed by ECHO and TEXT"
+    },
+    {
+      "name": "ERROR-BAD_REQUEST",
+      "kind": "record",
+      "bytes": 3,
+      "hex": "06 01 02",
+      "annotation": "BAD_REQUEST; ERROR context, followed by ECHO and TEXT"
+    },
+    {
+      "name": "ERROR-UNKNOWN_REQUEST",
+      "kind": "record",
+      "bytes": 3,
+      "hex": "06 01 03",
+      "annotation": "UNKNOWN_REQUEST; ERROR context, followed by ECHO and TEXT"
+    },
+    {
+      "name": "ERROR-UNKNOWN_MATCH",
+      "kind": "record",
+      "bytes": 3,
+      "hex": "06 01 04",
+      "annotation": "UNKNOWN_MATCH; ERROR context, followed by ECHO and TEXT"
+    },
+    {
+      "name": "ERROR-UNKNOWN_MAP",
+      "kind": "record",
+      "bytes": 3,
+      "hex": "06 01 05",
+      "annotation": "UNKNOWN_MAP; ERROR context, followed by ECHO and TEXT"
+    },
+    {
+      "name": "ERROR-TOO_MANY_MATCHES",
+      "kind": "record",
+      "bytes": 3,
+      "hex": "06 01 06",
+      "annotation": "TOO_MANY_MATCHES; ERROR context, followed by ECHO and TEXT"
+    },
+    {
+      "name": "ERROR-INVALID_MAP",
+      "kind": "record",
+      "bytes": 3,
+      "hex": "06 01 07",
+      "annotation": "INVALID_MAP; ERROR context, followed by ECHO and TEXT"
+    },
+    {
+      "name": "ERROR-ALREADY_STARTED",
+      "kind": "record",
+      "bytes": 3,
+      "hex": "06 01 08",
+      "annotation": "ALREADY_STARTED; ERROR context, followed by ECHO and TEXT"
+    },
+    {
+      "name": "ERROR-MATCH_FULL",
+      "kind": "record",
+      "bytes": 3,
+      "hex": "06 01 09",
+      "annotation": "MATCH_FULL; ERROR context, followed by ECHO and TEXT"
+    },
+    {
+      "name": "ERROR-START_FAILED",
+      "kind": "record",
+      "bytes": 3,
+      "hex": "06 01 0a",
+      "annotation": "START_FAILED; ERROR context, followed by ECHO and TEXT"
+    },
+    {
+      "name": "ERROR-NOT_STARTED",
+      "kind": "record",
+      "bytes": 3,
+      "hex": "06 01 0b",
+      "annotation": "NOT_STARTED; ERROR context, followed by ECHO and TEXT"
+    },
+    {
+      "name": "ERROR-UNKNOWN_PLAYER",
+      "kind": "record",
+      "bytes": 3,
+      "hex": "06 01 0c",
+      "annotation": "UNKNOWN_PLAYER; ERROR context, followed by ECHO and TEXT"
+    },
+    {
+      "name": "ERROR-UNAUTHORIZED",
+      "kind": "record",
+      "bytes": 3,
+      "hex": "06 01 0d",
+      "annotation": "UNAUTHORIZED; ERROR context, followed by ECHO and TEXT"
+    },
+    {
+      "name": "ERROR-INVALID_ORDERS",
+      "kind": "record",
+      "bytes": 3,
+      "hex": "06 01 0e",
+      "annotation": "INVALID_ORDERS; ERROR context, followed by ECHO and TEXT"
+    },
+    {
+      "name": "ERROR-SNAPSHOT_REQUIRED",
+      "kind": "record",
+      "bytes": 3,
+      "hex": "06 01 0f",
+      "annotation": "SNAPSHOT_REQUIRED; ERROR context, followed by ECHO and TEXT"
+    },
+    {
+      "name": "ECHO-present",
+      "kind": "record",
+      "bytes": 22,
+      "hex": "07 14 0e 53 55 42 4d 49 54 5f 50 52 4f 47 52 41 4d 01 07 00 00 00",
+      "annotation": "request_type SUBMIT_PROGRAM, request_id b:7"
+    },
+    {
+      "name": "ECHO-absent",
+      "kind": "record",
+      "bytes": 4,
+      "hex": "07 02 00 00",
+      "annotation": "no echoed type/key"
+    },
+    {
+      "name": "BOUND",
+      "kind": "record",
+      "bytes": 9,
+      "hex": "08 07 01 01 08 00 00 00 00",
+      "annotation": "role player, P1, next key8, not exhausted"
+    },
+    {
+      "name": "BOUND-exhausted",
+      "kind": "record",
+      "bytes": 9,
+      "hex": "08 07 01 01 00 00 00 00 01",
+      "annotation": "numeric keys exhausted; next slot zero"
+    },
+    {
+      "name": "SNAP_META-fixed",
+      "kind": "record",
+      "bytes": 33,
+      "hex": "09 1f 00 03 00 0c 00 00 03 00 00 00 01 00 00 00 00 02 02 00 01 00 00 01 00 00 00 00 00 00 00 00 00",
+      "annotation": "planning round3/12, next crate3, map1, two players/two crates/one group, P1 submitted, no deadline/target"
+    },
+    {
+      "name": "SNAP_META-target-executing",
+      "kind": "record",
+      "bytes": 33,
+      "hex": "09 1f 01 03 02 c8 e8 03 01 00 01 00 01 00 00 00 03 04 02 00 01 01 01 0f 0f 00 f1 53 65 00 00 00 00",
+      "annotation": "executing tick2, cap200 target1000, next crate65537, four players, one trap/turret, deadline1700000000"
+    },
+    {
+      "name": "PLAYER-active",
+      "kind": "record",
+      "bytes": 29,
+      "hex": "0a 1b 01 00 02 03 01 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00",
+      "annotation": "P1 at(2,3) east, damage0, no cargo/sabotage/push; omitted slots zero"
+    },
+    {
+      "name": "PLAYER-carry-sabotage-pushed",
+      "kind": "record",
+      "bytes": 29,
+      "hex": "0a 1b 02 0e 03 03 03 02 00 00 01 00 0d 00 00 00 01 00 00 00 02 00 00 00 08 00 00 00 01",
+      "annotation": "P2 carries crate65536, score13=delivery5+sabotage8, damage/taken2, pushed_by1; all optional values present"
+    },
+    {
+      "name": "PLAYER-disabled",
+      "kind": "record",
+      "bytes": 29,
+      "hex": "0a 1b 01 01 00 00 01 03 00 00 00 00 00 00 00 00 00 00 00 00 03 00 00 00 00 00 00 00 00",
+      "annotation": "P1 pending respawn, null coordinates/carry, damage3 taken3"
+    },
+    {
+      "name": "CRATE-loose",
+      "kind": "record",
+      "bytes": 9,
+      "hex": "0b 07 00 00 01 00 02 03 00",
+      "annotation": "crate65536 loose at2,3"
+    },
+    {
+      "name": "CRATE-carried",
+      "kind": "record",
+      "bytes": 9,
+      "hex": "0b 07 00 00 01 00 00 00 02",
+      "annotation": "crate65536 carried by P2; null coordinates"
+    },
+    {
+      "name": "GROUP",
+      "kind": "record",
+      "bytes": 4,
+      "hex": "0c 02 19 01",
+      "annotation": "group Z reversed"
+    },
+    {
+      "name": "HAZARD-trap-neutral-armed",
+      "kind": "record",
+      "bytes": 6,
+      "hex": "0d 04 01 01 01 00",
+      "annotation": "trap-neutral-armed"
+    },
+    {
+      "name": "HAZARD-trap-owned-disarmed",
+      "kind": "record",
+      "bytes": 6,
+      "hex": "0d 04 01 01 00 02",
+      "annotation": "trap-owned-disarmed"
+    },
+    {
+      "name": "HAZARD-turret-neutral-ready",
+      "kind": "record",
+      "bytes": 6,
+      "hex": "0d 04 02 01 02 00",
+      "annotation": "turret-neutral-ready"
+    },
+    {
+      "name": "HAZARD-turret-owned-empty",
+      "kind": "record",
+      "bytes": 6,
+      "hex": "0d 04 02 01 00 02",
+      "annotation": "turret-owned-empty"
+    },
+    {
+      "name": "STATUS-lobby",
+      "kind": "record",
+      "bytes": 20,
+      "hex": "0e 12 03 00 00 c8 e8 03 00 00 00 00 00 03 04 02 00 00 00 00",
+      "annotation": "lobby cap200 target1000 joined3 capacity4 bots2"
+    },
+    {
+      "name": "STATUS-planning",
+      "kind": "record",
+      "bytes": 26,
+      "hex": "0e 18 00 03 00 c8 e8 03 2a 00 00 00 04 00 00 03 0f 0e 00 03 02 00 03 01 04 02",
+      "annotation": "P2 hauler P3 opportunist P4 saboteur, all submitted, bot seats ready"
+    },
+    {
+      "name": "STATUS-finished-tie",
+      "kind": "record",
+      "bytes": 20,
+      "hex": "0e 12 02 03 03 c8 e8 03 2a 00 00 00 02 00 00 00 03 03 03 00",
+      "annotation": "finished round3, P1 and P2 winners"
+    },
+    {
+      "name": "TEXT-name",
+      "kind": "record",
+      "bytes": 15,
+      "hex": "0f 0d 01 03 00 00 00 00 00 00 00 03 4d 61 70",
+      "annotation": "field1, total3, offset0: 'Map'"
+    },
+    {
+      "name": "TEXT-description",
+      "kind": "record",
+      "bytes": 12,
+      "hex": "0f 0a 02 00 00 00 00 00 00 00 00 00",
+      "annotation": "field2, total0, offset0: ''"
+    },
+    {
+      "name": "TEXT-message",
+      "kind": "record",
+      "bytes": 20,
+      "hex": "0f 12 03 08 00 00 00 00 00 00 00 08 61 63 63 65 70 74 65 64",
+      "annotation": "field3, total8, offset0: 'accepted'"
+    },
+    {
+      "name": "TEXT-continuation",
+      "kind": "record",
+      "bytes": 68,
+      "hex": "0f 42 02 78 00 00 00 40 00 00 00 38 61 61 61 61 61 61 61 61 61 61 61 61 61 61 61 61 61 61 61 61 61 61 61 61 61 61 61 61 61 61 61 61 61 61 61 61 61 61 61 61 61 61 61 61 61 61 61 61 61 61 61 61 61 61 61 61",
+      "annotation": "description total120, offset64, final56 bytes a; follows fragment0 of64 bytes"
+    },
+    {
+      "name": "MAP_META",
+      "kind": "record",
+      "bytes": 24,
+      "hex": "10 16 01 00 00 00 0b 74 72 61 69 6e 69 6e 67 2d 30 31 0c 0a 78 00 13 00",
+      "annotation": "map1 training-01,12x10,120 tiles,19 attributes"
+    },
+    {
+      "name": "TILES-all-kinds",
+      "kind": "record",
+      "bytes": 12,
+      "hex": "11 0a 00 00 0e 10 32 54 76 98 ba dc",
+      "annotation": "first0,14 tiles: terrain codes0..13 low nibble first (illustrative segment)"
+    },
+    {
+      "name": "TILES-odd",
+      "kind": "record",
+      "bytes": 7,
+      "hex": "11 05 00 00 03 10 02",
+      "annotation": "three terrain codes0,1,2; final padding high nibble0"
+    },
+    {
+      "name": "ATTRIBUTE-spawn",
+      "kind": "record",
+      "bytes": 7,
+      "hex": "12 05 01 01 04 00 03",
+      "annotation": "tile terrain determines interpretation: S4W"
+    },
+    {
+      "name": "ATTRIBUTE-dock",
+      "kind": "record",
+      "bytes": 7,
+      "hex": "12 05 02 01 04 00 00",
+      "annotation": "tile terrain determines interpretation: D4"
+    },
+    {
+      "name": "ATTRIBUTE-dispenser",
+      "kind": "record",
+      "bytes": 7,
+      "hex": "12 05 03 01 e7 03 00",
+      "annotation": "tile terrain determines interpretation: G999"
+    },
+    {
+      "name": "ATTRIBUTE-conveyor",
+      "kind": "record",
+      "bytes": 7,
+      "hex": "12 05 04 01 19 00 02",
+      "annotation": "tile terrain determines interpretation: CvZ"
+    },
+    {
+      "name": "ATTRIBUTE-console",
+      "kind": "record",
+      "bytes": 7,
+      "hex": "12 05 05 01 19 00 00",
+      "annotation": "tile terrain determines interpretation: TZ"
+    },
+    {
+      "name": "ATTRIBUTE-laser",
+      "kind": "record",
+      "bytes": 7,
+      "hex": "12 05 06 01 00 00 01",
+      "annotation": "tile terrain determines interpretation: L>"
+    },
+    {
+      "name": "ATTRIBUTE-trap",
+      "kind": "record",
+      "bytes": 7,
+      "hex": "12 05 07 01 09 00 00",
+      "annotation": "tile terrain determines interpretation: X9"
+    },
+    {
+      "name": "ATTRIBUTE-trap-console",
+      "kind": "record",
+      "bytes": 7,
+      "hex": "12 05 08 01 09 00 00",
+      "annotation": "tile terrain determines interpretation: K9"
+    },
+    {
+      "name": "ATTRIBUTE-turret",
+      "kind": "record",
+      "bytes": 7,
+      "hex": "12 05 09 01 09 00 00",
+      "annotation": "tile terrain determines interpretation: Y9"
+    },
+    {
+      "name": "ATTRIBUTE-turret-pad",
+      "kind": "record",
+      "bytes": 7,
+      "hex": "12 05 0a 01 09 00 00",
+      "annotation": "tile terrain determines interpretation: P9"
+    },
+    {
+      "name": "MAP_LIST",
+      "kind": "record",
+      "bytes": 4,
+      "hex": "13 02 01 00",
+      "annotation": "one entry"
+    },
+    {
+      "name": "MAP_ENTRY",
+      "kind": "record",
+      "bytes": 20,
+      "hex": "14 12 01 00 00 00 0b 74 72 61 69 6e 69 6e 67 2d 30 31 02 04",
+      "annotation": "map1 training-01 supports2..4"
+    },
+    {
+      "name": "EVENTS_META",
+      "kind": "record",
+      "bytes": 10,
+      "hex": "16 08 29 00 00 00 01 00 00 00",
+      "annotation": "since41; one event in this window"
+    },
+    {
+      "name": "EVENT-PLANNING_CLOSED",
+      "kind": "record",
+      "bytes": 14,
+      "hex": "15 0c 01 2a 00 00 00 03 00 01 00 00 00 02",
+      "annotation": "PLANNING_CLOSED: version42 round3 tick0 sequence1; params bytes follow section7 field order"
+    },
+    {
+      "name": "EVENT-ROUND_STARTED",
+      "kind": "record",
+      "bytes": 14,
+      "hex": "15 0c 02 2a 00 00 00 03 00 01 00 00 00 03",
+      "annotation": "ROUND_STARTED: version42 round3 tick0 sequence1; params bytes follow section7 field order"
+    },
+    {
+      "name": "EVENT-ROUND_ENDED",
+      "kind": "record",
+      "bytes": 41,
+      "hex": "15 27 03 2a 00 00 00 03 03 01 00 00 00 03 02 01 05 00 00 00 01 00 00 00 00 00 00 00 02 05 00 00 00 01 00 00 00 00 00 00 00",
+      "annotation": "ROUND_ENDED: version42 round3 tick3 sequence1; params bytes follow section7 field order"
+    },
+    {
+      "name": "EVENT-MATCH_ENDED",
+      "kind": "record",
+      "bytes": 42,
+      "hex": "15 28 04 2a 00 00 00 03 03 01 00 00 00 03 00 02 01 05 00 00 00 01 00 00 00 00 00 00 00 02 05 00 00 00 01 00 00 00 00 00 00 00",
+      "annotation": "MATCH_ENDED: version42 round3 tick3 sequence1; params bytes follow section7 field order"
+    },
+    {
+      "name": "EVENT-ORDER_EXECUTED",
+      "kind": "record",
+      "bytes": 15,
+      "hex": "15 0d 05 2a 00 00 00 03 02 01 00 00 00 01 01",
+      "annotation": "ORDER_EXECUTED: version42 round3 tick2 sequence1; params bytes follow section7 field order"
+    },
+    {
+      "name": "EVENT-ORDER_NO_OP",
+      "kind": "record",
+      "bytes": 16,
+      "hex": "15 0e 06 2a 00 00 00 03 02 01 00 00 00 01 00 03",
+      "annotation": "ORDER_NO_OP: version42 round3 tick2 sequence1; params bytes follow section7 field order"
+    },
+    {
+      "name": "EVENT-ORDER_SKIPPED_DISABLED",
+      "kind": "record",
+      "bytes": 15,
+      "hex": "15 0d 07 2a 00 00 00 03 02 01 00 00 00 01 08",
+      "annotation": "ORDER_SKIPPED_DISABLED: version42 round3 tick2 sequence1; params bytes follow section7 field order"
+    },
+    {
+      "name": "EVENT-ROBOT_MOVED",
+      "kind": "record",
+      "bytes": 19,
+      "hex": "15 11 08 2a 00 00 00 03 02 01 00 00 00 01 02 03 03 03 00",
+      "annotation": "ROBOT_MOVED: version42 round3 tick2 sequence1; params bytes follow section7 field order"
+    },
+    {
+      "name": "EVENT-ROBOT_PUSHED",
+      "kind": "record",
+      "bytes": 19,
+      "hex": "15 11 09 2a 00 00 00 03 02 01 00 00 00 02 01 03 03 04 03",
+      "annotation": "ROBOT_PUSHED: version42 round3 tick2 sequence1; params bytes follow section7 field order"
+    },
+    {
+      "name": "EVENT-MOVE_BLOCKED",
+      "kind": "record",
+      "bytes": 18,
+      "hex": "15 10 0a 2a 00 00 00 03 02 01 00 00 00 01 03 ff 03 00",
+      "annotation": "MOVE_BLOCKED: version42 round3 tick2 sequence1; params bytes follow section7 field order"
+    },
+    {
+      "name": "EVENT-ROBOT_ROTATED",
+      "kind": "record",
+      "bytes": 16,
+      "hex": "15 0e 0b 2a 00 00 00 03 02 01 00 00 00 01 00 01",
+      "annotation": "ROBOT_ROTATED: version42 round3 tick2 sequence1; params bytes follow section7 field order"
+    },
+    {
+      "name": "EVENT-CRATE_SPAWNED",
+      "kind": "record",
+      "bytes": 21,
+      "hex": "15 13 0c 2a 00 00 00 03 00 01 00 00 00 00 00 01 00 e7 03 02 03",
+      "annotation": "CRATE_SPAWNED: version42 round3 tick0 sequence1; params bytes follow section7 field order"
+    },
+    {
+      "name": "EVENT-CRATE_PICKED_UP",
+      "kind": "record",
+      "bytes": 20,
+      "hex": "15 12 0d 2a 00 00 00 03 02 01 00 00 00 01 00 00 01 00 02 03",
+      "annotation": "CRATE_PICKED_UP: version42 round3 tick2 sequence1; params bytes follow section7 field order"
+    },
+    {
+      "name": "EVENT-CRATE_DROPPED",
+      "kind": "record",
+      "bytes": 20,
+      "hex": "15 12 0e 2a 00 00 00 03 02 01 00 00 00 01 00 00 01 00 02 03",
+      "annotation": "CRATE_DROPPED: version42 round3 tick2 sequence1; params bytes follow section7 field order"
+    },
+    {
+      "name": "EVENT-CRATE_DELIVERED",
+      "kind": "record",
+      "bytes": 24,
+      "hex": "15 16 0f 2a 00 00 00 03 02 01 00 00 00 01 00 00 01 00 02 03 05 00 00 00",
+      "annotation": "CRATE_DELIVERED: version42 round3 tick2 sequence1; params bytes follow section7 field order"
+    },
+    {
+      "name": "EVENT-CRATE_MOVED",
+      "kind": "record",
+      "bytes": 21,
+      "hex": "15 13 10 2a 00 00 00 03 02 01 00 00 00 00 00 01 00 02 03 03 03",
+      "annotation": "CRATE_MOVED: version42 round3 tick2 sequence1; params bytes follow section7 field order"
+    },
+    {
+      "name": "EVENT-CRATE_DESTROYED",
+      "kind": "record",
+      "bytes": 20,
+      "hex": "15 12 11 2a 00 00 00 03 02 01 00 00 00 00 00 01 00 02 03 01",
+      "annotation": "CRATE_DESTROYED: version42 round3 tick2 sequence1; params bytes follow section7 field order"
+    },
+    {
+      "name": "EVENT-GROUP_TOGGLED",
+      "kind": "record",
+      "bytes": 18,
+      "hex": "15 10 12 2a 00 00 00 03 02 01 00 00 00 01 19 2c 01 01",
+      "annotation": "GROUP_TOGGLED: version42 round3 tick2 sequence1; params bytes follow section7 field order"
+    },
+    {
+      "name": "EVENT-LASER_HIT",
+      "kind": "record",
+      "bytes": 17,
+      "hex": "15 0f 13 2a 00 00 00 03 02 01 00 00 00 01 02 03 02",
+      "annotation": "LASER_HIT: version42 round3 tick2 sequence1; params bytes follow section7 field order"
+    },
+    {
+      "name": "EVENT-ROBOT_DISABLED",
+      "kind": "record",
+      "bytes": 21,
+      "hex": "15 13 14 2a 00 00 00 03 02 01 00 00 00 01 00 02 03 00 00 00 00",
+      "annotation": "ROBOT_DISABLED: version42 round3 tick2 sequence1; params bytes follow section7 field order"
+    },
+    {
+      "name": "EVENT-RESPAWN_REDIRECTED",
+      "kind": "record",
+      "bytes": 18,
+      "hex": "15 10 15 2a 00 00 00 03 03 01 00 00 00 01 01 01 02 01",
+      "annotation": "RESPAWN_REDIRECTED: version42 round3 tick3 sequence1; params bytes follow section7 field order"
+    },
+    {
+      "name": "EVENT-ROBOT_RESPAWNED",
+      "kind": "record",
+      "bytes": 17,
+      "hex": "15 0f 16 2a 00 00 00 03 03 01 00 00 00 01 02 01 01",
+      "annotation": "ROBOT_RESPAWNED: version42 round3 tick3 sequence1; params bytes follow section7 field order"
+    },
+    {
+      "name": "EVENT-TRAP_ARMED",
+      "kind": "record",
+      "bytes": 20,
+      "hex": "15 12 17 2a 00 00 00 03 02 01 00 00 00 01 01 02 03 00 00 01",
+      "annotation": "TRAP_ARMED: version42 round3 tick2 sequence1; params bytes follow section7 field order"
+    },
+    {
+      "name": "EVENT-TRAP_TRIGGERED",
+      "kind": "record",
+      "bytes": 18,
+      "hex": "15 10 18 2a 00 00 00 03 02 01 00 00 00 01 02 03 00 03",
+      "annotation": "TRAP_TRIGGERED: version42 round3 tick2 sequence1; params bytes follow section7 field order"
+    },
+    {
+      "name": "EVENT-TRAP_HIT",
+      "kind": "record",
+      "bytes": 18,
+      "hex": "15 10 19 2a 00 00 00 03 02 01 00 00 00 01 02 02 01 01",
+      "annotation": "TRAP_HIT: version42 round3 tick2 sequence1; params bytes follow section7 field order"
+    },
+    {
+      "name": "EVENT-TURRET_CAPTURED",
+      "kind": "record",
+      "bytes": 19,
+      "hex": "15 11 1a 2a 00 00 00 03 02 01 00 00 00 01 01 02 03 00 01",
+      "annotation": "TURRET_CAPTURED: version42 round3 tick2 sequence1; params bytes follow section7 field order"
+    },
+    {
+      "name": "EVENT-TURRET_CHARGING",
+      "kind": "record",
+      "bytes": 18,
+      "hex": "15 10 1b 2a 00 00 00 03 02 01 00 00 00 01 02 03 02 00",
+      "annotation": "TURRET_CHARGING: version42 round3 tick2 sequence1; params bytes follow section7 field order"
+    },
+    {
+      "name": "EVENT-TURRET_FIRED",
+      "kind": "record",
+      "bytes": 22,
+      "hex": "15 14 1c 2a 00 00 00 03 02 01 00 00 00 01 02 03 01 02 01 02 03 01",
+      "annotation": "TURRET_FIRED: version42 round3 tick2 sequence1; params bytes follow section7 field order"
+    },
+    {
+      "name": "EVENT-TAR_SLOWED",
+      "kind": "record",
+      "bytes": 17,
+      "hex": "15 0f 1d 2a 00 00 00 03 02 01 00 00 00 01 01 02 03",
+      "annotation": "TAR_SLOWED: version42 round3 tick2 sequence1; params bytes follow section7 field order"
+    },
+    {
+      "name": "EVENT-SCORE_AWARDED",
+      "kind": "record",
+      "bytes": 23,
+      "hex": "15 15 1e 2a 00 00 00 03 02 01 00 00 00 01 08 04 02 0d 00 00 00 00 00",
+      "annotation": "SCORE_AWARDED: version42 round3 tick2 sequence1; params bytes follow section7 field order"
+    },
+    {
+      "name": "EVENT-MATCH_ENDED-target",
+      "kind": "record",
+      "bytes": 42,
+      "hex": "15 28 04 2a 00 00 00 03 03 01 00 00 00 03 01 02 01 05 00 00 00 01 00 00 00 00 00 00 00 02 05 00 00 00 01 00 00 00 00 00 00 00",
+      "annotation": "conditional variant target; common version42 round3 tick3 sequence1"
+    },
+    {
+      "name": "EVENT-MATCH_ENDED-cap",
+      "kind": "record",
+      "bytes": 42,
+      "hex": "15 28 04 2a 00 00 00 03 03 01 00 00 00 03 02 02 01 05 00 00 00 01 00 00 00 00 00 00 00 02 05 00 00 00 01 00 00 00 00 00 00 00",
+      "annotation": "conditional variant cap; common version42 round3 tick3 sequence1"
+    },
+    {
+      "name": "EVENT-ROBOT_DISABLED-laser",
+      "kind": "record",
+      "bytes": 21,
+      "hex": "15 13 14 2a 00 00 00 03 03 01 00 00 00 01 01 02 03 00 00 00 00",
+      "annotation": "conditional variant laser; common version42 round3 tick3 sequence1"
+    },
+    {
+      "name": "EVENT-ROBOT_DISABLED-shunt",
+      "kind": "record",
+      "bytes": 21,
+      "hex": "15 13 14 2a 00 00 00 03 03 01 00 00 00 02 00 02 03 01 01 00 00",
+      "annotation": "conditional variant shunt; common version42 round3 tick3 sequence1"
+    },
+    {
+      "name": "EVENT-ROBOT_DISABLED-neutral-trap",
+      "kind": "record",
+      "bytes": 21,
+      "hex": "15 13 14 2a 00 00 00 03 03 01 00 00 00 02 02 02 03 01 00 01 01",
+      "annotation": "conditional variant neutral-trap; common version42 round3 tick3 sequence1"
+    },
+    {
+      "name": "EVENT-ROBOT_DISABLED-owned-turret",
+      "kind": "record",
+      "bytes": 21,
+      "hex": "15 13 14 2a 00 00 00 03 03 01 00 00 00 02 03 02 03 01 01 02 01",
+      "annotation": "conditional variant owned-turret; common version42 round3 tick3 sequence1"
+    },
+    {
+      "name": "EVENT-SCORE_AWARDED-trap-damage",
+      "kind": "record",
+      "bytes": 23,
+      "hex": "15 15 1e 2a 00 00 00 03 03 01 00 00 00 01 01 00 02 01 00 00 00 01 01",
+      "annotation": "conditional variant trap-damage; common version42 round3 tick3 sequence1"
+    },
+    {
+      "name": "EVENT-SCORE_AWARDED-trap-disable",
+      "kind": "record",
+      "bytes": 23,
+      "hex": "15 15 1e 2a 00 00 00 03 03 01 00 00 00 01 03 01 02 04 00 00 00 01 01",
+      "annotation": "conditional variant trap-disable; common version42 round3 tick3 sequence1"
+    },
+    {
+      "name": "EVENT-SCORE_AWARDED-turret-damage",
+      "kind": "record",
+      "bytes": 23,
+      "hex": "15 15 1e 2a 00 00 00 03 03 01 00 00 00 01 01 02 02 01 00 00 00 02 01",
+      "annotation": "conditional variant turret-damage; common version42 round3 tick3 sequence1"
+    },
+    {
+      "name": "EVENT-SCORE_AWARDED-turret-disable",
+      "kind": "record",
+      "bytes": 23,
+      "hex": "15 15 1e 2a 00 00 00 03 03 01 00 00 00 01 03 03 02 04 00 00 00 02 01",
+      "annotation": "conditional variant turret-disable; common version42 round3 tick3 sequence1"
+    },
+    {
+      "name": "EVENT-CRATE_DESTROYED-drop-blocked",
+      "kind": "record",
+      "bytes": 20,
+      "hex": "15 12 11 2a 00 00 00 03 03 01 00 00 00 00 00 01 00 02 03 00",
+      "annotation": "conditional variant drop-blocked; common version42 round3 tick3 sequence1"
+    },
+    {
+      "name": "EVENT-ORDER_NO_OP-reason0",
+      "kind": "record",
+      "bytes": 16,
+      "hex": "15 0e 06 2a 00 00 00 03 02 01 00 00 00 01 06 00",
+      "annotation": "NOT_CARRYING/TILE_OCCUPIED use DROP; NO_CONSOLE uses TOGGLE"
+    },
+    {
+      "name": "EVENT-ORDER_NO_OP-reason1",
+      "kind": "record",
+      "bytes": 16,
+      "hex": "15 0e 06 2a 00 00 00 03 02 01 00 00 00 01 06 01",
+      "annotation": "NOT_CARRYING/TILE_OCCUPIED use DROP; NO_CONSOLE uses TOGGLE"
+    },
+    {
+      "name": "EVENT-ORDER_NO_OP-reason2",
+      "kind": "record",
+      "bytes": 16,
+      "hex": "15 0e 06 2a 00 00 00 03 02 01 00 00 00 01 07 02",
+      "annotation": "NOT_CARRYING/TILE_OCCUPIED use DROP; NO_CONSOLE uses TOGGLE"
+    },
+    {
+      "name": "PAGE-created-final",
+      "kind": "payload",
+      "bytes": 34,
+      "hex": "82 01 00 01 00 00 00 00 00 00 00 0c 00 00 00 00 00 00 00 11 01 0c 01 03 02 6d 31 02 05 04 03 c8 e8 03",
+      "annotation": "transfer1 offset0 total12 highwater0 origin CREATE final, CONTEXT+CREATED"
+    },
+    {
+      "name": "TCP-PAGE-created-final",
+      "kind": "frame",
+      "bytes": 36,
+      "hex": "22 00 82 01 00 01 00 00 00 00 00 00 00 0c 00 00 00 00 00 00 00 11 01 0c 01 03 02 6d 31 02 05 04 03 c8 e8 03",
+      "annotation": "TCP length34 (22-byte page header plus12 record bytes)"
+    },
+    {
+      "name": "PAGE-created-first",
+      "kind": "invalid",
+      "bytes": 27,
+      "hex": "82 01 00 01 00 00 00 00 00 00 00 0c 00 00 00 00 00 00 00 11 00 05 01 03 02 6d 31",
+      "annotation": "Noncanonical short page: entire 12-byte stream fits P128; sender must emit final page. Receiver rejects non-greedy stream segmentation in fixture validation."
+    },
+    {
+      "name": "ECHO-max",
+      "kind": "record",
+      "bytes": 101,
+      "hex": "07 63 20 41 41 41 41 41 41 41 41 41 41 41 41 41 41 41 41 41 41 41 41 41 41 41 41 41 41 41 41 41 41 41 41 02 40 61 61 61 61 61 61 61 61 61 61 61 61 61 61 61 61 61 61 61 61 61 61 61 61 61 61 61 61 61 61 61 61 61 61 61 61 61 61 61 61 61 61 61 61 61 61 61 61 61 61 61 61 61 61 61 61 61 61 61 61 61 61 61 61",
+      "annotation": "32-byte type and64-byte ASCII key: body99, record101, fits P128"
+    },
+    {
+      "name": "TILES-max",
+      "kind": "record",
+      "bytes": 69,
+      "hex": "11 43 00 00 80 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00",
+      "annotation": "128 floor tiles, body67"
+    },
+    {
+      "name": "TEXT-max",
+      "kind": "record",
+      "bytes": 76,
+      "hex": "0f 4a 02 40 00 00 00 00 00 00 00 40 61 61 61 61 61 61 61 61 61 61 61 61 61 61 61 61 61 61 61 61 61 61 61 61 61 61 61 61 61 61 61 61 61 61 61 61 61 61 61 61 61 61 61 61 61 61 61 61 61 61 61 61 61 61 61 61 61 61 61 61 61 61 61 61",
+      "annotation": "64-byte description, body74"
+    },
+    {
+      "name": "truncated-GET_EVENTS",
+      "kind": "invalid",
+      "bytes": 9,
+      "hex": "16 01 00 00 29 00 00 00 10",
+      "annotation": "missing max_versions high byte => BAD_MESSAGE"
+    },
+    {
+      "name": "unknown-opcode",
+      "kind": "invalid",
+      "bytes": 3,
+      "hex": "7f 01 00",
+      "annotation": "BAD_MESSAGE, no game dispatch"
+    },
+    {
+      "name": "oversize-prefix",
+      "kind": "invalid",
+      "bytes": 2,
+      "hex": "f1 00",
+      "annotation": "payload241 exceeds max240: close, do not allocate"
+    },
+    {
+      "name": "PAGE-MAPS-P128-1",
+      "kind": "payload",
+      "bytes": 127,
+      "hex": "82 01 00 01 00 00 00 00 00 00 00 f9 00 00 00 00 00 00 00 10 00 69 13 02 01 00 14 27 01 00 00 00 20 61 61 61 61 61 61 61 61 61 61 61 61 61 61 61 61 61 61 61 61 61 61 61 61 61 61 61 61 61 61 61 61 02 04 0f 3a 01 30 00 00 00 00 00 00 00 30 6e 6e 6e 6e 6e 6e 6e 6e 6e 6e 6e 6e 6e 6e 6e 6e 6e 6e 6e 6e 6e 6e 6e 6e 6e 6e 6e 6e 6e 6e 6e 6e 6e 6e 6e 6e 6e 6e 6e 6e 6e 6e 6e 6e 6e 6e 6e 6e",
+      "annotation": "Canonical P128 page 1: transfer1 offset0 total249 H0 origin LIST_MAPS; 105 record bytes; final=0"
+    },
+    {
+      "name": "PAGE-MAPS-P128-2",
+      "kind": "payload",
+      "bytes": 98,
+      "hex": "82 02 00 01 00 00 00 69 00 00 00 f9 00 00 00 00 00 00 00 10 00 4c 0f 4a 02 78 00 00 00 00 00 00 00 40 64 64 64 64 64 64 64 64 64 64 64 64 64 64 64 64 64 64 64 64 64 64 64 64 64 64 64 64 64 64 64 64 64 64 64 64 64 64 64 64 64 64 64 64 64 64 64 64 64 64 64 64 64 64 64 64 64 64 64 64 64 64 64 64",
+      "annotation": "Canonical P128 page 2: transfer1 offset105 total249 H0 origin LIST_MAPS; 76 record bytes; final=0"
+    },
+    {
+      "name": "FETCH-MAPS-P128-2",
+      "kind": "payload",
+      "bytes": 11,
+      "hex": "03 02 00 01 00 00 00 69 00 00 00",
+      "annotation": "Fetch transfer1 offset105"
+    },
+    {
+      "name": "PAGE-MAPS-P128-3",
+      "kind": "payload",
+      "bytes": 90,
+      "hex": "82 03 00 01 00 00 00 b5 00 00 00 f9 00 00 00 00 00 00 00 10 01 44 0f 42 02 78 00 00 00 40 00 00 00 38 64 64 64 64 64 64 64 64 64 64 64 64 64 64 64 64 64 64 64 64 64 64 64 64 64 64 64 64 64 64 64 64 64 64 64 64 64 64 64 64 64 64 64 64 64 64 64 64 64 64 64 64 64 64 64 64",
+      "annotation": "Canonical P128 page 3: transfer1 offset181 total249 H0 origin LIST_MAPS; 68 record bytes; final=1"
+    },
+    {
+      "name": "FETCH-MAPS-P128-3",
+      "kind": "payload",
+      "bytes": 11,
+      "hex": "03 03 00 01 00 00 00 b5 00 00 00",
+      "annotation": "Fetch transfer1 offset181"
+    },
+    {
+      "name": "SUBMITTED-PLANNING_CLOSED",
+      "kind": "record",
+      "bytes": 26,
+      "hex": "05 18 01 00 00 00 03 00 00 00 01 00 00 00 2a 00 00 00 00 10 04 01 07 00 00 00",
+      "annotation": "PLANNING_CLOSED, ok=false detail4 response_version42, key b:7; append exact diagnostic"
+    },
+    {
+      "name": "SUBMITTED-WRONG_ROUND",
+      "kind": "record",
+      "bytes": 26,
+      "hex": "05 18 01 00 00 00 03 00 00 00 01 00 00 00 2a 00 00 00 00 11 04 01 07 00 00 00",
+      "annotation": "WRONG_ROUND, ok=false detail4 response_version42, key b:7; append exact diagnostic"
+    },
+    {
+      "name": "SUBMITTED-PROGRAM_LOCKED",
+      "kind": "record",
+      "bytes": 26,
+      "hex": "05 18 01 00 00 00 03 00 00 00 01 00 00 00 2a 00 00 00 00 12 04 01 07 00 00 00",
+      "annotation": "PROGRAM_LOCKED, ok=false detail4 response_version42, key b:7; append exact diagnostic"
+    },
+    {
+      "name": "SUBMITTED-INVALID_REVISION",
+      "kind": "record",
+      "bytes": 26,
+      "hex": "05 18 01 00 00 00 03 00 00 00 01 00 00 00 2a 00 00 00 00 13 04 01 07 00 00 00",
+      "annotation": "INVALID_REVISION, ok=false detail4 response_version42, key b:7; append exact diagnostic"
+    },
+    {
+      "name": "SUBMITTED-STALE_REVISION",
+      "kind": "record",
+      "bytes": 26,
+      "hex": "05 18 01 00 00 00 03 00 00 00 01 00 00 00 2a 00 00 00 00 14 04 01 07 00 00 00",
+      "annotation": "STALE_REVISION, ok=false detail4 response_version42, key b:7; append exact diagnostic"
+    },
+    {
+      "name": "SUBMITTED-REVISION_CONFLICT",
+      "kind": "record",
+      "bytes": 26,
+      "hex": "05 18 01 00 00 00 03 00 00 00 01 00 00 00 2a 00 00 00 00 15 04 01 07 00 00 00",
+      "annotation": "REVISION_CONFLICT, ok=false detail4 response_version42, key b:7; append exact diagnostic"
+    },
+    {
+      "name": "SUBMITTED-REQUEST_ID_REUSED",
+      "kind": "record",
+      "bytes": 26,
+      "hex": "05 18 01 00 00 00 03 00 00 00 01 00 00 00 2a 00 00 00 00 16 04 01 07 00 00 00",
+      "annotation": "REQUEST_ID_REUSED, ok=false detail4 response_version42, key b:7; append exact diagnostic"
+    },
+    {
+      "name": "SUBMITTED-REQUEST_LIMIT",
+      "kind": "record",
+      "bytes": 26,
+      "hex": "05 18 01 00 00 00 03 00 00 00 01 00 00 00 2a 00 00 00 00 17 04 01 07 00 00 00",
+      "annotation": "REQUEST_LIMIT, ok=false detail4 response_version42, key b:7; append exact diagnostic"
+    },
+    {
+      "name": "SNAP_META-target-no-deadline",
+      "kind": "record",
+      "bytes": 33,
+      "hex": "09 1f 01 03 02 c8 e8 03 01 00 01 00 01 00 00 00 01 04 02 00 01 01 01 0f 0f 00 00 00 00 00 00 00 00",
+      "annotation": "flags1: target present, deadline null; other fields as target-executing example"
+    },
+    {
+      "name": "SNAP_META-deadline-no-target",
+      "kind": "record",
+      "bytes": 33,
+      "hex": "09 1f 01 03 02 c8 00 00 01 00 01 00 01 00 00 00 02 04 02 00 01 01 01 0f 0f 00 f1 53 65 00 00 00 00",
+      "annotation": "flags2: target absent, deadline present; other fields as target-executing example"
+    },
+    {
+      "name": "PAGE-EVENTS-same-version-1",
+      "kind": "payload",
+      "bytes": 127,
+      "hex": "82 01 00 01 00 00 00 00 00 00 00 3b 01 00 00 2a 00 00 00 16 00 69 01 03 02 6d 31 16 08 29 00 00 00 14 00 00 00 15 0d 05 2a 00 00 00 03 02 01 00 00 00 01 08 15 0d 05 2a 00 00 00 03 02 02 00 00 00 01 08 15 0d 05 2a 00 00 00 03 02 03 00 00 00 01 08 15 0d 05 2a 00 00 00 03 02 04 00 00 00 01 08 15 0d 05 2a 00 00 00 03 02 05 00 00 00 01 08 15 0d 05 2a 00 00 00 03 02 06 00 00 00 01 08",
+      "annotation": "Synthetic packing fixture P128: version42 spans all three pages; sequences1..20, cursor0, total315, final=False. Commit version42 only on final; not a reachable engine trace."
+    },
+    {
+      "name": "PAGE-EVENTS-same-version-2",
+      "kind": "payload",
+      "bytes": 127,
+      "hex": "82 02 00 01 00 00 00 69 00 00 00 3b 01 00 00 2a 00 00 00 16 00 69 15 0d 05 2a 00 00 00 03 02 07 00 00 00 01 08 15 0d 05 2a 00 00 00 03 02 08 00 00 00 01 08 15 0d 05 2a 00 00 00 03 02 09 00 00 00 01 08 15 0d 05 2a 00 00 00 03 02 0a 00 00 00 01 08 15 0d 05 2a 00 00 00 03 02 0b 00 00 00 01 08 15 0d 05 2a 00 00 00 03 02 0c 00 00 00 01 08 15 0d 05 2a 00 00 00 03 02 0d 00 00 00 01 08",
+      "annotation": "Synthetic packing fixture P128: version42 spans all three pages; sequences1..20, cursor105, total315, final=False. Commit version42 only on final; not a reachable engine trace."
+    },
+    {
+      "name": "PAGE-EVENTS-same-version-3",
+      "kind": "payload",
+      "bytes": 127,
+      "hex": "82 03 00 01 00 00 00 d2 00 00 00 3b 01 00 00 2a 00 00 00 16 01 69 15 0d 05 2a 00 00 00 03 02 0e 00 00 00 01 08 15 0d 05 2a 00 00 00 03 02 0f 00 00 00 01 08 15 0d 05 2a 00 00 00 03 02 10 00 00 00 01 08 15 0d 05 2a 00 00 00 03 02 11 00 00 00 01 08 15 0d 05 2a 00 00 00 03 02 12 00 00 00 01 08 15 0d 05 2a 00 00 00 03 02 13 00 00 00 01 08 15 0d 05 2a 00 00 00 03 02 14 00 00 00 01 08",
+      "annotation": "Synthetic packing fixture P128: version42 spans all three pages; sequences1..20, cursor210, total315, final=True. Commit version42 only on final; not a reachable engine trace."
+    }
+  ]
+}
