@@ -522,7 +522,14 @@ struct App {
     Json snap, status;
     int joined = 0, capacity = 0, bots = 0;
     std::vector<int> bot_ids;  // seats played by the server
+    std::vector<std::string> bot_kinds;  // their personalities (G4), parallel to bot_ids
     bool is_bot(int id) const { return std::find(bot_ids.begin(), bot_ids.end(), id) != bot_ids.end(); }
+    // G4: the personality the server reports for a bot seat ("" when it does not).
+    std::string bot_kind(int id) const {
+        for (std::size_t i = 0; i < bot_ids.size(); ++i)
+            if (bot_ids[i] == id && i < bot_kinds.size()) return bot_kinds[i];
+        return "";
+    }
     bool finished_logged = false;
     std::vector<int> winners;
     // Match rules: from the live snapshot once started, from the lobby status before that.
@@ -654,7 +661,9 @@ struct App {
             phase = s->get_string("phase").value_or(phase);
             bots = static_cast<int>(s->get_int("bots").value_or(0));
             bot_ids.clear();
+            bot_kinds.clear();
             if (const Json* b = s->find("bot_players")) for (const auto& v : b->items()) bot_ids.push_back(static_cast<int>(v.as_int()));
+            if (const Json* b = s->find("bot_personalities")) for (const auto& v : b->items()) bot_kinds.push_back(v.is_string() ? v.as_string() : "");
         }
         return true;
     }
@@ -1390,7 +1399,12 @@ void draw_scores(App& a, Gfx& g) {
         g.fill(card, shade(pc, 0.18f));
         g.frame(card, r.id == a.me ? pc : shade(pc, 0.5f), r.id == a.me ? 2 : 1);
         g.fill({card.x, card.y, 8, card.h}, pc);
-        g.text(card.x + 18, card.y + 4, "P" + std::to_string(r.id) + (r.id == a.me ? "  (you)" : a.is_bot(r.id) ? "  BOT" : ""), pc, g.body);
+        const std::string who = "P" + std::to_string(r.id) + (r.id == a.me ? "  (you)" : a.is_bot(r.id) ? (a.bot_kind(r.id).empty() ? "  BOT" : " BOT") : "");
+        g.text(card.x + 18, card.y + 4, who, pc, g.body);
+        if (r.id != a.me && a.is_bot(r.id)) {   // G4: the bot's personality, small, after the name
+            const std::string kind = a.bot_kind(r.id);
+            if (!kind.empty()) g.text(card.x + 18 + g.text_w(who, g.body) + 4, card.y + 9, kind, shade(pc, 0.8f), g.small);
+        }
         const bool lead = r.score == best && best > 0;
         g.text(card.x + 18, card.y + 26, "deliveries " + std::to_string(r.deliveries) + (r.sabotage > 0 ? "  sabotage +" + std::to_string(r.sabotage) : ""), kMuted, g.small);
         if (const int tgt = a.target_score(); tgt > 0) {

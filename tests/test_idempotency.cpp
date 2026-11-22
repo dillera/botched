@@ -290,11 +290,13 @@ TEST_CASE("H3: the default simulation is deterministic (pinned hashes)") {
     // players 4, seed 1, 12 rounds. The pre-M0-H1 hashes (e846c1c016b36358 / 5d9ebce915bed1f8) were produced by the
     // old shortest-path bot; B-07 replaced the bot's planner, so they were re-pinned. With the old planner the
     // old hashes still reproduce exactly (checked when B-07 was made), i.e. the rules and idempotency are unchanged.
+    // G4 replaced the planner again (personalities, persistent goals, hazard-aware routing, sabotage), so these were
+    // re-pinned once more; no file under src/ or include/ changed in that milestone, so the rules did not move.
     sim::SimOptions o;
     sim::SimResult r = sim::run_simulation(o);
     REQUIRE_MESSAGE(r.ok, r.error);
-    CHECK(r.state_hash == "8b9b82fb718c2751");
-    CHECK(r.event_hash == "415308a3742c5db6");
+    CHECK(r.state_hash == "fa2191378c62b475");
+    CHECK(r.event_hash == "582eb79a78e88fc1");
 }
 
 TEST_CASE("H3: retries, conflicts and refusals interleaved anywhere never change the game") {

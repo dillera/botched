@@ -79,7 +79,9 @@ SimResult run_simulation(const SimOptions& opt) {
     const Map& map = *ml.map;
 
     std::vector<Bot> bots;
-    for (int p = 1; p <= opt.players; ++p) bots.emplace_back(p, map, opt.seed * 1000003ULL + static_cast<std::uint64_t>(p));
+    for (int p = 1; p <= opt.players; ++p)
+        bots.emplace_back(p, map, opt.seed * 1000003ULL + static_cast<std::uint64_t>(p),
+                          personality_for(opt.seed + static_cast<std::uint64_t>(p)));   // mixed personalities
     Rng chaos(opt.seed ^ 0xabcdef12345ULL);
 
     int since = 0;
@@ -157,7 +159,9 @@ SimResult run_simulation(const SimOptions& opt) {
         if (opt.out && opt.verbose) {
             Json now = snapshot();
             *opt.out << "--- end of round " << round << " ---\n"
-                     << render_board(map, now) << render_scores(now) << '\n';
+                     << render_board(map, now) << render_scores(now);
+            for (std::size_t i = 0; i < bots.size(); ++i) *opt.out << "  P" << i + 1 << " " << bots[i].describe() << '\n';
+            *opt.out << '\n';
         }
     }
 

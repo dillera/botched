@@ -105,6 +105,14 @@ any mix works as long as at least one seat is human (e.g. `--players 4 --bots 2`
 `--join ID`). Bots plan from the public snapshot with a short look-ahead on the real rules engine, make
 occasional mistakes, and are deterministic for a given server `bot_seed`.
 
+Each bot has a **personality**: *hauler* (mostly fetches and delivers crates), *opportunist* (a bit of everything) or
+*saboteur* (prefers arming traps, claiming turrets and chasing rivals). Seats cycle through the three, so a 3-bot match is
+mixed; the SDL scoreboard shows `BOT hauler` / `opportunist` / `saboteur` next to each bot. A bot keeps a **goal** (haul a
+crate, contest a resource, arm a trap, claim a turret, chase a rival) until it is done, impossible, timed out or the last round
+did not go to plan, but it re-evaluates the goal against the current board every round: crates, rival positions, hazards. It
+weighs risk by health: a healthy bot may run a laser or crawl through tar to save a long walk, a bot one hit from being
+disabled will not. Bots still use only public information and the same rules as a human.
+
 ### Proximity traps (G2-A)
 
 Maps may contain `X<n>` (a trap device, solid like a wall) and `K<n>` (its control console). A trap starts

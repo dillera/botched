@@ -333,10 +333,12 @@ bool GameServer::start_room(Room& r, std::string& error) {
     mc.request_budget_per_round = cfg_.request_budget_per_round;
     r.match = std::make_unique<Match>(std::move(mc));
     r.ai.clear();
+    // Mixed personalities: the seats cycle hauler -> opportunist -> saboteur from a per-match seeded starting point.
+    const std::uint64_t personality_base = (fnv1a64(r.id) ^ (cfg_.bot_seed * 0x9e3779b97f4a7c15ULL)) >> 8;
     for (int i = 0; i < r.bots; ++i) {
         const int pid = humans + 1 + i;
         const std::uint64_t seed = fnv1a64(r.id + ":" + std::to_string(pid)) ^ (cfg_.bot_seed * 0x9e3779b97f4a7c15ULL);
-        r.ai.push_back(std::make_unique<sim::Bot>(pid, *r.map, seed));
+        r.ai.push_back(std::make_unique<sim::Bot>(pid, *r.map, seed, sim::personality_for(personality_base + static_cast<std::uint64_t>(i))));
     }
     open_planning(r);
     return true;
@@ -504,6 +506,9 @@ Json GameServer::get_status(const Json& req) {
         Json ids = Json::array();
         for (const auto& b : r->ai) ids.push(b->id());
         st.set("bot_players", std::move(ids));
+        Json kinds = Json::array();   // G4: the personality of each bot seat, parallel to bot_players
+        for (const auto& b : r->ai) kinds.push(sim::to_string(b->personality()));
+        st.set("bot_personalities", std::move(kinds));
         out.set("status", std::move(st));
     } else {
         Json st = Json::object();
