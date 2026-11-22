@@ -27,8 +27,9 @@ int main(int argc, char** argv) {
         else if (a == "--planning-seconds") cfg.default_planning_seconds = std::atoi(next());
         else if (a == "--max-matches") cfg.max_matches = std::atoi(next());
         else if (a == "--maps-dir") cfg.maps_dir = next();
+        else if (a == "--bot-log") cfg.bot_log = &std::cerr;
         else {
-            std::cerr << "usage: botched-tcp-server [--port N] [--bind ADDR] [--planning-seconds N] [--max-matches N] [--maps-dir DIR]\n"
+            std::cerr << "usage: botched-tcp-server [--port N] [--bind ADDR] [--planning-seconds N] [--max-matches N] [--maps-dir DIR] [--bot-log]\n"
                          "  default: 127.0.0.1:7878, 60 s planning. Use --bind 0.0.0.0 for LAN play (no authentication!).\n";
             return 2;
         }

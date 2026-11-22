@@ -19,10 +19,12 @@ int main(int argc, char** argv) {
         std::string a = argv[i];
         if (a == "--planning-seconds" && i + 1 < argc) {
             cfg.default_planning_seconds = std::atoi(argv[++i]);
+        } else if (a == "--bot-log") {
+            cfg.bot_log = &std::cerr;
         } else if (a == "--maps-dir" && i + 1 < argc) {
             cfg.maps_dir = argv[++i];
         } else {
-            std::cerr << "usage: botched-server [--planning-seconds N] [--maps-dir DIR]   (JSON lines on stdin/stdout)\n";
+            std::cerr << "usage: botched-server [--planning-seconds N] [--maps-dir DIR] [--bot-log]   (JSON lines on stdin/stdout)\n";
             return 2;
         }
     }

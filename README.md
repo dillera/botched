@@ -105,6 +105,11 @@ any mix works as long as at least one seat is human (e.g. `--players 4 --bots 2`
 `--join ID`). Bots plan from the public snapshot with a short look-ahead on the real rules engine, make
 occasional mistakes, and are deterministic for a given server `bot_seed`.
 
+To watch the bots think while playtesting, start the server with `--bot-log` (both `botched-tcp-server` and
+`botched-server`): each round it prints one stderr line per bot with its personality, current goal and the three
+orders it chose, e.g. `[bot] match m1 round 3 P3 saboteur: arm trap X1 -> F1 T WAIT`. Logging is read-only and does not
+change play or determinism.
+
 Each bot has a **personality**: *hauler* (mostly fetches and delivers crates), *opportunist* (a bit of everything) or
 *saboteur* (prefers arming traps, claiming turrets and chasing rivals). Seats cycle through the three, so a 3-bot match is
 mixed; the SDL scoreboard shows `BOT hauler` / `opportunist` / `saboteur` next to each bot. A bot keeps a **goal** (haul a

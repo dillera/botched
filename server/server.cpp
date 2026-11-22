@@ -379,6 +379,12 @@ void GameServer::plan_bots(Room& r) {
     const int round = r.match->state().round;
     for (auto& bot : r.ai) {
         auto prog = bot->plan(snap);
+        if (cfg_.bot_log) {
+            *cfg_.bot_log << "[bot] match " << r.id << " round " << round << " P" << bot->id() << " "
+                          << bot->describe() << " -> " << prog[0] << ' ' << prog[1] << ' '
+                          << prog[2] << " (goals " << bot->goals_chosen() << ", disruptions "
+                          << bot->disruptions() << ")\n" << std::flush;
+        }
         r.match->submit_program(bot->id(), round, 1, {prog[0], prog[1], prog[2]}, true,
                                 "bot-p" + std::to_string(bot->id()) + "-r" + std::to_string(round));
     }

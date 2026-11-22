@@ -6,6 +6,7 @@
 #pragma once
 
 #include <cstdint>
+#include <iosfwd>
 #include <map>
 #include <memory>
 #include <optional>
@@ -65,6 +66,9 @@ struct ServerConfig {
     // Seeds the server-managed bot seats (CREATE_MATCH "bots"). Bot decisions depend only on this seed,
     // the match id, the seat and the game state, so a match with the same human inputs replays identically.
     std::uint64_t bot_seed = 1;
+    // Optional diagnostics: when set, every bot seat writes one line per round (personality, goal, chosen
+    // orders) here as the round opens. Read-only; it never affects play or determinism.
+    std::ostream* bot_log = nullptr;
     // Map resources. Empty maps_dir = resolve_maps_dir() (env, executable-relative, compile-time default).
     // load_maps=false starts with an empty registry (tests that register their own maps).
     std::string maps_dir;
