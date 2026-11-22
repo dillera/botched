@@ -228,6 +228,12 @@ Pos step(Pos p, Dir d) { return {p.x + dir_dx(d), p.y + dir_dy(d)}; }
 
 int manhattan(Pos a, Pos b) { return std::abs(a.x - b.x) + std::abs(a.y - b.y); }
 
+// A TOGGLE that changes no trap or belt-group state (e.g. re-arming a trap I already own and have armed) does
+// nothing useful. The search charges a modest penalty per such toggle, just above the planning noise, so the
+// bot will not pick it over an equivalent plan that does something, yet a tactical re-toggle is still possible
+// whenever it genuinely scores more.
+constexpr int kRedundantToggle = 400;
+
 struct Candidate {
     std::array<Order, 3> orders;
     int score;
@@ -630,7 +636,7 @@ std::array<std::string, 3> Bot::plan(const Json& snap) {
     std::array<Order, 3> cur{};
     static const Order kBase[] = {Order::Forward1, Order::Forward2, Order::Back1, Order::TurnLeft,
                                   Order::TurnRight, Order::TurnAround, Order::Wait};
-    auto dfs = [&](auto&& self, int slot, const GameState& g) -> void {
+    auto dfs = [&](auto&& self, int slot, const GameState& g, int redundant) -> void {
         const bool can_toggle = near_console(g.robot(id_).pos);
         for (int oi = 0; oi < 8; ++oi) {
             Order o = oi < 7 ? kBase[oi] : Order::Toggle;
@@ -640,8 +646,10 @@ std::array<std::string, 3> Bot::plan(const Json& snap) {
             engine.run_tick(h, progs, slot + 1);
             log.take();
             cur[static_cast<std::size_t>(slot)] = o;
-            if (slot < 2) { self(self, slot + 1, h); continue; }
-            int s = score_state(h);
+            int red = redundant;
+            if (o == Order::Toggle && h.traps == g.traps && h.groups == g.groups) ++red;   // nothing flipped, nothing armed
+            if (slot < 2) { self(self, slot + 1, h, red); continue; }
+            int s = score_state(h) - red * kRedundantToggle;
             if (!h.robot(id_).respawn_pending) {  // one more tick of machinery: does a belt carry us into trouble?
                 GameState after = h;
                 Programmes idle(n, Programme{Order::Wait, Order::Wait, Order::Wait});
@@ -654,7 +662,7 @@ std::array<std::string, 3> Bot::plan(const Json& snap) {
             all.push_back({cur, s});
         }
     };
-    dfs(dfs, 0, c.g0);
+    dfs(dfs, 0, c.g0, 0);
 
     // Imperfection: seeded noise of up to ~2.5 tiles of progress, plus an occasional blunder.
     for (auto& cd : all) cd.score += rng_.below(250);

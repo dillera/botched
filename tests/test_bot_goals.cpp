@@ -302,3 +302,46 @@ TEST_CASE("trace: --trace records the board, each bot's reasoning and the round'
     CHECK(s.find("submits:") != std::string::npos);
     CHECK(s.find("\"type\":\"ORDER_EXECUTED\"") != std::string::npos);
 }
+
+TEST_CASE("planner: redundant TOGGLEs are discouraged, a useful one is still taken") {
+    // P3 stands at (1,6) beside trap console K1 (1,5): one TOGGLE arms X1 for P3; further TOGGLEs change nothing.
+    // The G4 playtest chose TOGGLE TOGGLE TOGGLE here. Every plan must now contain at most one TOGGLE.
+    auto map = load("foundry-01");
+    Match m = setup(map, 4, {Seat{1, 1}, Seat{9, 1}, Seat{1, 6, "N"}, Seat{9, 11}});
+    const Json snap = m.snapshot();
+    int with_toggle = 0;
+    for (int seed = 1; seed <= 40; ++seed) {
+        Bot b(3, *map, static_cast<std::uint64_t>(seed), Personality::Saboteur);
+        b.set_blunder_percent(0);
+        b.set_fumble_percent(0);
+        const auto prog = b.plan(snap);
+        int toggles = 0;
+        for (const auto& o : prog) toggles += o == "TOGGLE";
+        CHECK_MESSAGE(toggles <= 1, "seed " << seed << ": " << prog[0] << ' ' << prog[1] << ' ' << prog[2]);
+        with_toggle += toggles;
+    }
+    CHECK(with_toggle >= 10);   // arming the trap is still wanted by a saboteur whose goal it is (or any chosen goal near it)
+}
+
+TEST_CASE("planner: an owned, armed trap is not toggled again") {
+    auto map = load("foundry-01");
+    Match m = setup(map, 4, {Seat{1, 1}, Seat{9, 1}, Seat{1, 6, "N"}, Seat{9, 11}});
+    // Round 1: P3 arms X1; the others wait.
+    m.submit_program(3, 1, 1, {"TOGGLE", "WAIT", "WAIT"}, true, "");
+    for (int p : {1, 2, 4}) m.submit_program(p, 1, 1, {"WAIT", "WAIT", "WAIT"}, true, "");
+    m.run_round();
+    const TrapState* x1 = m.state().trap(1);
+    REQUIRE(x1);
+    REQUIRE(x1->armed);
+    REQUIRE(x1->owner == 3);
+    const Json snap = m.snapshot();
+    for (int seed = 1; seed <= 40; ++seed) {
+        Bot b(3, *map, static_cast<std::uint64_t>(seed), Personality::Saboteur);
+        b.set_blunder_percent(0);
+        b.set_fumble_percent(0);
+        const auto prog = b.plan(snap);
+        int toggles = 0;
+        for (const auto& o : prog) toggles += o == "TOGGLE";
+        CHECK_MESSAGE(toggles == 0, "seed " << seed << ": " << prog[0] << ' ' << prog[1] << ' ' << prog[2]);
+    }
+}
