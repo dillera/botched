@@ -1,0 +1,21 @@
+; Botched! map resource
+; id: shuntworks-01
+; name: Shunt Works
+; description: G2-D playtest: three pits (a trident) in the middle; push a rival into one for a SHUNT (+8).
+; players: 2-4
+;
+; Pits at (4,4), (6,4) and (5,6). Dispenser G1 sits at (5,3) between the two upper pits, so the central crate
+; is a risky grab with an opponent behind you. A robot that pushes another into a pit (directly, down a chain
+; of robots, or from a belt) scores +8 SHUNT; so does the pusher of a robot that later walks or is carried into
+; a pit in the same round. Walking into a pit yourself scores nobody anything. The walls give cover and
+; corridors so a push line has to be set up.
+#   #   #   #   #   #   #   #   #   #   #   #
+#   S1  D1  .   .   .   .   .   .   D2  S2  #
+#   .   .   #   .   .   .   .   #   .   .   #
+#   .   .   .   .   G1  .   .   .   .   .   #
+#   .   .   .   O   .   O   .   .   .   .   #
+#   .   .   .   .   .   .   .   .   .   .   #
+#   .   #   .   .   O   .   .   #   .   .   #
+#   .   .   G2  .   .   .   G3  .   .   .   #
+#   S3  D3  .   .   .   .   .   .   D4  S4  #
+#   #   #   #   #   #   #   #   #   #   #   #

@@ -22,6 +22,7 @@ struct Robot {
     int damage_taken = 0;      // cumulative laser/trap hits over the match (tie-break)
     int sabotage = 0;          // G2-A points earned from owned machinery; score = 5 x deliveries + sabotage
     bool respawn_pending = false;
+    int pushed_by = 0;         // G2-D SHUNT: player whose push last moved this robot this round (0 none)
     friend bool operator==(const Robot&, const Robot&) = default;
 };
 

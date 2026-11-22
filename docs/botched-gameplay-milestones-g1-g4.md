@@ -13,7 +13,7 @@ Evolve Botched! from a twelve-round crate-delivery race into a factory competiti
 ## Existing behaviour vs new proposals
 
 - **Already implemented:** pits (`O`) disable robots on entry; conveyors and consoles (`C>A`, `TA`); three-hit durability and respawns; stationary directional ray emitters (`L>`, `L<`, `L^`, `Lv`) that fire each tick. Current playtest maps rarely exercise laser damage.
-- **Not implemented:** pit-push scoring or bot personalities. (Score-target victory, player-attributed traps, the proximity burst, the charging/targeting laser turret, tar and sabotage points are done; see the status blocks below.)
+- **Not implemented:** bot personalities. (Score-target victory, player-attributed traps, the proximity burst, the charging/targeting laser turret, tar, pit-push scoring (the SHUNT) and sabotage points are done; see the status blocks below.)
 - **Compatibility:** New scoring, traps and end conditions change normative gameplay. Introduce an explicitly versioned rules contract (proposed `botched/2`) when approved; keep `botched/1` fixtures and semantics intact where practical. **Never reinterpret an existing `L>` ray emitter as the new targeting turret.**
 
 ## G1 — Score-target victory
@@ -145,6 +145,26 @@ Tar is a persistent movement hazard affecting the **eight neighbouring tiles** a
 Tar is checked after each movement substep, so its effects apply immediately upon entering the affected area, including when entering from outside.
 
 Tar causes no damage and awards no points. No fractional speed, timing counters or additional machinery phase is required.
+
+### G2-D — Pit-push scoring
+
+Reward a player who directly pushes another robot into a pit. This is a difficult tactical action, so it earns **+8 sabotage points**.
+
+- Award points only when a `ROBOT_PUSHED` movement causes an opponent to enter a pit and become disabled.
+- Credit the player responsible for the push, including pushes involving a chain of robots.
+- Conveyor-driven pushes may also qualify if the pushing robot can be identified.
+- No points for walking into a pit, self-disabling, or an unattributable environmental movement.
+- Award the bonus once per disabled opponent, even if multiple robots are pushed into the same pit during one tick.
+- Existing pit behaviour remains unchanged: immediate disable, crate dropped on the last safe tile if possible, and respawn at round end.
+- Include the responsible player and awarded points in authoritative events so SDL can animate and display the bonus.
+
+Push attribution persists until the end of the current round. If a pushed robot subsequently enters a pit through its own orders, conveyor movement or further displacement, the credited pusher receives the +8 bonus. A later push by another player transfers attribution to that player. Attribution is cleared at round end and on disable, so no credit carries into subsequent rounds.
+
+Pit-push points count towards score-target victory and existing tie-breaks.
+
+This mechanic should be named the SHUNT, (e.g. instead of PIT_PUSH_BONUS) with "SHUNT!" being the animated wording.
+
+**Acceptance:** Demonstrate direct and chain pushes into pits, correct attribution and scoring, unchanged crate-drop/respawn behaviour, and deterministic SDL playback. No additional pit mechanics or changes to ordinary pushing.
 
 ### Sabotage scoring
 
@@ -327,6 +347,44 @@ Implements the approved "G2-C — Tar rules" section as written. No damage, no p
 **Fix after playtest (2026-11-22).** `F2` starting in tar previously moved two tiles when the first tile left the tar; it now stops after one. Only the instruction-start allowance changed: entry from outside (immediate stop), stuck `F`/`B`, pushing and belts are as before. Evidence: 252/252 test cases, 32 123 assertions (normal and ASan/UBSan), `training-01` hashes unchanged, `tarworks-01` 2-4 bot runs deterministic.
 
 **Stop gate:** playtest `tarworks-01` before G2-D.
+
+### G2-D SHUNT (pit-push scoring) — implementation: **done, awaiting playtest** (2026-11-22)
+
+Implements the approved "G2-D — Pit-push scoring" section, including the persistent push attribution and the SHUNT naming. Existing pit, crate-drop and respawn mechanics, ordinary pushing and every other rule are untouched. G3/G4 are not started.
+
+**What shipped**
+
+- Attribution: each robot carries `pushed_by` (player id, 0 = none). Whenever a movement pushes robots (`ROBOT_PUSHED`), the robot that issued the move (by order **or by belt**) becomes `pushed_by` of every robot in the chain; a later push by someone else overwrites it. It is cleared when the robot is disabled and for everyone at round end, so no credit crosses a round boundary.
+- Scoring: when a robot enters a pit, if `pushed_by` names another player that player earns **+8** (`kShuntScore`): `SCORE_AWARDED` with `reason: "SHUNT"`, `victim`, `points`, new `score` (no `trap`/`turret` key), and `ROBOT_DISABLED` (cause `PIT`) now carries `by` for an attributed pit disable. A robot that walks in on its own, falls with no live attribution or whose attribution is itself earns nobody anything. A disable happens once per robot, so each disabled opponent pays once, even when two robots are shunted into the same pit in one tick. `score = 5 x deliveries + sabotage`, so SHUNT points count towards score targets and tie-breaks.
+- Pit behaviour is exactly as before: immediate disable, crate dropped on the last safe tile (or destroyed on `DROP_BLOCKED`), respawn at round end, no damage.
+- State: `pushed_by` is serialised in snapshots/checkpoints **only while non-zero** (a mid-round fact), so a mid-round save/restore keeps the credit; `sabotage` now appears in a snapshot once anyone has earned some even on maps without traps/turrets. Checkpoint validation rejects an out-of-range or self pusher, or one on a disabled robot. Still `botched/1`, additive.
+- Fixed a latent bot quirk this exposed: the bot planner's look-ahead treated *any* score increase as a delivery (+100000), so it would have chased SHUNTs (and trap/turret points) as if they were deliveries. It now checks `deliveries` instead. On maps without sabotage this is identical, which is why the default sim hashes did not move.
+- Map: `resources/maps/shuntworks-01.map` (12x10, 2-4 players): three pits in a trident, (4,4), (6,4) and (5,6), dispenser G1 at (5,3) between the upper two, walls for cover and push lines.
+- SDL: the pit explosion's caption names the pusher ("pushed in by P1"), then a **"SHUNT!"** step with a shockwave, big "SHUNT!" wording and a gold `+8` over the pusher, the scoreboard's `sabotage +8`, and narration lines in both clients. The SHUNT step belongs to the orders phase (it does not start the machinery phase).
+
+**Evidence**
+
+| Check | Result |
+|---|---|
+| Whole suite, normal and ASan/UBSan | 264/264 test cases, 32 332 assertions (12 new in `tests/test_shunt.cpp`) |
+| Existing behaviour | `training-01` sim hashes still `8b9b82fb718c2751` / `415308a3742c5db6` |
+| Map | 3 pits, valid for 2-4 players |
+| Direct and chain pushes | P1 pushes P2 into (4,4): +8 for P1, `ROBOT_DISABLED by 1`, crate dropped where P2 stood, respawn at round end, no damage; P1-P2-P3 in a row: P3 falls, **P1** is credited, the middle robot scores nothing |
+| No-credit cases | walking into a pit: no `SCORE_AWARDED`, no `by` |
+| Attribution lifetime | pushed on tick 1, walks into the pit on tick 2: +8 to the pusher; pushed by P1 then by P3: P3 is credited, P1 gets 0; pushed on tick 3 and walks into the pit next round: nothing (attribution cleared at round end) |
+| Once per disabled opponent | two shunts into the same pit in one tick: +8 each to two different pushers, nobody scores twice |
+| Belt pushes | a belt driving P1 into P2 and P2 into the pit credits P1 |
+| Score target / persistence | +8 reaches a target of 8 and the match finishes after the round; mid-round save/restore keeps `pushed_by` and the credit; a self-pusher is refused |
+| Playback | SHUNT step (orders phase), the disable and the crate drop replay to the authoritative board, `score`/`sabotage` 8 |
+| Determinism | `shuntworks-01` with 2-4 bots finishes and re-runs identically |
+| Live SDL | server + two scripted clients: P1 pushes P2 in round 4; captured "P1 pushes P2", the pit explosion with "P2 DISABLED (PIT), pushed in by P1", then "SHUNT! +8" and "SHUNT! +8 for P1: P2 pushed into a pit (score 8)" |
+
+**Notes for the playtest**
+
+- Server bots do not seek shunts deliberately (G4); they only avoid pits as before.
+- "Opponent" is every other player; there are no teams.
+
+**Stop gate:** playtest `shuntworks-01` before G3.
 
 ### Presentation requirements
 

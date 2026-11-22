@@ -47,9 +47,9 @@ private:
     void deliver_if_on_dock(GameState& s, int pid);
     // A trap or turret hit that crossed the disable threshold. `turret` selects which device id `trap` names.
     struct TrapKill { int victim; int trap; int owner; bool turret = false; };
-    void disable_robot(GameState& s, int pid, Pos drop_cell, const char* cause, const TrapKill* kill = nullptr);
+    void disable_robot(GameState& s, int pid, Pos drop_cell, const char* cause, const TrapKill* kill = nullptr, int shunt_by = 0);
     void award_sabotage(GameState& s, int owner, int points, const char* reason, int victim, int device,
-                        bool turret = false);
+                        bool turret = false);   // device < 0: no trap/turret key (a SHUNT)
     void arm_trap(GameState& s, int pid, const TrapConsole& console);
     void phase_traps(GameState& s);
     void phase_turrets(GameState& s);

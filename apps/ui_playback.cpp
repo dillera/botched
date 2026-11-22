@@ -332,7 +332,8 @@ void Playback::build(const Json& batch, std::size_t first_event) {
     auto is_trigger = [&](const std::string& t, const Json& p, std::size_t i) {
         if (t == "CRATE_MOVED" || t == "LASER_HIT") return true;
         if (t == "ROBOT_MOVED" || t == "MOVE_BLOCKED") return p.get_string("cause").value_or("") == "CONVEYOR";
-        if (t == "TRAP_TRIGGERED" || t == "TRAP_HIT" || t == "SCORE_AWARDED") return true;
+        if (t == "SCORE_AWARDED") return p.get_string("reason").value_or("") != "SHUNT";  // a SHUNT happens during orders
+        if (t == "TRAP_TRIGGERED" || t == "TRAP_HIT") return true;
         if (t == "TURRET_CAPTURED" || t == "TURRET_CHARGING" || t == "TURRET_FIRED") return true;
         if (t == "ROBOT_DISABLED") return p.get_string("cause").value_or("") == "LASER" || p.get_string("cause").value_or("") == "TRAP" ||
                                           p.get_string("cause").value_or("") == "TURRET";
@@ -522,7 +523,8 @@ void Playback::build(const Json& batch, std::size_t first_event) {
             s.cx = gi(p, "x");
             s.cy = gi(p, "y");
             s.events = {i};
-            s.caption = P(s.player) + " DISABLED (" + p.get_string("cause").value_or("?") + ")";
+            s.caption = P(s.player) + " DISABLED (" + p.get_string("cause").value_or("?") + ")" +
+                        (p.get_string("cause").value_or("") == "PIT" && gi(p, "by") != 0 ? ", pushed in by " + P(gi(p, "by")) : "");
             push(std::move(s));
         } else if (t == "TRAP_ARMED") {
             Step s = new_step(Step::TrapArm, 700);
@@ -573,8 +575,11 @@ void Playback::build(const Json& batch, std::size_t first_event) {
             s.events = {i};
             s.commit_first = true;
             const std::string why = (reason == "TRAP_DISABLE" || reason == "TURRET_DISABLE") ? "disabling " : "damaging ";
-            s.caption = "+" + std::to_string(s.points) + " for " + P(s.player) + ": " + why + P(gi(p, "victim")) +
-                        (s.turret ? " with turret " : " with trap ") + std::to_string(s.trap) + " (score " + std::to_string(gi(p, "score")) + ")";
+            s.shunt = reason == "SHUNT";
+            s.caption = s.shunt ? "SHUNT! +" + std::to_string(s.points) + " for " + P(s.player) + ": " + P(gi(p, "victim")) + " pushed into a pit (score " +
+                                      std::to_string(gi(p, "score")) + ")"
+                                : "+" + std::to_string(s.points) + " for " + P(s.player) + ": " + why + P(gi(p, "victim")) +
+                                      (s.turret ? " with turret " : " with trap ") + std::to_string(s.trap) + " (score " + std::to_string(gi(p, "score")) + ")";
             push(std::move(s));
         } else if (t == "TAR_SLOWED") {
             Step s = new_step(Step::TarSlow, 600);

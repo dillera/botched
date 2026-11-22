@@ -176,9 +176,9 @@ std::array<std::string, 3> Bot::plan(const Json& snap) {
         int s = 0;
         if (b.respawn_pending) return -20000;
         s -= 3000 * std::max(0, b.damage - me0.damage);
-        if (b.score > me0.score) s += 100000;                           // delivered
+        if (b.deliveries > me0.deliveries) s += 100000;                 // delivered (not sabotage points)
         if (me0.carrying == 0 && b.carrying != 0) s += 5000;           // picked a crate up
-        if (me0.carrying != 0 && b.carrying == 0 && b.score == me0.score) s -= 5000;  // lost it
+        if (me0.carrying != 0 && b.carrying == 0 && b.deliveries == me0.deliveries) s -= 5000;  // lost it
         const int d = b.carrying != 0 ? dist_at(to_dock, b.pos) : dist_at(to_crate, b.pos);
         s -= 100 * d;
         if (map_.tile(b.pos).terrain == Terrain::Conveyor) s -= 30;

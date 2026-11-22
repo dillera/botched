@@ -1221,7 +1221,13 @@ void draw_board(App& a, Gfx& g, Uint32 now) {
                 V2 c0 = rb && rb->active ? cell_c(static_cast<float>(rb->x), static_cast<float>(rb->y)) : V2{L.board.x + 20.f, L.board.y + 20.f};
                 g.ring(c0.x, c0.y, s * (0.3f + 0.5f * pr), 3, C(255, 215, 80, static_cast<int>(255 * fade_out)), 36);
                 g.alpha = std::min(1.f, 2.f * fade_out);
-                g.text(static_cast<int>(c0.x), static_cast<int>(c0.y - s * (0.5f + 0.6f * pr)) - 12, "+" + std::to_string(st->points), kGold, g.title, 1);
+                if (st->shunt) {  // SHUNT!: a shockwave and the big wording, then the points
+                    g.ring(c0.x, c0.y, s * (0.5f + 1.2f * pr), 5, C(255, 140, 40, static_cast<int>(255 * fade_out)), 40);
+                    g.text(static_cast<int>(c0.x), static_cast<int>(c0.y - s * (0.6f + 0.5f * pr)) - 30, "SHUNT!", C(255, 150, 50), g.title, 1);
+                    g.text(static_cast<int>(c0.x), static_cast<int>(c0.y - s * (0.6f + 0.5f * pr)) - 4, "+" + std::to_string(st->points), kGold, g.big, 1);
+                } else {
+                    g.text(static_cast<int>(c0.x), static_cast<int>(c0.y - s * (0.5f + 0.6f * pr)) - 12, "+" + std::to_string(st->points), kGold, g.title, 1);
+                }
                 g.alpha = 1.f;
                 break;
             }

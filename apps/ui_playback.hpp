@@ -107,6 +107,7 @@ struct Step {
     int trap = 0;                        // TrapArm/TrapBurst/TrapHit/Score: trap id (cx, cy = its tile)
     int owner = 0;                       // trap owner at the time (0 neutral); Score: who earned the points
     int points = 0;                      // Score: points awarded
+    bool shunt = false;                  // Score: a SHUNT (+8 for pushing an opponent into a pit)
     bool turret = false;                 // Score: the source is a turret (then `trap` is the turret id)
     int distance = 0;                    // TurretFire: tiles to the target (`to` = firing direction, `player` = victim)
     int charge = 0;                      // TurretCharge: charge reached (1 or 2)

@@ -35,7 +35,7 @@ Build once (`cmake -S . -B build && cmake --build build -j`), then:
 
 ### Maps
 
-Maps are plain files in `resources/maps/*.map` (shipped: `training-01`, the spec's example, `factory-01`, `crossroads-01` the G2-A playtest map `trapworks-01` and the laser map `laserworks-01` the G2-B turret map `turretworks-01` and the G2-C tar map `tarworks-01`).
+Maps are plain files in `resources/maps/*.map` (shipped: `training-01`, the spec's example, `factory-01`, `crossroads-01` the G2-A playtest map `trapworks-01` and the laser map `laserworks-01` the G2-B turret map `turretworks-01` the G2-C tar map `tarworks-01` and the G2-D SHUNT map `shuntworks-01`).
 The server loads and validates every `.map` file at startup and reports problems per file on stderr; valid
 maps stay available when another file is bad, and duplicate ids are rejected. Adding a map needs no rebuild:
 drop a file in the directory and restart the server.
@@ -152,6 +152,20 @@ map feature, so snapshots and every existing map are unchanged. New events: `ORD
 
 ```sh
 ./build/botched-client --ui --create --players 2 --map-id tarworks-01
+```
+
+### SHUNT: pushing a robot into a pit (G2-D)
+
+Push another robot into a pit and you score **+8** (shown as "SHUNT!"). The credit goes to the robot whose move did
+the pushing, also down a chain of robots and also when a belt drives the pusher. It persists for the rest of the
+round: a robot you pushed that later walks (or is pushed by nobody else) into a pit still pays you, a later push by
+someone else transfers the credit, and it is cleared when the robot is disabled and at round end. Walking into a pit
+yourself scores nobody anything. Pit behaviour is otherwise unchanged (immediate disable, crate drops on the last
+safe tile, respawn at round end). SHUNT points are sabotage points, so they count towards score targets. Events:
+`SCORE_AWARDED` with `reason: "SHUNT"`, and `ROBOT_DISABLED` carries `by`. Try it:
+
+```sh
+./build/botched-client --ui --create --players 2 --map-id shuntworks-01
 ```
 
 ### Score-target matches

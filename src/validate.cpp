@@ -87,8 +87,8 @@ bool validate_world(const GameState& s, const Map& map, int player_count, int ro
     int total_deliveries = 0;
     for (const Robot& r : s.robots) {
         const std::string ctx = "player " + std::to_string(r.id);
-        if (r.sabotage != 0 && s.traps.empty() && s.turrets.empty())
-            return fail(error, ctx + ": sabotage points on a map without traps or turrets");
+        if (r.pushed_by != 0 && (r.pushed_by > player_count || r.pushed_by == r.id || r.respawn_pending))
+            return fail(error, ctx + ": invalid push attribution");
         if (r.score != kDeliveryScore * r.deliveries + r.sabotage)
             return fail(error, ctx + ": score must equal 5 x deliveries + sabotage points (botched/1 scoring)");
         if (r.damage > r.damage_taken) return fail(error, ctx + ": damage exceeds cumulative damage_taken");

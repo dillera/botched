@@ -13,6 +13,8 @@ void write_world(const GameState& s, Json& out) {
     if (s.target_score > 0) out.set("target_score", s.target_score);  // absent in fixed-round mode (hashes unchanged)
     out.set("next_crate_id", s.next_crate_id);
 
+    bool any_sabotage = false;
+    for (const auto& r : s.robots) any_sabotage = any_sabotage || r.sabotage != 0;
     Json players = Json::array();
     for (const auto& r : s.robots) {
         Json p = Json::object();
@@ -26,7 +28,9 @@ void write_world(const GameState& s, Json& out) {
         p.set("deliveries", r.deliveries);
         p.set("damage_taken", r.damage_taken);
         p.set("respawn_pending", r.respawn_pending);
-        if (!s.traps.empty() || !s.turrets.empty()) p.set("sabotage", r.sabotage);  // only on maps with traps (hashes elsewhere unchanged)
+        // sabotage appears on maps with traps/turrets, or once anybody has earned some (a SHUNT); other hashes unchanged
+        if (!s.traps.empty() || !s.turrets.empty() || any_sabotage) p.set("sabotage", r.sabotage);
+        if (r.pushed_by != 0) p.set("pushed_by", r.pushed_by);  // only while a push attribution is live (this round)
         players.push(std::move(p));
     }
     out.set("players", std::move(players));
@@ -158,6 +162,7 @@ bool read_world(const Json& in, GameState& s, std::string& error) {
         if (!need_int(pj, "damage_taken", 0, kMaxField, r.damage_taken, ctx, error)) return false;
         if (!need_bool(pj, "respawn_pending", r.respawn_pending, ctx, error)) return false;
         if (pj.find("sabotage") && !need_int(pj, "sabotage", 0, kMaxField, r.sabotage, ctx, error)) return false;
+        if (pj.find("pushed_by") && !need_int(pj, "pushed_by", 1, kMaxPlayers, r.pushed_by, ctx, error)) return false;
         std::optional<int> x, y, carrying;
         if (!opt_int(pj, "x", 0, kMaxField, x, ctx, error)) return false;
         if (!opt_int(pj, "y", 0, kMaxField, y, ctx, error)) return false;

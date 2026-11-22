@@ -18,6 +18,7 @@ inline constexpr int kMaxTargetScore = 1000;    // 0 = no target (fixed-round mo
 inline constexpr int kMaxPlayers = 4;
 inline constexpr int kMaxHealth = 3;       // damage counter 0..2, disabled at 3
 inline constexpr int kDeliveryScore = 5;
+inline constexpr int kShuntScore = 8;  // G2-D: pushing an opponent into a pit
 
 enum class Dir : std::uint8_t { N = 0, E = 1, S = 2, W = 3 };
 

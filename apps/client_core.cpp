@@ -238,12 +238,18 @@ std::vector<std::string> summarize_events(const Json& events) {
         } else if (type == "SCORE_AWARDED") {
             const std::string reason = p.get_string("reason").value_or("");
             const bool tur = reason.rfind("TURRET", 0) == 0;
+            if (reason == "SHUNT") {
+                plain("  SHUNT! +" + std::to_string(pint(p, "points")) + " for " + who + ": " + P(pint(p, "victim")) +
+                      " pushed into a pit (score " + std::to_string(pint(p, "score")) + ")");
+                continue;
+            }
             plain("  +" + std::to_string(pint(p, "points")) + " for " + who + ": " +
                   ((reason == "TRAP_DISABLE" || reason == "TURRET_DISABLE") ? "disabling " : "damaging ") + P(pint(p, "victim")) +
                   (tur ? " with turret " + std::to_string(pint(p, "turret")) : " with trap " + std::to_string(pint(p, "trap"))) +
                   " (score " + std::to_string(pint(p, "score")) + ")");
         } else if (type == "ROBOT_DISABLED") {
-            plain(who + " DISABLED (" + p.get_string("cause").value_or("?") + ")");
+            plain(who + " DISABLED (" + p.get_string("cause").value_or("?") + ")" +
+                  (p.get_string("cause").value_or("") == "PIT" && pint(p, "by") != 0 ? ", pushed in by " + P(pint(p, "by")) : ""));
         } else if (type == "ROBOT_RESPAWNED") {
             plain(who + " respawned at " + xy(p, "x", "y"));
         } else if (type == "RESPAWN_REDIRECTED") {

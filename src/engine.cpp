@@ -104,9 +104,12 @@ void Engine::deliver_if_on_dock(GameState& s, int pid) {
     }
 }
 
-void Engine::disable_robot(GameState& s, int pid, Pos drop_cell, const char* cause, const TrapKill* kill) {
+void Engine::disable_robot(GameState& s, int pid, Pos drop_cell, const char* cause, const TrapKill* kill, int shunt_by) {
     Robot& r = s.robot(pid);
-    if (kill)  // attributed disable: say which trap/turret and whose it was (0 = neutral)
+    r.pushed_by = 0;  // G2-D: push attribution is cleared on disable
+    if (shunt_by != 0)  // pushed into a pit: name the pusher
+        log_.emit("ROBOT_DISABLED", obj({{"player", pid}, {"cause", cause}, {"x", r.pos.x}, {"y", r.pos.y}, {"by", shunt_by}}));
+    else if (kill)  // attributed disable: say which trap/turret and whose it was (0 = neutral)
         log_.emit("ROBOT_DISABLED", obj({{"player", pid}, {"cause", cause}, {"x", r.pos.x}, {"y", r.pos.y},
                                          {kill->turret ? "turret" : "trap", kill->trap}, {"by", kill->owner}}));
     else
@@ -133,7 +136,10 @@ void Engine::resolve_tile(GameState& s, int pid, Pos last_safe) {
     Robot& r = s.robot(pid);
     if (r.respawn_pending) return;
     if (map_.tile(r.pos).terrain == Terrain::Pit) {
-        disable_robot(s, pid, last_safe, "PIT");
+        // G2-D SHUNT: credit whoever's push last moved this robot this round (0 = nobody: it walked or was carried in).
+        const int by = r.pushed_by != pid ? r.pushed_by : 0;
+        disable_robot(s, pid, last_safe, "PIT", nullptr, by);
+        if (by != 0) award_sabotage(s, by, kShuntScore, "SHUNT", pid, -1);
         return;
     }
     pick_up_and_deliver(s, pid);
@@ -165,6 +171,7 @@ bool Engine::move_robot(GameState& s, int pid, Dir d, Cause cause) {
         prev[i] = r.pos;
         r.pos = step(r.pos, d);
         moved_this_phase_.push_back(chain[i]);
+        if (i > 0) r.pushed_by = pid;  // G2-D: the mover (by order or belt) is responsible for everyone in the chain
     }
     for (std::size_t i = chain.size(); i-- > 1;) {
         const Robot& r = s.robot(chain[i]);
@@ -364,8 +371,9 @@ void Engine::award_sabotage(GameState& s, int owner, int points, const char* rea
     Robot& o = s.robot(owner);
     o.score += points;
     o.sabotage += points;
-    log_.emit("SCORE_AWARDED", obj({{"player", owner}, {"points", points}, {"reason", reason}, {"victim", victim},
-                                    {turret ? "turret" : "trap", device}, {"score", o.score}}));
+    Json ev = obj({{"player", owner}, {"points", points}, {"reason", reason}, {"victim", victim}, {"score", o.score}});
+    if (device >= 0) ev.set(turret ? "turret" : "trap", device);
+    log_.emit("SCORE_AWARDED", std::move(ev));
 }
 
 // G2-B. After orders, conveyors, lasers and proximity traps, each turret (ascending id) in turn:
@@ -563,6 +571,7 @@ void Engine::start_round(GameState& s) {
 void Engine::end_round(GameState& s) {
     log_.begin(s.round, kRegisters);
     process_respawns(s);
+    for (auto& r : s.robots) r.pushed_by = 0;  // G2-D: no push credit carries into the next round
     log_.emit("ROUND_ENDED", obj({{"round", s.round}, {"scores", scores_json(s)}}));
     // Victory is judged only here, after all three ticks and the round-end effects, so rotating tick
     // priority can never decide who "got there first".
