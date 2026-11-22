@@ -110,6 +110,12 @@ To watch the bots think while playtesting, start the server with `--bot-log` (bo
 orders it chose, e.g. `[bot] match m1 round 3 P3 saboteur: arm trap X1 -> F1 T WAIT`. Logging is read-only and does not
 change play or determinism.
 
+For a full post-mortem, use `--trace` (stderr) or `--trace-file PATH` instead. It writes, per match: the set-up and each
+bot's personality; at every round the board and scores; each bot's complete reasoning (situation, whether last round
+went to plan, why its goal was kept or re-chosen, the candidate goals with weights and the roll, the top programmes with
+scores, blunders, fumbles, and a note when chosen orders cancel out); human submissions; and every event of each
+executed round as JSON. It is read-only and does not change play or determinism.
+
 Each bot has a **personality**: *hauler* (mostly fetches and delivers crates), *opportunist* (a bit of everything) or
 *saboteur* (prefers arming traps, claiming turrets and chasing rivals). Seats cycle through the three, so a 3-bot match is
 mixed; the SDL scoreboard shows `BOT hauler` / `opportunist` / `saboteur` next to each bot. A bot keeps a **goal** (haul a

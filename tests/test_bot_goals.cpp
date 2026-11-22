@@ -1,4 +1,5 @@
 // G4: bot personalities, persistent goals, re-evaluation, hazard-aware routing and active sabotage.
+#include <sstream>
 #include <chrono>
 #include <map>
 #include <memory>
@@ -268,4 +269,36 @@ TEST_CASE("G4: the server gives bot seats mixed personalities and reports them i
     std::map<std::string, int> seen;
     for (const auto& k : kinds->items()) seen[k.as_string()]++;
     CHECK(seen.size() == 3);   // three bots: hauler, opportunist and saboteur all present
+}
+
+TEST_CASE("trace: --trace records the board, each bot's reasoning and the round's events, without changing play") {
+    using namespace botched::server;
+    auto run = [](std::ostream* trace) {
+        ManualClock clock;
+        ServerConfig sc;
+        sc.bot_seed = 5;
+        sc.trace = trace;
+        GameServer srv(sc, clock);
+        Json c = Json::object();
+        c.set("type", "CREATE_MATCH");
+        c.set("player_count", 3);
+        c.set("bots", 2);
+        const std::string id = *srv.handle(c).get_string("match_id");
+        Json j = Json::object();
+        j.set("type", "JOIN_MATCH");
+        j.set("match_id", id);
+        srv.handle(j);
+        for (int i = 0; i < 3; ++i) { clock.advance_ms(61'000); srv.poll(); }   // the human never plays: rounds time out
+        return srv.find_match(id)->state_hash();
+    };
+    std::ostringstream t;
+    const auto traced = run(&t);
+    CHECK(traced == run(nullptr));   // read-only
+    const std::string s = t.str();
+    CHECK(s.find("MATCH m1 START") != std::string::npos);
+    CHECK(s.find("round 1 planning opens") != std::string::npos);
+    CHECK(s.find("reasoning:") != std::string::npos);
+    CHECK(s.find("evaluated ") != std::string::npos);
+    CHECK(s.find("submits:") != std::string::npos);
+    CHECK(s.find("\"type\":\"ORDER_EXECUTED\"") != std::string::npos);
 }

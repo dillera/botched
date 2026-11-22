@@ -31,15 +31,15 @@ add_library(botched_server STATIC
   server/server.cpp
   server/bot.cpp
   server/map_loader.cpp
+  apps/ascii_render.cpp   # board rendering for --trace
 )
-target_include_directories(botched_server PUBLIC server)
+target_include_directories(botched_server PUBLIC server apps)
 target_link_libraries(botched_server PUBLIC botched_core)
 # Last-resort default for the maps directory (the source tree); executables first look next to themselves.
 target_compile_definitions(botched_server PRIVATE BOTCHED_DEFAULT_MAPS_DIR="${CMAKE_CURRENT_SOURCE_DIR}/resources/maps")
 
 # --- POSIX reference apps: simulated players and the stdio server host.
 add_library(botched_sim_lib STATIC
-  apps/ascii_render.cpp
   apps/sim_runner.cpp
 )
 target_include_directories(botched_sim_lib PUBLIC apps)

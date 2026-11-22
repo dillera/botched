@@ -2,6 +2,7 @@
 #include <atomic>
 #include <csignal>
 #include <cstdlib>
+#include <fstream>
 #include <iostream>
 #include <string>
 
@@ -16,6 +17,7 @@ int main(int argc, char** argv) {
     using namespace botched::server;
     ServerConfig cfg;
     TcpHost::Options opt;
+    std::ofstream trace_file;
     for (int i = 1; i < argc; ++i) {
         std::string a = argv[i];
         auto next = [&]() -> const char* {
@@ -28,8 +30,14 @@ int main(int argc, char** argv) {
         else if (a == "--max-matches") cfg.max_matches = std::atoi(next());
         else if (a == "--maps-dir") cfg.maps_dir = next();
         else if (a == "--bot-log") cfg.bot_log = &std::cerr;
+        else if (a == "--trace") cfg.trace = &std::cerr;
+        else if (a == "--trace-file") {
+            trace_file.open(next(), std::ios::out | std::ios::trunc);
+            if (!trace_file) { std::cerr << "botched-tcp-server: cannot open trace file\n"; return 2; }
+            cfg.trace = &trace_file;
+        }
         else {
-            std::cerr << "usage: botched-tcp-server [--port N] [--bind ADDR] [--planning-seconds N] [--max-matches N] [--maps-dir DIR] [--bot-log]\n"
+            std::cerr << "usage: botched-tcp-server [--port N] [--bind ADDR] [--planning-seconds N] [--max-matches N] [--maps-dir DIR] [--bot-log] [--trace | --trace-file PATH]\n"
                          "  default: 127.0.0.1:7878, 60 s planning. Use --bind 0.0.0.0 for LAN play (no authentication!).\n";
             return 2;
         }

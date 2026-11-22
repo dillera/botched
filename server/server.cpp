@@ -5,6 +5,7 @@
 #include <cstdio>
 #include <string_view>
 
+#include "ascii_render.hpp"
 #include "botched/serialize.hpp"
 
 namespace botched::server {
@@ -340,6 +341,17 @@ bool GameServer::start_room(Room& r, std::string& error) {
         const std::uint64_t seed = fnv1a64(r.id + ":" + std::to_string(pid)) ^ (cfg_.bot_seed * 0x9e3779b97f4a7c15ULL);
         r.ai.push_back(std::make_unique<sim::Bot>(pid, *r.map, seed, sim::personality_for(personality_base + static_cast<std::uint64_t>(i))));
     }
+    if (cfg_.trace) {
+        std::ostream& t = *cfg_.trace;
+        t << "\n##### MATCH " << r.id << " START: map " << r.map->id << ", " << joined << " seats (" << humans << " human, " << r.bots
+          << " bot), " << r.rounds << " rounds" << (r.target_score ? ", target score " + std::to_string(r.target_score) : std::string())
+          << ", planning " << r.planning_seconds << " s\n";
+        for (auto& b : r.ai) {
+            b->set_explain(true);
+            t << "  P" << b->id() << " is a bot: " << sim::to_string(b->personality()) << "\n";
+        }
+        t << std::flush;
+    }
     open_planning(r);
     return true;
 }
@@ -377,8 +389,16 @@ void GameServer::plan_bots(Room& r) {
     if (r.ai.empty() || r.match->finished()) return;
     const Json snap = r.match->snapshot();
     const int round = r.match->state().round;
+    if (cfg_.trace) {
+        *cfg_.trace << "\n=== match " << r.id << " round " << round << " planning opens ===\n"
+                    << sim::render_board(*r.map, snap) << sim::render_scores(snap) << std::flush;
+    }
     for (auto& bot : r.ai) {
         auto prog = bot->plan(snap);
+        if (cfg_.trace) {
+            *cfg_.trace << "  P" << bot->id() << " [" << bot->describe() << "] reasoning:\n" << bot->reasoning()
+                        << "  P" << bot->id() << " submits: " << prog[0] << ' ' << prog[1] << ' ' << prog[2] << '\n' << std::flush;
+        }
         if (cfg_.bot_log) {
             *cfg_.bot_log << "[bot] match " << r.id << " round " << round << " P" << bot->id() << " "
                           << bot->describe() << " -> " << prog[0] << ' ' << prog[1] << ' '
@@ -391,7 +411,23 @@ void GameServer::plan_bots(Room& r) {
 }
 
 void GameServer::advance(Room& r) {
+    const int before_version = r.match->state_version();
+    if (cfg_.trace) {
+        const GameState& st = r.match->state();
+        *cfg_.trace << "--- match " << r.id << " round " << st.round << " executes (planning closed)";
+        *cfg_.trace << "\n";
+    }
     r.match->run_round();  // close planning (missing -> WAIT x3), execute, start next round
+    if (cfg_.trace) {
+        auto ev = r.match->events_since(before_version);
+        *cfg_.trace << "--- events of that round (" << (ev ? ev->size() : 0) << "):\n";
+        if (ev) for (const Event& e : *ev) *cfg_.trace << "  " << event_to_json(e, r.id).dump() << '\n';
+        if (r.match->finished()) {
+            *cfg_.trace << "\n##### MATCH " << r.id << " FINISHED\n"
+                        << sim::render_board(*r.map, r.match->snapshot()) << sim::render_scores(r.match->snapshot());
+        }
+        *cfg_.trace << std::flush;
+    }
     open_planning(r);
 }
 
@@ -450,6 +486,11 @@ Json GameServer::submit(const Json& req) {
     out.set("revision", static_cast<int>(revision));
     out.set("state_version", res.state_version);
     if (!request_id.empty()) out.set("request_id", request_id);
+    if (cfg_.trace) {
+        *cfg_.trace << "  human P" << player << " submit round " << round << " rev " << revision << ": ";
+        for (const auto& t : toks) *cfg_.trace << t << ' ';
+        *cfg_.trace << (ready ? "(ready)" : "(draft)") << " -> " << res.code << '\n' << std::flush;
+    }
     if (res.ok && r->match->all_ready()) advance(*r);
     return out;
 }

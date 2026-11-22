@@ -69,6 +69,11 @@ struct ServerConfig {
     // Optional diagnostics: when set, every bot seat writes one line per round (personality, goal, chosen
     // orders) here as the round opens. Read-only; it never affects play or determinism.
     std::ostream* bot_log = nullptr;
+    // Full diagnostics for playtest analysis (--trace): match set-up and personalities, the board and scores at
+    // every round, each bot's complete reasoning (goal choice and why, candidate programmes and scores,
+    // blunders/fumbles), human submissions, and every event of each executed round as JSON. Read-only:
+    // it never affects play or determinism.
+    std::ostream* trace = nullptr;
     // Map resources. Empty maps_dir = resolve_maps_dir() (env, executable-relative, compile-time default).
     // load_maps=false starts with an empty registry (tests that register their own maps).
     std::string maps_dir;

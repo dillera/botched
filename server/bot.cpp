@@ -249,6 +249,18 @@ struct Bot::Ctx {
 Bot::Bot(int player_id, const Map& map, std::uint64_t seed, Personality p)
     : id_(player_id), map_(map), rng_(seed), personality_(p), blunder_percent_(traits_of(p).blunder), fumble_percent_(traits_of(p).fumble) {}
 
+std::string Bot::goal_text(const Goal& g) const {
+    std::string s = to_string(g.kind);
+    switch (g.kind) {
+        case GoalKind::Haul: case GoalKind::Contest: if (g.target) s += " crate#" + std::to_string(g.target); break;
+        case GoalKind::ArmTrap: s += " trap#" + std::to_string(g.target); break;
+        case GoalKind::ClaimTurret: s += " turret#" + std::to_string(g.target); break;
+        case GoalKind::Chase: s += " P" + std::to_string(g.target); break;
+        default: break;
+    }
+    return s;
+}
+
 std::string Bot::describe() const {
     std::string g = to_string(goal_.kind);
     switch (goal_.kind) {
@@ -403,22 +415,34 @@ void Bot::choose_goal(Ctx& c, GoalKind family, int exclude_crate) {
     ++goals_chosen_;
     if (cands.empty()) {                        // not even a crate: wait near a dispenser (Haul, target 0)
         goal_ = {GoalKind::Haul, 0, 0, me.deliveries, me.sabotage};
+        note("goal candidates: none reachable -> Haul with no target (wait near a dispenser)");
         return;
     }
     int total = 0;
     for (const auto& k : cands) total += k.weight;
+    if (explain_) {
+        std::string l = std::string("goal candidates (family ") + to_string(family) + ", weight ~ 1/cost^2):";
+        for (const auto& k : cands) l += " [" + goal_text(k.g) + " w" + std::to_string(k.weight) + "]";
+        note(l);
+    }
     int roll = rng_.below(std::max(1, total));
+    const int roll0 = roll;
     for (const auto& k : cands) {
-        if (roll < k.weight) { goal_ = k.g; return; }
+        if (roll < k.weight) { goal_ = k.g; note("rolled " + std::to_string(roll0) + "/" + std::to_string(total) + " -> " + goal_text(goal_)); return; }
         roll -= k.weight;
     }
     goal_ = cands.back().g;
+    note("rolled " + std::to_string(roll0) + "/" + std::to_string(total) + " -> " + goal_text(goal_));
 }
 
 std::array<std::string, 3> Bot::plan(const Json& snap) {
     GameState g0;
     std::string err;
-    if (!read_world(snap, g0, err) || id_ < 1 || id_ > g0.player_count()) return plan_by_path(snap);
+    reasoning_.clear();
+    if (!read_world(snap, g0, err) || id_ < 1 || id_ > g0.player_count()) {
+        note("could not read the snapshot (" + err + "): fallback shortest-path planner, no look-ahead");
+        return plan_by_path(snap);
+    }
     const Traits tr = traits_of(personality_);
     std::array<std::string, 3> wait{"WAIT", "WAIT", "WAIT"};
     {
@@ -427,6 +451,7 @@ std::array<std::string, 3> Bot::plan(const Json& snap) {
             goal_ = {};
             have_prediction_ = false;
             was_disabled_ = true;
+            note(m0.respawn_pending ? "disabled / respawning: WAIT x3" : "match finished: WAIT x3");
             return wait;
         }
     }
@@ -471,23 +496,53 @@ std::array<std::string, 3> Bot::plan(const Json& snap) {
     c.from_me = forward_field(map_, c.cost, me0.pos);
     for (const auto& cr : c.g0.crates) if (!cr.carried) c.loose.push_back(cr.pos);
 
+    note(std::string("situation: pos (") + std::to_string(me0.pos.x) + "," + std::to_string(me0.pos.y) + ") facing " +
+         to_string(me0.heading) + ", carrying " + (me0.carrying ? "crate#" + std::to_string(me0.carrying) : std::string("nothing")) +
+         ", damage " + std::to_string(me0.damage) + ", deliveries " + std::to_string(me0.deliveries) + ", sabotage " +
+         std::to_string(me0.sabotage) + ", score " + std::to_string(me0.score) + "; hit cost " + std::to_string(hit_tiles) +
+         " tiles (risk " + std::to_string(tr.risk_pct) + "%)");
+    if (explain_) {
+        std::string l = "rivals:";
+        for (const Robot& r : c.g0.robots)
+            if (r.id != id_) l += " P" + std::to_string(r.id) + (r.respawn_pending ? "(down)" : "@(" + std::to_string(r.pos.x) + "," + std::to_string(r.pos.y) + ")" + (r.carrying ? "+crate" : ""));
+        l += "; loose crates:";
+        for (const auto& cr : c.g0.crates) if (!cr.carried) l += " #" + std::to_string(cr.id) + "@(" + std::to_string(cr.pos.x) + "," + std::to_string(cr.pos.y) + ")";
+        note(l);
+    }
+
     // ---- did last round go to plan? (the prediction assumed the rivals would WAIT)
     bool disrupted = was_disabled_;
     if (have_prediction_)
         disrupted = disrupted || me0.pos != pred_pos_ || (me0.carrying != 0) != pred_carrying_ || me0.damage > pred_damage_;
     if (disrupted && goal_.kind != GoalKind::None) ++disruptions_;
+    if (have_prediction_ || was_disabled_)
+        note(std::string("last round ") + (disrupted ? "was DISRUPTED" : "went as predicted") + " (predicted (" + std::to_string(pred_pos_.x) + "," +
+             std::to_string(pred_pos_.y) + ") carrying=" + (pred_carrying_ ? "yes" : "no") + " damage<=" + std::to_string(pred_damage_) +
+             (was_disabled_ ? "; I was disabled" : "") + ")");
     have_prediction_ = false;
     was_disabled_ = false;
 
     // ---- goal maintenance: re-evaluated every round against the current world
     ++goal_.age;
     const bool carrying = me0.carrying != 0;
+    const std::string before = goal_text(goal_);
     if (carrying && goal_.kind != GoalKind::Haul && goal_.kind != GoalKind::Contest) {
         goal_ = {GoalKind::Haul, me0.carrying, 0, me0.deliveries, me0.sabotage};   // a loaded robot goes home
         ++goals_chosen_;
+        note("goal: was " + before + "; carrying a crate -> forced Haul");
     } else if (goal_.kind == GoalKind::None || disrupted || goal_done(c) || goal_impossible(c) || goal_.age > tr.patience) {
+        if (explain_) {
+            std::string why;
+            if (goal_.kind == GoalKind::None) why += " no-goal";
+            if (disrupted) why += " disrupted";
+            if (goal_.kind != GoalKind::None && goal_done(c)) why += " done";
+            if (goal_.kind != GoalKind::None && goal_impossible(c)) why += " impossible";
+            if (goal_.age > tr.patience) why += " aged-out(" + std::to_string(goal_.age) + ">" + std::to_string(tr.patience) + ")";
+            note("goal: was " + before + "; re-choosing because:" + why);
+        }
         const int roll = rng_.below(100);
         GoalKind family = roll < tr.w_haul ? GoalKind::Haul : roll < tr.w_haul + tr.w_mixed ? GoalKind::Contest : GoalKind::Chase;
+        note(std::string("goal family roll ") + std::to_string(roll) + " -> " + to_string(family));
         choose_goal(c, family);
     } else if (!carrying && (goal_.kind == GoalKind::Haul || goal_.kind == GoalKind::Contest) && goal_.target > 0) {
         // Rivals' positions matter: if a rival is clearly closer to my crate, look for another one.
@@ -496,21 +551,30 @@ std::array<std::string, 3> Bot::plan(const Json& snap) {
             int best_rival = kFar;
             for (const Robot& r : c.g0.robots)
                 if (r.id != id_ && !r.respawn_pending && r.carrying == 0) best_rival = std::min(best_rival, manhattan(r.pos, cr->pos) * 10);
-            if (best_rival + 40 < mine && rng_.below(100) < 60 && c.loose.size() > 1) choose_goal(c, goal_.kind == GoalKind::Contest ? GoalKind::Contest : GoalKind::Haul, cr->id);
+            if (best_rival + 40 < mine && rng_.below(100) < 60 && c.loose.size() > 1) note("a rival is clearly closer to my crate: looking for another"), choose_goal(c, goal_.kind == GoalKind::Contest ? GoalKind::Contest : GoalKind::Haul, cr->id);
         }
     }
     if (goal_.kind == GoalKind::None) { goal_ = {GoalKind::Haul, 0, 0, me0.deliveries, me0.sabotage}; ++goals_chosen_; }
+    if (explain_ && goal_text(goal_) == before) note("goal: kept " + before + " (age " + std::to_string(goal_.age) + "/" + std::to_string(tr.patience) + ")");
 
     // ---- hazard-weighted distance to the goal
     std::vector<Pos> targets = goal_targets(c);
     Field to_goal = backward_field(map_, c.cost, targets);
     if (to_goal[static_cast<std::size_t>(idx(map_, me0.pos))] >= kFar && goal_.kind != GoalKind::Haul) {
         // Cannot get there from here (never wait on an unreachable device): fall back to useful delivery work.
+        note("goal unreachable from here: falling back to Haul");
         choose_goal(c, GoalKind::Haul);
         targets = goal_targets(c);
         to_goal = backward_field(map_, c.cost, targets);
     }
     auto dist_at = [&](Pos p) { return to_goal[static_cast<std::size_t>(idx(map_, p))]; };
+    if (explain_) {
+        std::string l = "goal " + goal_text(goal_) + ": " + std::to_string(targets.size()) + " target tile(s)";
+        for (std::size_t i = 0; i < targets.size() && i < 4; ++i) l += " (" + std::to_string(targets[i].x) + "," + std::to_string(targets[i].y) + ")";
+        const int d = dist_at(me0.pos);
+        l += "; hazard-weighted distance from me " + (d >= kFar ? std::string("UNREACHABLE") : std::to_string(d / 10) + "." + std::to_string(d % 10) + " tiles");
+        note(l);
+    }
     auto my_machines = [&](const GameState& h) {
         int n = 0;
         for (const auto& t : h.traps) n += t.armed && t.owner == id_;
@@ -599,9 +663,29 @@ std::array<std::string, 3> Bot::plan(const Json& snap) {
     if (rng_.below(100) < blunder_percent_) pick = static_cast<std::size_t>(rng_.below(static_cast<int>(std::min<std::size_t>(30, all.size()))));
     std::array<Order, 3> chosen = all[pick].orders;
     std::array<std::string, 3> out;
+    if (explain_) {
+        note("evaluated " + std::to_string(all.size()) + " three-order programmes (depth-3 search on the real engine, rivals assumed WAIT). Top 6 (score incl. noise):");
+        for (std::size_t i = 0; i < all.size() && i < 6; ++i)
+            note(std::string("  ") + (i == pick ? "* " : "  ") + to_string(all[i].orders[0]) + " " + to_string(all[i].orders[1]) + " " +
+                 to_string(all[i].orders[2]) + "  score " + std::to_string(all[i].score));
+        note(pick == 0 ? "picked the best-scoring programme" : "BLUNDER: picked rank " + std::to_string(pick + 1) + " instead of the best");
+    }
     for (std::size_t i = 0; i < 3; ++i) {
-        if (rng_.below(100) < fumble_percent_) chosen[i] = kBase[rng_.below(7)];  // a slip of the finger
+        if (rng_.below(100) < fumble_percent_) {
+            const Order was = chosen[i];
+            chosen[i] = kBase[rng_.below(7)];  // a slip of the finger
+            note("FUMBLE: slot " + std::to_string(i + 1) + " " + to_string(was) + " replaced by " + to_string(chosen[i]));
+        }
         out[i] = to_string(chosen[i]);
+    }
+    if (explain_) {
+        auto cancels = [](Order a, Order b) {
+            return (a == Order::TurnLeft && b == Order::TurnRight) || (a == Order::TurnRight && b == Order::TurnLeft) ||
+                   (a == Order::Forward1 && b == Order::Back1) || (a == Order::Back1 && b == Order::Forward1) ||
+                   (a == Order::TurnAround && b == Order::TurnAround);
+        };
+        if (cancels(chosen[0], chosen[1]) || cancels(chosen[1], chosen[2]))
+            note("NOTE: two adjacent chosen orders cancel each other out (net effect nil)");
     }
 
     // ---- remember what I expect (rivals waiting), to notice next round if something interfered
@@ -617,6 +701,9 @@ std::array<std::string, 3> Bot::plan(const Json& snap) {
         pred_pos_ = b.pos;
         pred_carrying_ = b.carrying != 0;
         pred_damage_ = b.damage;
+        note(std::string("expected after 3 ticks (rivals waiting): ") + (b.respawn_pending ? "disabled" : "(" + std::to_string(b.pos.x) + "," + std::to_string(b.pos.y) + ") facing " + to_string(b.heading)) +
+             ", carrying=" + (b.carrying ? "yes" : "no") + ", damage " + std::to_string(b.damage) + ", distance to goal " +
+             (b.respawn_pending ? std::string("-") : std::to_string(std::min(dist_at(b.pos), kFar) / 10) + " tiles"));
     }
     return out;
 }

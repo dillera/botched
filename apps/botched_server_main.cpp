@@ -7,6 +7,7 @@
 //   {"type":"SUBMIT_PROGRAM","match_id":"m1","player_id":1,"session":"...","round":1,
 //    "revision":1,"orders":["FORWARD_2","TURN_RIGHT","TOGGLE"],"ready":true,"request_id":"c-1"}
 #include <cstdlib>
+#include <fstream>
 #include <iostream>
 #include <string>
 
@@ -15,16 +16,23 @@
 
 int main(int argc, char** argv) {
     botched::server::ServerConfig cfg;
+    std::ofstream trace_file;
     for (int i = 1; i < argc; ++i) {
         std::string a = argv[i];
         if (a == "--planning-seconds" && i + 1 < argc) {
             cfg.default_planning_seconds = std::atoi(argv[++i]);
         } else if (a == "--bot-log") {
             cfg.bot_log = &std::cerr;
+        } else if (a == "--trace") {
+            cfg.trace = &std::cerr;
+        } else if (a == "--trace-file" && i + 1 < argc) {
+            trace_file.open(argv[++i], std::ios::out | std::ios::trunc);
+            if (!trace_file) { std::cerr << "botched-server: cannot open trace file\n"; return 2; }
+            cfg.trace = &trace_file;
         } else if (a == "--maps-dir" && i + 1 < argc) {
             cfg.maps_dir = argv[++i];
         } else {
-            std::cerr << "usage: botched-server [--planning-seconds N] [--maps-dir DIR] [--bot-log]   (JSON lines on stdin/stdout)\n";
+            std::cerr << "usage: botched-server [--planning-seconds N] [--maps-dir DIR] [--bot-log] [--trace | --trace-file PATH]   (JSON lines on stdin/stdout)\n";
             return 2;
         }
     }

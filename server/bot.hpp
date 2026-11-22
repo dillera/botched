@@ -76,6 +76,12 @@ public:
     int disruptions() const { return disruptions_; }        // rounds that did not go to plan
     std::string describe() const;                          // e.g. "saboteur: arm trap X1"
 
+    // Diagnostics: when on, plan() records how it reached its orders (situation, why the goal was kept or
+    // re-chosen, candidate goals and weights, best programmes and their scores, blunders/fumbles, prediction).
+    // Pure bookkeeping: it never touches the rng or any decision.
+    void set_explain(bool on) { explain_ = on; }
+    const std::string& reasoning() const { return reasoning_; }
+
 private:
     struct Ctx;
     struct Goal {
@@ -91,6 +97,11 @@ private:
     bool goal_impossible(const Ctx& c) const;
     std::vector<Pos> goal_targets(const Ctx& c) const;
 
+    void note(const std::string& line) { if (explain_) { reasoning_ += "    "; reasoning_ += line; reasoning_ += '\n'; } }
+    std::string goal_text(const Goal& g) const;
+
+    bool explain_ = false;
+    std::string reasoning_;
     int id_;
     const Map& map_;
     Rng rng_;
