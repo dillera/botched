@@ -1,0 +1,245 @@
+{
+  "machine": [
+    "chipset=ocs",
+    "cpu_model=68000",
+    "cpu_type=68000",
+    "chipmem_size=1",
+    "bogomem_size=2",
+    "fastmem_size=0",
+    "z3mem_size=0",
+    "ntsc=false",
+    "serial_direct=true",
+    "serial_hardware_ctsrts=false"
+  ],
+  "executable_bytes": 54564,
+  "executable_sha256": "c2926f495c64a6ece6a512b68f7869992f8394e2cf41a7400178bbd942c1de76",
+  "library_sha256": "7831bc08243effa5df603ef867d384921202dbd59f731cfe5b8f18941eb0b159",
+  "broker_sha256": "c97f02ffb6a13884861199c63594c7dc052c87a680f46047012755bebf43852f",
+  "memory": [
+    {
+      "stage": "entry",
+      "chip_free": 439344,
+      "expansion_free": 343200,
+      "total_free": 782544,
+      "largest_chip": 439272,
+      "largest_expansion": 342032
+    },
+    {
+      "stage": "display",
+      "chip_free": 415184,
+      "expansion_free": 341304,
+      "total_free": 756488,
+      "largest_chip": 414944,
+      "largest_expansion": 341112
+    },
+    {
+      "stage": "snapshot",
+      "chip_free": 415184,
+      "expansion_free": 324776,
+      "total_free": 739960,
+      "largest_chip": 414944,
+      "largest_expansion": 324040
+    },
+    {
+      "stage": "snapshot",
+      "chip_free": 415184,
+      "expansion_free": 324608,
+      "total_free": 739792,
+      "largest_chip": 414944,
+      "largest_expansion": 324040
+    },
+    {
+      "stage": "snapshot",
+      "chip_free": 415184,
+      "expansion_free": 324552,
+      "total_free": 739736,
+      "largest_chip": 414944,
+      "largest_expansion": 324040
+    },
+    {
+      "stage": "snapshot",
+      "chip_free": 415184,
+      "expansion_free": 324552,
+      "total_free": 739736,
+      "largest_chip": 414944,
+      "largest_expansion": 324040
+    },
+    {
+      "stage": "closed",
+      "chip_free": 439344,
+      "expansion_free": 335224,
+      "total_free": 774568,
+      "largest_chip": 439272,
+      "largest_expansion": 324040
+    }
+  ],
+  "stack": {
+    "main_measured": 1852,
+    "worker_measured": 1876,
+    "main_reserved": 16384,
+    "worker_reserved": 8192
+  },
+  "chip_installed": 524288,
+  "expansion_installed": 524288,
+  "expansion_kind": "A500 slow RAM (no true Fast RAM)",
+  "avail_before": {
+    "chip": {
+      "available": 439344,
+      "used": 83888,
+      "maximum": 523232,
+      "largest": 439272
+    },
+    "fast": {
+      "available": 419944,
+      "used": 96944,
+      "maximum": 516888,
+      "largest": 392112
+    },
+    "total": {
+      "available": 859288,
+      "used": 180832,
+      "maximum": 1040120,
+      "largest": 439272
+    }
+  },
+  "avail_after_first": {
+    "chip": {
+      "available": 439344,
+      "used": 83888,
+      "maximum": 523232,
+      "largest": 439272
+    },
+    "fast": {
+      "available": 411968,
+      "used": 104920,
+      "maximum": 516888,
+      "largest": 324040
+    },
+    "total": {
+      "available": 851312,
+      "used": 188808,
+      "maximum": 1040120,
+      "largest": 439272
+    }
+  },
+  "avail_after_second": {
+    "chip": {
+      "available": 439344,
+      "used": 83888,
+      "maximum": 523232,
+      "largest": 439272
+    },
+    "fast": {
+      "available": 411968,
+      "used": 104920,
+      "maximum": 516888,
+      "largest": 324040
+    },
+    "total": {
+      "available": 851312,
+      "used": 188808,
+      "maximum": 1040120,
+      "largest": 439272
+    }
+  },
+  "verification": [
+    "two real NIO HELLO/JOIN/MAP/SNAPSHOT instances",
+    "authoritative player positions/scores",
+    "three raw-key programmes accepted exactly once",
+    "sequential event playback",
+    "server deadline WAIT completion",
+    "raw-key quit",
+    "clean exit",
+    "exact ordered event-type sequence equals server for both matches",
+    "native nine maps, 27 rounds, 803 event comparisons; ASan/UBSan",
+    "exact exchange and fresh-exchange H3 retries; duplicate pages; eventless versions; snapshot gap publication"
+  ],
+  "compiler": "m68k-amigaos-gcc 15.2.0; -m68000 -mcrt=nix13 -Os",
+  "linked_segments": {
+    "text": 44324,
+    "data": 312,
+    "bss": 17292,
+    "resident_hunks": 61928
+  },
+  "display_bitplanes_bytes": 24000,
+  "nio_library_bss_bytes": 2240,
+  "second_client_log": [
+    "MEM entry chip=439344 other=335224 total=774568 largest_chip=439272 largest_other=324040",
+    "MEM display chip=415184 other=333328 total=748512 largest_chip=414944 largest_other=324040",
+    "MEM snapshot chip=415184 other=324776 total=739960 largest_chip=414944 largest_other=324040",
+    "RESULT error=0 map=1 snapshot=1 width=14 height=11 player=1 round=1 phase=0 events=0 ack=0 cursor=4 worker_stack=1876 main_stack=1748",
+    "MEM snapshot chip=415184 other=324776 total=739960 largest_chip=414944 largest_other=324040",
+    "RESULT error=0 map=1 snapshot=1 width=14 height=11 player=1 round=1 phase=0 events=0 ack=4 cursor=4 worker_stack=1876 main_stack=1852",
+    "EVENT ordinal=1 type=1 round=1 tick=0",
+    "EVENT ordinal=2 type=5 round=1 tick=1",
+    "EVENT ordinal=3 type=5 round=1 tick=1",
+    "EVENT ordinal=4 type=11 round=1 tick=1",
+    "EVENT ordinal=5 type=5 round=1 tick=1",
+    "EVENT ordinal=6 type=8 round=1 tick=1",
+    "EVENT ordinal=7 type=8 round=1 tick=1",
+    "EVENT ordinal=8 type=5 round=1 tick=1",
+    "EVENT ordinal=9 type=5 round=1 tick=2",
+    "EVENT ordinal=10 type=8 round=1 tick=2",
+    "EVENT ordinal=11 type=8 round=1 tick=2",
+    "EVENT ordinal=12 type=5 round=1 tick=2",
+    "EVENT ordinal=13 type=8 round=1 tick=2",
+    "EVENT ordinal=14 type=8 round=1 tick=2",
+    "EVENT ordinal=15 type=5 round=1 tick=2",
+    "EVENT ordinal=16 type=5 round=1 tick=2",
+    "EVENT ordinal=17 type=5 round=1 tick=3",
+    "EVENT ordinal=18 type=11 round=1 tick=3",
+    "EVENT ordinal=19 type=5 round=1 tick=3",
+    "EVENT ordinal=20 type=8 round=1 tick=3",
+    "EVENT ordinal=21 type=5 round=1 tick=3",
+    "EVENT ordinal=22 type=5 round=1 tick=3",
+    "EVENT ordinal=23 type=8 round=1 tick=3",
+    "EVENT ordinal=24 type=8 round=1 tick=3",
+    "EVENT ordinal=25 type=3 round=1 tick=3",
+    "EVENT ordinal=26 type=2 round=2 tick=0",
+    "EVENT ordinal=27 type=1 round=2 tick=0",
+    "EVENT ordinal=28 type=5 round=2 tick=1",
+    "EVENT ordinal=29 type=8 round=2 tick=1",
+    "EVENT ordinal=30 type=8 round=2 tick=1",
+    "EVENT ordinal=31 type=5 round=2 tick=1",
+    "EVENT ordinal=32 type=5 round=2 tick=1",
+    "EVENT ordinal=33 type=8 round=2 tick=1",
+    "EVENT ordinal=34 type=5 round=2 tick=1",
+    "EVENT ordinal=35 type=8 round=2 tick=1",
+    "EVENT ordinal=36 type=5 round=2 tick=2",
+    "EVENT ordinal=37 type=5 round=2 tick=2",
+    "EVENT ordinal=38 type=8 round=2 tick=2",
+    "EVENT ordinal=39 type=8 round=2 tick=2",
+    "EVENT ordinal=40 type=5 round=2 tick=2",
+    "EVENT ordinal=41 type=8 round=2 tick=2",
+    "EVENT ordinal=42 type=8 round=2 tick=2",
+    "EVENT ordinal=43 type=5 round=2 tick=2",
+    "EVENT ordinal=44 type=8 round=2 tick=2",
+    "EVENT ordinal=45 type=8 round=2 tick=2",
+    "EVENT ordinal=46 type=5 round=2 tick=3",
+    "EVENT ordinal=47 type=11 round=2 tick=3",
+    "EVENT ordinal=48 type=5 round=2 tick=3",
+    "EVENT ordinal=49 type=8 round=2 tick=3",
+    "EVENT ordinal=50 type=8 round=2 tick=3",
+    "EVENT ordinal=51 type=13 round=2 tick=3",
+    "EVENT ordinal=52 type=5 round=2 tick=3",
+    "EVENT ordinal=53 type=8 round=2 tick=3",
+    "EVENT ordinal=54 type=8 round=2 tick=3",
+    "EVENT ordinal=55 type=5 round=2 tick=3",
+    "EVENT ordinal=56 type=3 round=2 tick=3",
+    "EVENT ordinal=57 type=4 round=2 tick=3",
+    "MEM snapshot chip=415184 other=324776 total=739960 largest_chip=414944 largest_other=324040",
+    "RESULT error=0 map=1 snapshot=1 width=14 height=11 player=1 round=2 phase=2 events=57 ack=16 cursor=16 worker_stack=1876 main_stack=1852",
+    "MEM closed chip=439344 other=335224 total=774568 largest_chip=439272 largest_other=324040",
+    "EXIT main_stack=1852 worker_stack=1876 reserved_main=16384 reserved_worker=8192 events=57"
+  ],
+  "event_counts": {
+    "submitted_match": 90,
+    "deadline_match": 57
+  },
+  "os_avail": [
+    "Type  Available    In-Use   Maximum   Largest",
+    "chip     439344     83888    523232    439272",
+    "fast     451088     65800    516888    450312",
+    "total    890432    149688   1040120    450312"
+  ]
+}

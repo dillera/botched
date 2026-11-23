@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-"""A1a: real stock A500/KS1.3 + existing NIO broker/firmware + Botched server.
+"""A1b: real stock A500/KS1.3 + existing NIO broker/firmware + Botched server.
 Licensed media paths come from workspace local/amiga.env. Only disposable copies
 are modified. No accelerated fallback. Run after the Amiga and host builds.
 """
@@ -43,7 +43,7 @@ def main():
         made=ask(dict(type='CREATE_MATCH',map_id='foundry-01',player_count=4,bots=3,rounds=3,planning_seconds=0))
         assert made['ok'],made
         match=made['match_id']
-        second=ask(dict(type='CREATE_MATCH',map_id='factory-01',player_count=4,bots=3,rounds=3,planning_seconds=0))
+        second=ask(dict(type='CREATE_MATCH',map_id='factory-01',player_count=4,bots=3,rounds=2,planning_seconds=8))
         assert second['ok'],second
         (share/'run').write_text('FailAt 21\nStack 16384\nAvail >BT:os-memory.log\nBT:fujinet-load-resident BT:fujinet-nio.device fujinet-nio.device\nAvail >BT:broker-memory.log\n'
             +f'BT:botched-amiga >BT:client.log tcp://127.0.0.1:{bp} {match} --capture\n'
@@ -102,16 +102,52 @@ channel:
                 s.settimeout(5);s.connect(ipc_path);s.sendall(('\t'.join(cmd)+'\n').encode());reply=s.recv(4096)
                 assert reply.startswith(b'OK'),reply
         ipc('SCREENSHOT',str(work/'display.png'))
-        # Actual raw-key path, not a direct call into refresh or quit.
-        before=(share/'state.bin').stat().st_mtime_ns
-        ipc('SEND_KEY','19','1');time.sleep(.1);ipc('SEND_KEY','19','0')
-        wait(lambda:(share/'state.bin').stat().st_mtime_ns!=before,60,'keyboard refresh')
+        def key(n):
+            ipc('SEND_KEY',str(n),'1');time.sleep(.12);ipc('SEND_KEY',str(n),'0');time.sleep(.12)
+        def client_log():return (share/'client.log').read_text()
+        for round_number in range(1,4):
+            wait(lambda:f'round={round_number} phase=0' in client_log(),120,'planning round')
+            # FWD2 / TOGGLE / WAIT. Edit each slot through the real raw-key path.
+            key(2);key(78);key(8);key(78);key(9)
+            ipc('SCREENSHOT',str(work/f'orders-{round_number}.png'))
+            key(68);key(68) # duplicate Enter while pending must not submit twice
+            wait(lambda:f'SUBMIT round={round_number} orders=1,7,8 accepted=1' in client_log(),60,'accepted programme')
+            if round_number==1:
+                wait(lambda:'EVENT ordinal=' in client_log(),60,'visual event playback')
+                ipc('SCREENSHOT',str(work/'replay.png'))
+        wait(lambda:'phase=2' in client_log(),180,'match completion')
+        log=client_log();assert log.count('SUBMIT round=')==3,log
+        assert len(re.findall(r'EVENT ordinal=',log))>30,log
+        finished=ask(dict(type='GET_SNAPSHOT',match_id=match))
+        assert finished['snapshot']['phase']=='FINISHED',finished
+        (work/'finished.json').write_text(json.dumps(finished,indent=2))
+        event_names="PLANNING_CLOSED ROUND_STARTED ROUND_ENDED MATCH_ENDED ORDER_EXECUTED ORDER_NO_OP ORDER_SKIPPED_DISABLED ROBOT_MOVED ROBOT_PUSHED MOVE_BLOCKED ROBOT_ROTATED CRATE_SPAWNED CRATE_PICKED_UP CRATE_DROPPED CRATE_DELIVERED CRATE_MOVED CRATE_DESTROYED GROUP_TOGGLED LASER_HIT ROBOT_DISABLED RESPAWN_REDIRECTED ROBOT_RESPAWNED TRAP_ARMED TRAP_TRIGGERED TRAP_HIT TURRET_CAPTURED TURRET_CHARGING TURRET_FIRED TAR_SLOWED SCORE_AWARDED".split()
+        def check_replay(match_id,log,baseline):
+            authoritative=ask(dict(type='GET_EVENTS',match_id=match_id,since_version=baseline))['events']
+            actual=[int(x) for x in re.findall(r'EVENT ordinal=\d+ type=(\d+)',log)]
+            assert actual==[event_names.index(e['type'])+1 for e in authoritative],(len(actual),len(authoritative))
+            return authoritative
+        authoritative=check_replay(match,log,snap['state_version'])
+        (work/'events.json').write_text(json.dumps(authoritative,indent=2))
+        final_data=(share/'state.bin').read_bytes()
+        for p in finished['snapshot']['players']:
+            b=final_data[195+(p['id']-1)*27:195+p['id']*27]
+            assert bool(b[1]&1)==p['respawn_pending']
+            if p['x'] is not None:assert b[2:4]==bytes([p['x'],p['y']])
+            assert unpack_from('<I',b,10)[0]==p['score']
+        ipc('SCREENSHOT',str(work/'finished.png'))
         ipc('SEND_KEY','69','1');time.sleep(.1);ipc('SEND_KEY','69','0')
         wait(lambda:(share/'first-exited').exists(),60,'first clean exit')
         wait(lambda:(share/'client2.log').exists() and 'RESULT' in (share/'client2.log').read_text(),120,'second join')
         assert 'RESULT error=0 map=1 snapshot=1' in (share/'client2.log').read_text()
         wait(lambda:(share/'state.bin').read_bytes()[:2]!=data[:2],10,'second map')
-        time.sleep(1)
+        wait(lambda:'phase=2' in (share/'client2.log').read_text(),180,'deadline-only completion')
+        second_log=(share/'client2.log').read_text()
+        assert 'SUBMIT round=' not in second_log and 'type=1 ' in second_log,second_log
+        baseline=int(re.search(r'RESULT .*?cursor=(\d+)',second_log)[1])
+        second_events=check_replay(second['match_id'],second_log,baseline)
+        (work/'deadline-events.json').write_text(json.dumps(second_events,indent=2))
+        assert ask(dict(type='GET_SNAPSHOT',match_id=second['match_id']))['snapshot']['phase']=='FINISHED'
         ipc('SCREENSHOT',str(work/'display-second.png'))
         ipc('SEND_KEY','69','1');time.sleep(.1);ipc('SEND_KEY','69','0')
         wait(lambda:(share/'done').exists(),60,'second clean exit')
@@ -141,7 +177,7 @@ channel:
             stack=dict(zip(('main_measured','worker_measured','main_reserved','worker_reserved'),map(int,stacks.groups()))),
             chip_installed=524288,expansion_installed=524288,expansion_kind='A500 slow RAM (no true Fast RAM)',
             avail_before=before,avail_after_first=first,avail_after_second=last,
-            verification=['two real NIO HELLO/JOIN/MAP/SNAPSHOT instances','authoritative player positions/scores','raw-key refresh','raw-key quit','clean exit'])
+            verification=['two real NIO HELLO/JOIN/MAP/SNAPSHOT instances','authoritative player positions/scores','three raw-key programmes accepted exactly once','sequential event playback','server deadline WAIT completion','raw-key quit','clean exit'])
         (work/'results.json').write_text(json.dumps(result,indent=2)+'\n')
         (ROOT/'build/amiga/latest-evidence').write_text(str(work)+'\n')
         print(client_log);print('PASS',work)

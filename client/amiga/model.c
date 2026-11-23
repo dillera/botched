@@ -34,6 +34,10 @@ void ba_record(void *ctx, const uint8_t *record, size_t n) {
   case 6:
     w->failed = b[0] ? b[0] : 255;
     break;
+  case 8:
+    w->next_key = ba_u32(b + 2);
+    w->key_exhausted = b[6];
+    break;
   case 9:
     memcpy(w->snapshot, b, 31);
     break;
@@ -59,6 +63,9 @@ void ba_record(void *ctx, const uint8_t *record, size_t n) {
     if (w->hazards_count >= 18)
       goto bad;
     memcpy(w->hazards[w->hazards_count++], b, 4);
+    break;
+  case 14:
+    w->winners = b[16];
     break;
   case 16:
     a = 5 + b[4];

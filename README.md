@@ -21,7 +21,7 @@ The codec/storage harness fits K4; the current complete general-NIO configuratio
 for shipped maps. Historical CPU targets are not met.
 **Atari feasibility spike:** [compact stream transport, thin decoder and measured full-client budget](docs/atari-feasibility.md).
 The headless prototype reuses `fn_stream_*` assembly and fits K4 on shipped maps; physical hardware and graphics remain unverified.
-**Amiga A1a:** [A500/KS1.3 connection and board display](docs/amiga/a1-review.md) is implemented and emulator-tested on 512 KB Chip + 512 KB expansion RAM. Order entry and event replay remain A1 tasks.
+**Amiga A1b:** [Keyboard programmes and authoritative replay](docs/amiga/a1b-review.md) are implemented and emulator-tested on a stock A500/KS1.3 with 512 KB Chip + 512 KB expansion RAM. A1c multiplayer and recovery acceptance remains.
 **Not built yet:** complete retro gameplay clients, physical constrained-client acceptance, authentication beyond per-seat session tokens,
 and host persistence. See [`docs/binary-protocol-requirements.md`](docs/binary-protocol-requirements.md).
 

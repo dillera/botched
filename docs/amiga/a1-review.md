@@ -1,3 +1,10 @@
+# Amiga A1 review
+
+**Current status:** A1a (`53feea99`) is accepted. [A1b gameplay interaction and
+verification](a1b-review.md) is implemented for review. A1c acceptance remains.
+The following is the retained A1a baseline; its remaining-work statements describe
+that accepted slice, not the current client.
+
 # A1a — A500 connection and board display
 
 **A1a is implemented and verified on an emulated stock 68000 A500, Kickstart
