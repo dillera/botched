@@ -4,7 +4,7 @@ NIO ?= $(NIO_WORKSPACE)/repos/fujinet-nio-lib
 OUT ?= build/amiga
 CPPFLAGS = -Iinclude -Iclient/amiga -I$(NIO)/include
 CFLAGS = -m68000 -mcrt=nix13 -std=c99 -Os -Wall -Wextra -MMD -MP
-SOURCES = client/amiga/main.c client/amiga/input.c client/amiga/model.c client/amiga/events.c client/amiga/play.c client/amiga/display.c client/amiga/ui.c client/amiga/assets.c client/amiga/visual.c client/amiga/network.c client/amiga/session.c client/amiga/stack.c client/nio.c client/nio_fujinet.c wire/v1.c
+SOURCES = client/amiga/main.c client/amiga/input.c client/amiga/model.c client/amiga/events.c client/amiga/play.c client/amiga/display.c client/amiga/ui.c client/amiga/assets.c client/amiga/visual.c client/amiga/view.c client/amiga/network.c client/amiga/session.c client/amiga/stack.c client/nio.c client/nio_fujinet.c wire/v1.c
 OBJECTS = $(patsubst %.c,$(OUT)/%.o,$(SOURCES)) $(OUT)/client/amiga/worker_entry.o
 all: $(OUT)/botched-amiga
 $(OUT)/%.o: %.c

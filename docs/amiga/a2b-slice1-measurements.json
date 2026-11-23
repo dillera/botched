@@ -1,0 +1,1178 @@
+{
+  "ui_actions": [
+    {
+      "panel": 2,
+      "inspect": 0,
+      "overview": 0,
+      "x": 1,
+      "y": 1,
+      "cx": 0,
+      "cy": 0,
+      "choice": 0,
+      "slot": 0,
+      "pending": 0,
+      "fields": 23
+    },
+    {
+      "panel": 0,
+      "inspect": 0,
+      "overview": 0,
+      "x": 1,
+      "y": 1,
+      "cx": 0,
+      "cy": 0,
+      "choice": 0,
+      "slot": 0,
+      "pending": 0,
+      "fields": 40
+    },
+    {
+      "panel": 1,
+      "inspect": 0,
+      "overview": 0,
+      "x": 1,
+      "y": 1,
+      "cx": 0,
+      "cy": 0,
+      "choice": 0,
+      "slot": 0,
+      "pending": 0,
+      "fields": 22
+    },
+    {
+      "panel": 0,
+      "inspect": 0,
+      "overview": 0,
+      "x": 1,
+      "y": 1,
+      "cx": 0,
+      "cy": 0,
+      "choice": 0,
+      "slot": 0,
+      "pending": 0,
+      "fields": 40
+    },
+    {
+      "panel": 0,
+      "inspect": 0,
+      "overview": 1,
+      "x": 1,
+      "y": 1,
+      "cx": 0,
+      "cy": 0,
+      "choice": 0,
+      "slot": 0,
+      "pending": 0,
+      "fields": 33
+    },
+    {
+      "panel": 0,
+      "inspect": 0,
+      "overview": 0,
+      "x": 1,
+      "y": 1,
+      "cx": 0,
+      "cy": 0,
+      "choice": 0,
+      "slot": 0,
+      "pending": 0,
+      "fields": 39
+    },
+    {
+      "panel": 0,
+      "inspect": 1,
+      "overview": 0,
+      "x": 1,
+      "y": 1,
+      "cx": 0,
+      "cy": 0,
+      "choice": 0,
+      "slot": 0,
+      "pending": 0,
+      "fields": 19
+    },
+    {
+      "panel": 0,
+      "inspect": 1,
+      "overview": 0,
+      "x": 1,
+      "y": 2,
+      "cx": 0,
+      "cy": 0,
+      "choice": 0,
+      "slot": 0,
+      "pending": 0,
+      "fields": 19
+    },
+    {
+      "panel": 0,
+      "inspect": 1,
+      "overview": 0,
+      "x": 1,
+      "y": 3,
+      "cx": 0,
+      "cy": 0,
+      "choice": 0,
+      "slot": 0,
+      "pending": 0,
+      "fields": 14
+    },
+    {
+      "panel": 0,
+      "inspect": 1,
+      "overview": 0,
+      "x": 1,
+      "y": 4,
+      "cx": 0,
+      "cy": 0,
+      "choice": 0,
+      "slot": 0,
+      "pending": 0,
+      "fields": 15
+    },
+    {
+      "panel": 0,
+      "inspect": 1,
+      "overview": 0,
+      "x": 1,
+      "y": 5,
+      "cx": 0,
+      "cy": 0,
+      "choice": 0,
+      "slot": 0,
+      "pending": 0,
+      "fields": 16
+    },
+    {
+      "panel": 0,
+      "inspect": 1,
+      "overview": 0,
+      "x": 1,
+      "y": 6,
+      "cx": 0,
+      "cy": 0,
+      "choice": 0,
+      "slot": 0,
+      "pending": 0,
+      "fields": 12
+    },
+    {
+      "panel": 0,
+      "inspect": 1,
+      "overview": 0,
+      "x": 1,
+      "y": 7,
+      "cx": 0,
+      "cy": 0,
+      "choice": 0,
+      "slot": 0,
+      "pending": 0,
+      "fields": 12
+    },
+    {
+      "panel": 0,
+      "inspect": 1,
+      "overview": 0,
+      "x": 1,
+      "y": 8,
+      "cx": 0,
+      "cy": 0,
+      "choice": 0,
+      "slot": 0,
+      "pending": 0,
+      "fields": 12
+    },
+    {
+      "panel": 0,
+      "inspect": 1,
+      "overview": 0,
+      "x": 1,
+      "y": 9,
+      "cx": 0,
+      "cy": 0,
+      "choice": 0,
+      "slot": 0,
+      "pending": 0,
+      "fields": 17
+    },
+    {
+      "panel": 0,
+      "inspect": 1,
+      "overview": 0,
+      "x": 1,
+      "y": 10,
+      "cx": 0,
+      "cy": 1,
+      "choice": 0,
+      "slot": 0,
+      "pending": 0,
+      "fields": 33
+    },
+    {
+      "panel": 0,
+      "inspect": 1,
+      "overview": 0,
+      "x": 1,
+      "y": 11,
+      "cx": 0,
+      "cy": 2,
+      "choice": 0,
+      "slot": 0,
+      "pending": 0,
+      "fields": 36
+    },
+    {
+      "panel": 0,
+      "inspect": 1,
+      "overview": 0,
+      "x": 1,
+      "y": 12,
+      "cx": 0,
+      "cy": 3,
+      "choice": 0,
+      "slot": 0,
+      "pending": 0,
+      "fields": 35
+    },
+    {
+      "panel": 0,
+      "inspect": 1,
+      "overview": 0,
+      "x": 1,
+      "y": 11,
+      "cx": 0,
+      "cy": 3,
+      "choice": 0,
+      "slot": 0,
+      "pending": 0,
+      "fields": 21
+    },
+    {
+      "panel": 0,
+      "inspect": 1,
+      "overview": 0,
+      "x": 1,
+      "y": 10,
+      "cx": 0,
+      "cy": 3,
+      "choice": 0,
+      "slot": 0,
+      "pending": 0,
+      "fields": 13
+    },
+    {
+      "panel": 0,
+      "inspect": 1,
+      "overview": 0,
+      "x": 1,
+      "y": 9,
+      "cx": 0,
+      "cy": 3,
+      "choice": 0,
+      "slot": 0,
+      "pending": 0,
+      "fields": 11
+    },
+    {
+      "panel": 0,
+      "inspect": 1,
+      "overview": 0,
+      "x": 1,
+      "y": 8,
+      "cx": 0,
+      "cy": 3,
+      "choice": 0,
+      "slot": 0,
+      "pending": 0,
+      "fields": 11
+    },
+    {
+      "panel": 0,
+      "inspect": 1,
+      "overview": 0,
+      "x": 1,
+      "y": 7,
+      "cx": 0,
+      "cy": 3,
+      "choice": 0,
+      "slot": 0,
+      "pending": 0,
+      "fields": 11
+    },
+    {
+      "panel": 0,
+      "inspect": 1,
+      "overview": 0,
+      "x": 1,
+      "y": 6,
+      "cx": 0,
+      "cy": 3,
+      "choice": 0,
+      "slot": 0,
+      "pending": 0,
+      "fields": 11
+    },
+    {
+      "panel": 0,
+      "inspect": 1,
+      "overview": 0,
+      "x": 1,
+      "y": 5,
+      "cx": 0,
+      "cy": 3,
+      "choice": 0,
+      "slot": 0,
+      "pending": 0,
+      "fields": 16
+    },
+    {
+      "panel": 0,
+      "inspect": 1,
+      "overview": 0,
+      "x": 1,
+      "y": 4,
+      "cx": 0,
+      "cy": 3,
+      "choice": 0,
+      "slot": 0,
+      "pending": 0,
+      "fields": 11
+    },
+    {
+      "panel": 0,
+      "inspect": 1,
+      "overview": 0,
+      "x": 1,
+      "y": 3,
+      "cx": 0,
+      "cy": 3,
+      "choice": 0,
+      "slot": 0,
+      "pending": 0,
+      "fields": 11
+    },
+    {
+      "panel": 0,
+      "inspect": 1,
+      "overview": 0,
+      "x": 1,
+      "y": 2,
+      "cx": 0,
+      "cy": 2,
+      "choice": 0,
+      "slot": 0,
+      "pending": 0,
+      "fields": 28
+    },
+    {
+      "panel": 0,
+      "inspect": 1,
+      "overview": 0,
+      "x": 1,
+      "y": 1,
+      "cx": 0,
+      "cy": 1,
+      "choice": 0,
+      "slot": 0,
+      "pending": 0,
+      "fields": 41
+    },
+    {
+      "panel": 0,
+      "inspect": 1,
+      "overview": 0,
+      "x": 1,
+      "y": 0,
+      "cx": 0,
+      "cy": 0,
+      "choice": 0,
+      "slot": 0,
+      "pending": 0,
+      "fields": 39
+    },
+    {
+      "panel": 0,
+      "inspect": 0,
+      "overview": 0,
+      "x": 1,
+      "y": 0,
+      "cx": 0,
+      "cy": 0,
+      "choice": 0,
+      "slot": 0,
+      "pending": 0,
+      "fields": 19
+    },
+    {
+      "panel": 0,
+      "inspect": 0,
+      "overview": 0,
+      "x": 1,
+      "y": 0,
+      "cx": 0,
+      "cy": 0,
+      "choice": 1,
+      "slot": 0,
+      "pending": 0,
+      "fields": 8
+    },
+    {
+      "panel": 0,
+      "inspect": 0,
+      "overview": 0,
+      "x": 1,
+      "y": 0,
+      "cx": 0,
+      "cy": 0,
+      "choice": 1,
+      "slot": 0,
+      "pending": 0,
+      "fields": 10
+    },
+    {
+      "panel": 0,
+      "inspect": 0,
+      "overview": 0,
+      "x": 1,
+      "y": 0,
+      "cx": 0,
+      "cy": 0,
+      "choice": 1,
+      "slot": 1,
+      "pending": 0,
+      "fields": 6
+    },
+    {
+      "panel": 0,
+      "inspect": 0,
+      "overview": 0,
+      "x": 1,
+      "y": 0,
+      "cx": 0,
+      "cy": 0,
+      "choice": 7,
+      "slot": 1,
+      "pending": 0,
+      "fields": 15
+    },
+    {
+      "panel": 0,
+      "inspect": 0,
+      "overview": 0,
+      "x": 1,
+      "y": 0,
+      "cx": 0,
+      "cy": 0,
+      "choice": 7,
+      "slot": 2,
+      "pending": 0,
+      "fields": 2
+    },
+    {
+      "panel": 0,
+      "inspect": 0,
+      "overview": 0,
+      "x": 1,
+      "y": 0,
+      "cx": 0,
+      "cy": 0,
+      "choice": 8,
+      "slot": 2,
+      "pending": 1,
+      "fields": 21
+    },
+    {
+      "panel": 0,
+      "inspect": 0,
+      "overview": 0,
+      "x": 3,
+      "y": 1,
+      "cx": 0,
+      "cy": 0,
+      "choice": 1,
+      "slot": 0,
+      "pending": 0,
+      "fields": 9
+    },
+    {
+      "panel": 0,
+      "inspect": 0,
+      "overview": 0,
+      "x": 3,
+      "y": 1,
+      "cx": 0,
+      "cy": 0,
+      "choice": 1,
+      "slot": 1,
+      "pending": 0,
+      "fields": 5
+    },
+    {
+      "panel": 0,
+      "inspect": 0,
+      "overview": 0,
+      "x": 3,
+      "y": 1,
+      "cx": 0,
+      "cy": 0,
+      "choice": 7,
+      "slot": 1,
+      "pending": 0,
+      "fields": 10
+    },
+    {
+      "panel": 0,
+      "inspect": 0,
+      "overview": 0,
+      "x": 3,
+      "y": 1,
+      "cx": 0,
+      "cy": 0,
+      "choice": 7,
+      "slot": 2,
+      "pending": 0,
+      "fields": 5
+    },
+    {
+      "panel": 0,
+      "inspect": 0,
+      "overview": 0,
+      "x": 3,
+      "y": 1,
+      "cx": 0,
+      "cy": 0,
+      "choice": 8,
+      "slot": 2,
+      "pending": 0,
+      "fields": 6
+    },
+    {
+      "panel": 0,
+      "inspect": 0,
+      "overview": 0,
+      "x": 3,
+      "y": 1,
+      "cx": 0,
+      "cy": 0,
+      "choice": 8,
+      "slot": 2,
+      "pending": 1,
+      "fields": 22
+    },
+    {
+      "panel": 0,
+      "inspect": 0,
+      "overview": 0,
+      "x": 3,
+      "y": 1,
+      "cx": 0,
+      "cy": 0,
+      "choice": 1,
+      "slot": 0,
+      "pending": 0,
+      "fields": 9
+    },
+    {
+      "panel": 0,
+      "inspect": 0,
+      "overview": 0,
+      "x": 3,
+      "y": 1,
+      "cx": 0,
+      "cy": 0,
+      "choice": 1,
+      "slot": 1,
+      "pending": 0,
+      "fields": 5
+    },
+    {
+      "panel": 0,
+      "inspect": 0,
+      "overview": 0,
+      "x": 3,
+      "y": 1,
+      "cx": 0,
+      "cy": 0,
+      "choice": 7,
+      "slot": 1,
+      "pending": 0,
+      "fields": 10
+    },
+    {
+      "panel": 0,
+      "inspect": 0,
+      "overview": 0,
+      "x": 3,
+      "y": 1,
+      "cx": 0,
+      "cy": 0,
+      "choice": 7,
+      "slot": 2,
+      "pending": 0,
+      "fields": 5
+    },
+    {
+      "panel": 0,
+      "inspect": 0,
+      "overview": 0,
+      "x": 3,
+      "y": 1,
+      "cx": 0,
+      "cy": 0,
+      "choice": 8,
+      "slot": 2,
+      "pending": 0,
+      "fields": 6
+    },
+    {
+      "panel": 0,
+      "inspect": 0,
+      "overview": 0,
+      "x": 3,
+      "y": 1,
+      "cx": 0,
+      "cy": 0,
+      "choice": 8,
+      "slot": 2,
+      "pending": 1,
+      "fields": 25
+    }
+  ],
+  "chip_font_bytes": 576,
+  "preview_memory": [
+    {
+      "chip": {
+        "available": 439344,
+        "used": 83888,
+        "maximum": 523232,
+        "largest": 439272
+      },
+      "fast": {
+        "available": 411968,
+        "used": 104920,
+        "maximum": 516888,
+        "largest": 290408
+      },
+      "total": {
+        "available": 851312,
+        "used": 188808,
+        "maximum": 1040120,
+        "largest": 439272
+      }
+    },
+    {
+      "chip": {
+        "available": 439344,
+        "used": 83888,
+        "maximum": 523232,
+        "largest": 439272
+      },
+      "fast": {
+        "available": 411968,
+        "used": 104920,
+        "maximum": 516888,
+        "largest": 290408
+      },
+      "total": {
+        "available": 851312,
+        "used": 188808,
+        "maximum": 1040120,
+        "largest": 439272
+      }
+    },
+    {
+      "chip": {
+        "available": 439344,
+        "used": 83888,
+        "maximum": 523232,
+        "largest": 439272
+      },
+      "fast": {
+        "available": 411968,
+        "used": 104920,
+        "maximum": 516888,
+        "largest": 290408
+      },
+      "total": {
+        "available": 851312,
+        "used": 188808,
+        "maximum": 1040120,
+        "largest": 439272
+      }
+    },
+    {
+      "chip": {
+        "available": 439344,
+        "used": 83888,
+        "maximum": 523232,
+        "largest": 439272
+      },
+      "fast": {
+        "available": 411968,
+        "used": 104920,
+        "maximum": 516888,
+        "largest": 290408
+      },
+      "total": {
+        "available": 851312,
+        "used": 188808,
+        "maximum": 1040120,
+        "largest": 439272
+      }
+    },
+    {
+      "chip": {
+        "available": 439344,
+        "used": 83888,
+        "maximum": 523232,
+        "largest": 439272
+      },
+      "fast": {
+        "available": 411968,
+        "used": 104920,
+        "maximum": 516888,
+        "largest": 290408
+      },
+      "total": {
+        "available": 851312,
+        "used": 188808,
+        "maximum": 1040120,
+        "largest": 439272
+      }
+    },
+    {
+      "chip": {
+        "available": 439344,
+        "used": 83888,
+        "maximum": 523232,
+        "largest": 439272
+      },
+      "fast": {
+        "available": 411968,
+        "used": 104920,
+        "maximum": 516888,
+        "largest": 290408
+      },
+      "total": {
+        "available": 851312,
+        "used": 188808,
+        "maximum": 1040120,
+        "largest": 439272
+      }
+    },
+    {
+      "chip": {
+        "available": 439344,
+        "used": 83888,
+        "maximum": 523232,
+        "largest": 439272
+      },
+      "fast": {
+        "available": 411968,
+        "used": 104920,
+        "maximum": 516888,
+        "largest": 290408
+      },
+      "total": {
+        "available": 851312,
+        "used": 188808,
+        "maximum": 1040120,
+        "largest": 439272
+      }
+    }
+  ],
+  "preview_maps": [
+    "training-01",
+    "laserworks-01",
+    "trapworks-01",
+    "turretworks-01",
+    "tarworks-01",
+    "shuntworks-01",
+    "crossroads-01"
+  ],
+  "render": [
+    {
+      "draws": 414,
+      "dirty_cells": 2417,
+      "full_boards": 14,
+      "fields": 3014,
+      "max_fields": 53,
+      "chip_bitplanes": 81920,
+      "chip_atlas": 8960
+    }
+  ],
+  "timing_resolution_ms": 20,
+  "machine": [
+    "chipset=ocs",
+    "cpu_model=68000",
+    "cpu_type=68000",
+    "chipmem_size=1",
+    "bogomem_size=2",
+    "fastmem_size=0",
+    "z3mem_size=0",
+    "ntsc=false",
+    "immediate_blits=false",
+    "serial_port=tcp://127.0.0.1:55355",
+    "serial_direct=true",
+    "serial_hardware_ctsrts=false",
+    "filesystem2=rw,DH1:BT:/home/markf/dev/nio/fujinet-nio-workspace/external/botched/build/amiga/evidence/a500-k9dnkyeq/share,0"
+  ],
+  "executable_bytes": 81124,
+  "executable_sha256": "81dfb8e7b5a53dace4e01f42efb6502c466e0e87b3823a7aa16cf689ac1d14e1",
+  "library_sha256": "7831bc08243effa5df603ef867d384921202dbd59f731cfe5b8f18941eb0b159",
+  "broker_sha256": "c97f02ffb6a13884861199c63594c7dc052c87a680f46047012755bebf43852f",
+  "memory": [
+    {
+      "stage": "entry",
+      "chip_free": 439344,
+      "expansion_free": 309840,
+      "total_free": 749184,
+      "largest_chip": 439272,
+      "largest_expansion": 307072
+    },
+    {
+      "stage": "display",
+      "chip_free": 347688,
+      "expansion_free": 307472,
+      "total_free": 655160,
+      "largest_chip": 345688,
+      "largest_expansion": 307072
+    },
+    {
+      "stage": "snapshot",
+      "chip_free": 347688,
+      "expansion_free": 291280,
+      "total_free": 638968,
+      "largest_chip": 345688,
+      "largest_expansion": 290408
+    },
+    {
+      "stage": "snapshot",
+      "chip_free": 347688,
+      "expansion_free": 291168,
+      "total_free": 638856,
+      "largest_chip": 345688,
+      "largest_expansion": 290408
+    },
+    {
+      "stage": "snapshot",
+      "chip_free": 347688,
+      "expansion_free": 291168,
+      "total_free": 638856,
+      "largest_chip": 345688,
+      "largest_expansion": 290408
+    },
+    {
+      "stage": "snapshot",
+      "chip_free": 347688,
+      "expansion_free": 291112,
+      "total_free": 638800,
+      "largest_chip": 345688,
+      "largest_expansion": 290408
+    },
+    {
+      "stage": "snapshot",
+      "chip_free": 347688,
+      "expansion_free": 291000,
+      "total_free": 638688,
+      "largest_chip": 345688,
+      "largest_expansion": 290408
+    },
+    {
+      "stage": "snapshot",
+      "chip_free": 347688,
+      "expansion_free": 291000,
+      "total_free": 638688,
+      "largest_chip": 345688,
+      "largest_expansion": 290408
+    },
+    {
+      "stage": "snapshot",
+      "chip_free": 347688,
+      "expansion_free": 291000,
+      "total_free": 638688,
+      "largest_chip": 345688,
+      "largest_expansion": 290408
+    },
+    {
+      "stage": "closed",
+      "chip_free": 439344,
+      "expansion_free": 301864,
+      "total_free": 741208,
+      "largest_chip": 439272,
+      "largest_expansion": 290408
+    }
+  ],
+  "stack": {
+    "main_measured": 1876,
+    "worker_measured": 1940,
+    "main_reserved": 16384,
+    "worker_reserved": 8192
+  },
+  "chip_installed": 524288,
+  "expansion_installed": 524288,
+  "expansion_kind": "A500 slow RAM (no true Fast RAM)",
+  "avail_before": {
+    "chip": {
+      "available": 439344,
+      "used": 83888,
+      "maximum": 523232,
+      "largest": 439272
+    },
+    "fast": {
+      "available": 419944,
+      "used": 96944,
+      "maximum": 516888,
+      "largest": 392112
+    },
+    "total": {
+      "available": 859288,
+      "used": 180832,
+      "maximum": 1040120,
+      "largest": 439272
+    }
+  },
+  "avail_after_first": {
+    "chip": {
+      "available": 439344,
+      "used": 83888,
+      "maximum": 523232,
+      "largest": 439272
+    },
+    "fast": {
+      "available": 411968,
+      "used": 104920,
+      "maximum": 516888,
+      "largest": 290408
+    },
+    "total": {
+      "available": 851312,
+      "used": 188808,
+      "maximum": 1040120,
+      "largest": 439272
+    }
+  },
+  "avail_after_second": {
+    "chip": {
+      "available": 439344,
+      "used": 83888,
+      "maximum": 523232,
+      "largest": 439272
+    },
+    "fast": {
+      "available": 411968,
+      "used": 104920,
+      "maximum": 516888,
+      "largest": 290408
+    },
+    "total": {
+      "available": 851312,
+      "used": 188808,
+      "maximum": 1040120,
+      "largest": 439272
+    }
+  },
+  "verification": [
+    "two real NIO HELLO/JOIN/MAP/SNAPSHOT instances",
+    "authoritative player positions/scores",
+    "three raw-key programmes accepted exactly once",
+    "sequential event playback",
+    "server deadline WAIT completion",
+    "raw-key quit",
+    "clean exit",
+    "all nine maps displayed and cleanly closed",
+    "score/help/overview panels and last-row inspection",
+    "142 authoritative events and matching animation completions across two matches"
+  ],
+  "all_launches": [
+    {
+      "log": "client.log",
+      "exit": "EXIT main_stack=1876 worker_stack=1940 reserved_main=16384 reserved_worker=8192 events=86",
+      "render": "RENDER draws=414 dirty_cells=2417 full_boards=14 fields=3014 max_fields=53 chip_bitplanes=81920 chip_atlas=8960 chip_font=576",
+      "snapshot_memory": [
+        {
+          "chip": 347688,
+          "other": 291280,
+          "total": 638968,
+          "largest_chip": 345688,
+          "largest_other": 290408
+        },
+        {
+          "chip": 347688,
+          "other": 291168,
+          "total": 638856,
+          "largest_chip": 345688,
+          "largest_other": 290408
+        },
+        {
+          "chip": 347688,
+          "other": 291168,
+          "total": 638856,
+          "largest_chip": 345688,
+          "largest_other": 290408
+        },
+        {
+          "chip": 347688,
+          "other": 291112,
+          "total": 638800,
+          "largest_chip": 345688,
+          "largest_other": 290408
+        },
+        {
+          "chip": 347688,
+          "other": 291000,
+          "total": 638688,
+          "largest_chip": 345688,
+          "largest_other": 290408
+        },
+        {
+          "chip": 347688,
+          "other": 291000,
+          "total": 638688,
+          "largest_chip": 345688,
+          "largest_other": 290408
+        },
+        {
+          "chip": 347688,
+          "other": 291000,
+          "total": 638688,
+          "largest_chip": 345688,
+          "largest_other": 290408
+        }
+      ]
+    },
+    {
+      "log": "client2.log",
+      "exit": "EXIT main_stack=2144 worker_stack=1940 reserved_main=16384 reserved_worker=8192 events=56",
+      "render": "RENDER draws=250 dirty_cells=504 full_boards=1 fields=1463 max_fields=54 chip_bitplanes=81920 chip_atlas=8960 chip_font=576",
+      "snapshot_memory": [
+        {
+          "chip": 347688,
+          "other": 291280,
+          "total": 638968,
+          "largest_chip": 345688,
+          "largest_other": 290408
+        },
+        {
+          "chip": 347688,
+          "other": 291280,
+          "total": 638968,
+          "largest_chip": 345688,
+          "largest_other": 290408
+        },
+        {
+          "chip": 347688,
+          "other": 291280,
+          "total": 638968,
+          "largest_chip": 345688,
+          "largest_other": 290408
+        }
+      ]
+    },
+    {
+      "log": "preview-0.log",
+      "exit": "EXIT main_stack=1876 worker_stack=1940 reserved_main=16384 reserved_worker=8192 events=0",
+      "render": "RENDER draws=8 dirty_cells=120 full_boards=1 fields=157 max_fields=50 chip_bitplanes=81920 chip_atlas=8960 chip_font=576",
+      "snapshot_memory": [
+        {
+          "chip": 347688,
+          "other": 291280,
+          "total": 638968,
+          "largest_chip": 345688,
+          "largest_other": 290408
+        }
+      ]
+    },
+    {
+      "log": "preview-1.log",
+      "exit": "EXIT main_stack=1876 worker_stack=1932 reserved_main=16384 reserved_worker=8192 events=0",
+      "render": "RENDER draws=8 dirty_cells=120 full_boards=1 fields=156 max_fields=49 chip_bitplanes=81920 chip_atlas=8960 chip_font=576",
+      "snapshot_memory": [
+        {
+          "chip": 347688,
+          "other": 291280,
+          "total": 638968,
+          "largest_chip": 345688,
+          "largest_other": 290408
+        }
+      ]
+    },
+    {
+      "log": "preview-2.log",
+      "exit": "EXIT main_stack=1876 worker_stack=1932 reserved_main=16384 reserved_worker=8192 events=0",
+      "render": "RENDER draws=8 dirty_cells=120 full_boards=1 fields=157 max_fields=49 chip_bitplanes=81920 chip_atlas=8960 chip_font=576",
+      "snapshot_memory": [
+        {
+          "chip": 347688,
+          "other": 291280,
+          "total": 638968,
+          "largest_chip": 345688,
+          "largest_other": 290408
+        }
+      ]
+    },
+    {
+      "log": "preview-3.log",
+      "exit": "EXIT main_stack=1876 worker_stack=1932 reserved_main=16384 reserved_worker=8192 events=0",
+      "render": "RENDER draws=8 dirty_cells=120 full_boards=1 fields=152 max_fields=49 chip_bitplanes=81920 chip_atlas=8960 chip_font=576",
+      "snapshot_memory": [
+        {
+          "chip": 347688,
+          "other": 291280,
+          "total": 638968,
+          "largest_chip": 345688,
+          "largest_other": 290408
+        }
+      ]
+    },
+    {
+      "log": "preview-4.log",
+      "exit": "EXIT main_stack=1876 worker_stack=1932 reserved_main=16384 reserved_worker=8192 events=0",
+      "render": "RENDER draws=8 dirty_cells=120 full_boards=1 fields=161 max_fields=49 chip_bitplanes=81920 chip_atlas=8960 chip_font=576",
+      "snapshot_memory": [
+        {
+          "chip": 347688,
+          "other": 291280,
+          "total": 638968,
+          "largest_chip": 345688,
+          "largest_other": 290408
+        }
+      ]
+    },
+    {
+      "log": "preview-5.log",
+      "exit": "EXIT main_stack=1876 worker_stack=1932 reserved_main=16384 reserved_worker=8192 events=0",
+      "render": "RENDER draws=8 dirty_cells=120 full_boards=1 fields=149 max_fields=48 chip_bitplanes=81920 chip_atlas=8960 chip_font=576",
+      "snapshot_memory": [
+        {
+          "chip": 347688,
+          "other": 291280,
+          "total": 638968,
+          "largest_chip": 345688,
+          "largest_other": 290408
+        }
+      ]
+    },
+    {
+      "log": "preview-6.log",
+      "exit": "EXIT main_stack=1876 worker_stack=1940 reserved_main=16384 reserved_worker=8192 events=0",
+      "render": "RENDER draws=8 dirty_cells=120 full_boards=1 fields=156 max_fields=50 chip_bitplanes=81920 chip_atlas=8960 chip_font=576",
+      "snapshot_memory": [
+        {
+          "chip": 347688,
+          "other": 291280,
+          "total": 638968,
+          "largest_chip": 345688,
+          "largest_other": 290408
+        }
+      ]
+    }
+  ],
+  "source_evidence": "build/amiga/evidence/a500-k9dnkyeq",
+  "resident_sections": {
+    "text": 68644,
+    "data": 300,
+    "bss": 26340,
+    "total": 95284
+  }
+}

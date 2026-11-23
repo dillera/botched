@@ -52,7 +52,7 @@ int main(int argc, char **argv) {
         fflush(stdout);
       }
     }
-    actions = ba_input(&editor);
+    actions = ba_input(&editor, &shown);
     if (actions & BA_QUIT)
       quit = 1;
     if (actions & BA_CHANGED)
@@ -229,7 +229,15 @@ int main(int argc, char **argv) {
       redraw = 1;
     }
     if (redraw) {
+      unsigned long draw_start = ba_display_time();
       ba_draw(&shown, &editor, status, &animation);
+      if (capture && (actions & BA_CHANGED)) {
+        printf("UI panel=%u inspect=%u overview=%u x=%u y=%u cx=%u cy=%u choice=%u slot=%u pending=%u fields=%lu\n",
+               ba_viewport.panel, ba_viewport.inspect, ba_viewport.overview,
+               ba_viewport.x, ba_viewport.y, ba_viewport.cx, ba_viewport.cy,
+               ba_viewport.choice, editor.slot, editor.pending, ba_display_time()-draw_start);
+        fflush(stdout);
+      }
       redraw = 0;
     }
     WaitTOF();
@@ -239,7 +247,7 @@ int main(int argc, char **argv) {
     unsigned close_failed = 0, waiting = 0;
     ba_worker_stop_begin();
     while (!ba_worker_stop_poll(&worker_stack, &close_failed)) {
-      ba_input(&editor);
+      ba_input(&editor, &shown);
       if (++waiting == 500)
         ba_draw(&shown, &editor, "Waiting for broker; exit not safe yet", &animation);
       WaitTOF();

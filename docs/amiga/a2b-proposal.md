@@ -1,6 +1,13 @@
 # A2b proposal — make each decision and outcome readable
 
-**Design for review, not an implemented client.** The PNGs are exact 320×256 pixel
+**Design approved; scoreboard amended before slice 1.**
+The scoreboard uses four-character local labels (`PLY1`–`PLY4`) and two-digit
+scores (`00`–`99`), with `++` above 99 and F2 exact-score access. Numbers and
+colours remain in priority, events and inspection. No bot names or wire changes.
+The original mockups below retain the pre-amendment scoreboard; implementation
+evidence is in [slice 1 review](a2b-slice1-review.md).
+
+**Original proposal:** The PNGs are exact 320×256 pixel
 mockups using one 16-colour, 12-bit OCS palette. Enlargements use nearest-neighbour
 scaling. Geometry comes from all nine shipped maps; robot positions, programmes,
 clock and scores illustrate UI states, not recorded server events. The push panels
@@ -13,7 +20,7 @@ are consecutive illustrations; the trap panel is a separate scenario.
 | Pixels | Purpose |
 |---|---|
 | y 0–10 | You, round/cap, PLAN or REPLAY, approximate deadline or replay tick, target if enabled |
-| y 12–23 | Four numbered, colour-coded scores and three remaining-durability pips; your seat outlined |
+| y 12–23 | Four-character local labels, two-digit scores (`++` overflow), durability pips; your seat outlined |
 | y 26–37 | All three ticks: ordered player numbers followed by **M** (machinery) |
 | x 4–195, y 40–199 | 192×160 board viewport, **16×16 tiles**, 12×10 cells |
 | x 200–315, y 40–199 | Planning: all nine labelled commands. Replay: actor, order, next player and machinery context |
@@ -69,8 +76,8 @@ shortcut. **Up/down browses; Space sets the highlighted slot; Tab or left/right
 changes slot; Enter locks.** This deliberately replaces up/down's immediate cycling
 with browsing plus placement. Numbers and Backspace-to-WAIT remain. No memorisation
 or mouse is required. Slot focus and command focus have different borders.
-Fixed-width counters must handle round/cap 200 and target 1000; oversized scores
-use an explicit compact suffix, with the exact value in inspection.
+Fixed-width counters must handle round/cap 200 and target 1000. Scores above 99
+show `++`, with the full unsigned value available through F2 and inspection.
 The footer explains the highlighted command, including automatic pickup/delivery,
 DROP not scoring, nearby TOGGLE controls, tar restrictions and WAIT still riding belts.
 
@@ -138,10 +145,9 @@ text extents, ≤16 colours, OCS RGB precision and all nine map geometries.
 No game source changed; **no redesigned Amiga executable or emulator performance
 result is claimed**. The proposed renderer has not been run on KS1.3.
 
-Approve the layout, scrolling/overview trade-off, sprite vocabulary and keyboard
-flow before implementation. Afterwards the first reviewable slice should be the
-static board/palette/priority display, then event explanations. Acceptance must
+The layout, scrolling/overview trade-off, sprite vocabulary and keyboard flow
+are approved with the scoreboard amendment above. The first reviewable slice is
+the static board/palette/priority display, followed separately by event explanations. Acceptance must
 include native-size human review, all nine maps, 2/3/4-player tick rotation,
 hazard/cargo recognition, submission uncertainty and replay-prefix equivalence,
-plus measured A500 frame cost, Chip allocation and stacks. No A2b implementation,
-sound, lobby or further milestone is included in this proposal.
+plus measured A500 frame cost, Chip allocation and stacks. No sound, lobby or further milestone is included in this proposal.

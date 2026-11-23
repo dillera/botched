@@ -16,7 +16,8 @@ def wait(predicate,seconds,label):
         time.sleep(.2)
     raise RuntimeError('Timeout: '+label)
 def listening(p):return f':{p:04X} ' in pathlib.Path('/proc/net/tcp').read_text()
-def main(a1c=False, s1=False, a2a=False):
+def main(a1c=False, s1=False, a2a=False, a2b=False):
+    a2a = a2a or a2b
     out=ROOT/'build/amiga/evidence';out.mkdir(parents=True,exist_ok=True)
     work=pathlib.Path(tempfile.mkdtemp(prefix='a500-',dir=out));share=work/'share';share.mkdir()
     env=json.loads(subprocess.check_output(['bash','-c',
@@ -140,11 +141,30 @@ channel:
         ipc('SCREENSHOT',str(work/'display.png'))
         def key(n):
             ipc('SEND_KEY',str(n),'1');time.sleep(.12);ipc('SEND_KEY',str(n),'0');time.sleep(.12)
+        if a2b:
+            def ui_state():
+                lines=[line for line in (share/'client.log').read_text().splitlines() if line.startswith('UI ')]
+                return dict((k,int(v)) for k,v in re.findall(r'(\w+)=(\d+)',lines[-1])) if lines else {}
+            for raw,name,field,value in ((0x51,'scores','panel',2),(0x51,'scores-closed','panel',0),
+                (0x50,'guide','panel',1),(0x50,'guide-closed','panel',0),
+                (0x34,'overview','overview',1),(0x34,'detail','overview',0),(0x17,'inspect','inspect',1)):
+                key(raw);wait(lambda:ui_state().get(field)==value,30,'UI '+name)
+                ipc('SCREENSHOT',str(work/('ui-'+name+'.png')))
+            for y in range(2,13):
+                key(0x4d);wait(lambda:ui_state().get('y')==y,30,'inspection row')
+            assert ui_state()['cy']==3
+            ipc('SCREENSHOT',str(work/'ui-pan-south.png'))
+            for y in range(11,-1,-1):
+                key(0x4c);wait(lambda:ui_state().get('y')==y,30,'inspection return')
+            key(0x17);wait(lambda:ui_state().get('inspect')==0,30,'inspection close')
         def client_log():return (share/'client.log').read_text()
         for round_number in range(1,4):
             wait(lambda:f'round={round_number} phase=0' in client_log(),120,'planning round')
             # FWD2 / TOGGLE / WAIT. Edit each slot through the real raw-key path.
-            key(2);key(78);key(8);key(78);key(9)
+            if a2b and round_number==1:
+                key(0x4d);key(0x40) # browse FORWARD 2, explicitly place
+            else: key(2)
+            key(78);key(8);key(78);key(9)
             ipc('SCREENSHOT',str(work/f'orders-{round_number}.png'))
             key(68);key(68) # duplicate Enter while pending must not submit twice
             wait(lambda:f'SUBMIT round={round_number} orders=1,7,8 accepted=1' in client_log(),60,'accepted programme')
@@ -228,8 +248,8 @@ channel:
         machine_log=(work/'amiberry.log').read_text()
         assert 'KS ROM v1.3' in machine_log and 'Slow memory' in machine_log
         render=[dict(zip(('draws','dirty_cells','full_boards','fields','max_fields','chip_bitplanes','chip_atlas'),map(int,m))) for m in re.findall(r'RENDER draws=(\d+) dirty_cells=(\d+) full_boards=(\d+) fields=(\d+) max_fields=(\d+) chip_bitplanes=(\d+) chip_atlas=(\d+)',client_log)]
-        assert render and render[0]['full_boards']==1,render
-        result=dict(preview_memory=preview_memory,preview_maps=[p[0] for p in previews],render=render,timing_resolution_ms=20,machine=settings,executable_bytes=(share/'botched-amiga').stat().st_size,
+        assert render and 1 <= render[0]['full_boards'] < render[0]['draws']//2,render
+        result=dict(ui_actions=[dict((k,int(v)) for k,v in re.findall(r'(\w+)=(\d+)',line)) for line in client_log.splitlines() if line.startswith('UI ')],chip_font_bytes=576,preview_memory=preview_memory,preview_maps=[p[0] for p in previews],render=render,timing_resolution_ms=20,machine=settings,executable_bytes=(share/'botched-amiga').stat().st_size,
             executable_sha256=hashlib.sha256((share/'botched-amiga').read_bytes()).hexdigest(),
             library_sha256=hashlib.sha256((WS/'repos/fujinet-nio-lib/build/fujinet-nio-amiga.a').read_bytes()).hexdigest(),
             broker_sha256=hashlib.sha256((share/'fujinet-nio.device').read_bytes()).hexdigest(),memory=usage,
@@ -260,5 +280,6 @@ if __name__=='__main__':
     group.add_argument('--a1c',action='store_true',help='mixed-human reliability scenarios')
     group.add_argument('--s1',action='store_true',help='join startup-provisioned named-bot matches')
     group.add_argument('--a2a',action='store_true',help='visual gameplay plus all nine maps on stock A500')
+    group.add_argument('--a2b',action='store_true',help='UI, inspection, palette and all nine maps')
     args=parser.parse_args()
-    main(args.a1c,args.s1,args.a2a)
+    main(args.a1c,args.s1,args.a2a,args.a2b)

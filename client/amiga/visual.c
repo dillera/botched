@@ -28,6 +28,8 @@ unsigned ba_tile_image(const ba_world *w, unsigned cell) {
     const uint8_t *a = w->attributes[i];
     if ((unsigned)a[1] * w->width + a[0] != cell)
       continue;
+    if (k == 2)
+      return BA_SPAWN + (a[2] - 1) % 4;
     if (k == 3)
       return 18 + (a[2] - 1) % 4;
     if (k == 7)
