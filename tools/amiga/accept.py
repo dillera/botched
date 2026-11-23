@@ -53,7 +53,7 @@ def main(a1c=False, s1=False, a2a=False, a2b=False):
         previews=[]
         if a2a:
             for map_id in ('training-01','laserworks-01','trapworks-01','turretworks-01','tarworks-01','shuntworks-01','crossroads-01'):
-                room=ask(dict(type='CREATE_MATCH',map_id=map_id,player_count=4,bots=3,rounds=1,planning_seconds=0))
+                room=ask(dict(type='CREATE_MATCH',map_id=map_id,player_count=4,bots=3,rounds=2 if a2b and map_id=='trapworks-01' else 1,planning_seconds=0))
                 assert room['ok'],room
                 previews.append((map_id,room['match_id']))
         if a1c:
@@ -141,6 +141,7 @@ channel:
         ipc('SCREENSHOT',str(work/'display.png'))
         def key(n):
             ipc('SEND_KEY',str(n),'1');time.sleep(.12);ipc('SEND_KEY',str(n),'0');time.sleep(.12)
+        mouse_timings=[]
         if a2b:
             def ui_state():
                 lines=[line for line in (share/'client.log').read_text().splitlines() if line.startswith('UI ')]
@@ -157,16 +158,66 @@ channel:
             for y in range(11,-1,-1):
                 key(0x4c);wait(lambda:ui_state().get('y')==y,30,'inspection return')
             key(0x17);wait(lambda:ui_state().get('inspect')==0,30,'inspection close')
+            def click(x,y):
+                target=(x,y)
+                # Relative hardware mouse injection works on KS1.3 without a
+                # guest tablet driver or host window focus automation.
+                # Amiberry clamps individual relative packets; spread motion
+                # over emulated frames rather than assuming a 250-count jump.
+                x*=2;y*=2 # KS1.3 low-resolution pointer: two counts per pixel
+                for _ in range(16):
+                    ipc('SEND_MOUSE','-50','-50','0');time.sleep(.06)
+                while x or y:
+                    dx=min(20,x);dy=min(20,y)
+                    ipc('SEND_MOUSE',str(dx),str(dy),'0');time.sleep(.06)
+                    x-=dx;y-=dy
+                time.sleep(.2)
+                count=(share/'client.log').read_text().count('UI ')
+                started=time.monotonic()
+                ipc('SEND_MOUSE','0','0','1')
+                # Observe publication from outside the guest, including queue,
+                # drawing, IPC and log propagation. Disabled Lock has no redraw.
+                while time.monotonic()-started<1.5:
+                    if (share/'client.log').read_text().count('UI ')>count:
+                        mouse_timings.append(dict(x=target[0],y=target[1],host_publication_ms=round((time.monotonic()-started)*1000)))
+                        break
+                    time.sleep(.01)
+                time.sleep(.12)
+                ipc('SEND_MOUSE','0','0','0');time.sleep(.15)
+            # Real Intuition mouse messages, not direct editor calls.
+            click(250,214);time.sleep(.5)
+            assert not ui_state()['pending'] and 'SUBMIT' not in (share/'client.log').read_text()
+            click(245,186) # explicit WAIT into first empty slot
+            wait(lambda:ui_state().get('o0')==8,30,'mouse WAIT')
+            click(20,214) # occupied first register clears
+            wait(lambda:ui_state().get('o0')==255,30,'mouse clear')
+            key(0x44) # Enter places explicit WAIT; never submits
+            wait(lambda:ui_state().get('o0')==8,30,'Enter places WAIT')
+            key(0x41)
+            wait(lambda:ui_state().get('o0')==255,30,'Backspace clears')
+            click(28,64) # board inspection
+            wait(lambda:ui_state().get('inspect')==1,30,'mouse board inspection')
+            ipc('SCREENSHOT',str(work/'ui-mouse-inspect.png'))
+            ipc('SEND_MOUSE','0','0','2');time.sleep(.15)
+            ipc('SEND_MOUSE','0','0','0')
+            wait(lambda:ui_state().get('inspect')==0,30,'right mouse inspection close')
         def client_log():return (share/'client.log').read_text()
         for round_number in range(1,4):
             wait(lambda:f'round={round_number} phase=0' in client_log(),120,'planning round')
             # FWD2 / TOGGLE / WAIT. Edit each slot through the real raw-key path.
             if a2b and round_number==1:
-                key(0x4d);key(0x40) # browse FORWARD 2, explicitly place
+                while ui_state().get('choice')!=1:
+                    previous=ui_state()['choice'];key(0x4d)
+                    wait(lambda:ui_state()['choice']!=previous,30,'browse command')
+                key(0x40) # explicitly place FORWARD 2
+            elif a2b and round_number==2:
+                click(240,74)
             else: key(2)
             key(78);key(8);key(78);key(9)
             ipc('SCREENSHOT',str(work/f'orders-{round_number}.png'))
-            key(68);key(68) # duplicate Enter while pending must not submit twice
+            if a2b and round_number==2:
+                click(250,214);click(250,214)
+            else: key(40);key(40) # duplicate Lock while pending must not submit twice
             wait(lambda:f'SUBMIT round={round_number} orders=1,7,8 accepted=1' in client_log(),60,'accepted programme')
             if round_number==1:
                 wait(lambda:re.search(r'EVENT ordinal=\d+ type=(8|9) ',client_log()),60,'authoritative movement animation')
@@ -222,6 +273,20 @@ channel:
                 # RESULT precedes planar capture; wait for completed display publication.
                 time.sleep(1)
                 ipc('SCREENSHOT',str(work/f'map-{map_id}.png'))
+                if a2b and map_id=='trapworks-01':
+                    baseline=int(re.search(r'RESULT .*?cursor=(\d+)',plog.read_text())[1])
+                    for rnd,program in ((1,(2,2,5)),(2,(2,9,9))):
+                        wait(lambda:f'round={rnd} phase=0' in plog.read_text(),120,'trap planning')
+                        for order in program:key(order)
+                        key(40)
+                        wait(lambda:f'SUBMIT round={rnd} ' in plog.read_text(),60,'trap programme')
+                    wait(lambda:'phase=2' in plog.read_text(),180,'trap completion')
+                    trap_events=check_replay(mid,plog.read_text(),baseline)
+                    assert any(e['type']=='TRAP_TRIGGERED' for e in trap_events),trap_events
+                    final_traps=ask(dict(type='GET_SNAPSHOT',match_id=mid))['snapshot']['traps']
+                    assert all(not t['armed'] for t in final_traps),final_traps
+                    (work/'trap-events.json').write_text(json.dumps(trap_events,indent=2))
+                    ipc('SCREENSHOT',str(work/'trap-disarmed.png'))
                 ipc('SEND_KEY','69','1');time.sleep(.12);ipc('SEND_KEY','69','0')
                 wait(lambda:(share/f'preview-{i}-done').exists(),60,'preview exit')
         wait(lambda:(share/'done').exists(),60,'all clean exits')
@@ -249,14 +314,14 @@ channel:
         assert 'KS ROM v1.3' in machine_log and 'Slow memory' in machine_log
         render=[dict(zip(('draws','dirty_cells','full_boards','fields','max_fields','chip_bitplanes','chip_atlas'),map(int,m))) for m in re.findall(r'RENDER draws=(\d+) dirty_cells=(\d+) full_boards=(\d+) fields=(\d+) max_fields=(\d+) chip_bitplanes=(\d+) chip_atlas=(\d+)',client_log)]
         assert render and 1 <= render[0]['full_boards'] < render[0]['draws']//2,render
-        result=dict(ui_actions=[dict((k,int(v)) for k,v in re.findall(r'(\w+)=(\d+)',line)) for line in client_log.splitlines() if line.startswith('UI ')],chip_font_bytes=576,preview_memory=preview_memory,preview_maps=[p[0] for p in previews],render=render,timing_resolution_ms=20,machine=settings,executable_bytes=(share/'botched-amiga').stat().st_size,
+        result=dict(mouse_timings=mouse_timings,ui_actions=[dict((k,int(v)) for k,v in re.findall(r'(\w+)=(\d+)',line)) for line in client_log.splitlines() if line.startswith('UI ')],chip_font_bytes=576,chip_ground_bytes=40960,preview_memory=preview_memory,preview_maps=[p[0] for p in previews],render=render,timing_resolution_ms=20,machine=settings,executable_bytes=(share/'botched-amiga').stat().st_size,
             executable_sha256=hashlib.sha256((share/'botched-amiga').read_bytes()).hexdigest(),
             library_sha256=hashlib.sha256((WS/'repos/fujinet-nio-lib/build/fujinet-nio-amiga.a').read_bytes()).hexdigest(),
             broker_sha256=hashlib.sha256((share/'fujinet-nio.device').read_bytes()).hexdigest(),memory=usage,
             stack=dict(zip(('main_measured','worker_measured','main_reserved','worker_reserved'),map(int,stacks.groups()))),
             chip_installed=524288,expansion_installed=524288,expansion_kind='A500 slow RAM (no true Fast RAM)',
             avail_before=before,avail_after_first=first,avail_after_second=last,
-            verification=['two real NIO HELLO/JOIN/MAP/SNAPSHOT instances','authoritative player positions/scores','three raw-key programmes accepted exactly once','sequential event playback','server deadline WAIT completion','raw-key quit','clean exit'])
+            verification=['two real NIO HELLO/JOIN/MAP/SNAPSHOT instances','authoritative player positions/scores','three keyboard/mouse programmes accepted exactly once' if a2b else 'three raw-key programmes accepted exactly once','sequential event playback','server deadline WAIT completion','raw-key quit','clean exit'])
         (work/'results.json').write_text(json.dumps(result,indent=2)+'\n')
         (ROOT/'build/amiga/latest-evidence').write_text(str(work)+'\n')
         print(client_log);print('PASS',work)

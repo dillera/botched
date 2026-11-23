@@ -15,11 +15,16 @@ static ULONG charloc[96];
 static UBYTE *fontdata;
 static ba_view old_view;
 static unsigned board_mode;
-static struct BitMap back, atlas;
+static struct BitMap back, atlas, ground;
+static int ground_target;
+static uint32_t ground_keys[320];
+static uint8_t danger[320], inspect_cells[320], hazard_state[72];
+static uint16_t hazard_cells[320];
+static unsigned hazard_count;
 static struct RastPort canvas;
 static UBYTE *mask;
 static uint32_t previous[320], signatures[320];
-static uint8_t dirty[320], tile_images[320], tar_tiles[320], last_groups[52];
+static uint8_t dirty[320], tile_images[320], last_groups[52];
 static int initialized, ox, oy;
 static ULONG draws, cells, full, ticks, worst;
 /* KS1.3 DOS timestamp: 20 ms resolution. Includes task preemption, not
@@ -64,9 +69,9 @@ int ba_display_open(void) {
   nw.Type = CUSTOMSCREEN;
   nw.Screen = screen;
   nw.Flags = BORDERLESS | BACKDROP | ACTIVATE | RMBTRAP | NOCAREREFRESH;
-  nw.IDCMPFlags = IDCMP_RAWKEY;
+  nw.IDCMPFlags = IDCMP_RAWKEY | IDCMP_MOUSEBUTTONS;
   ba_window = OpenWindow(&nw);
-  if (!ba_window || !bitmap(&back, 320, 256) ||
+  if (!ba_window || !bitmap(&back, 320, 256) || !bitmap(&ground, 320, 256) ||
       !bitmap(&atlas, 16, BA_ASSETS * 16) ||
       !(mask = AllocMem(BA_ASSETS * 32, MEMF_CHIP | MEMF_CLEAR)) ||
       !(fontdata = AllocMem(576, MEMF_CHIP | MEMF_CLEAR))) {
@@ -124,6 +129,7 @@ void ba_display_close(void) {
   }
   free_bitmap(&atlas, 16, BA_ASSETS * 16);
   free_bitmap(&back, 320, 256);
+  free_bitmap(&ground, 320, 256);
   if (ba_window) {
     CloseWindow(ba_window);
     ba_window = 0;
@@ -136,14 +142,16 @@ void ba_display_close(void) {
 /* Board-only clipping. UI uses independent full-screen drawing primitives. */
 static void rect(int x, int y, int w, int h, unsigned pen) {
   int right = x + w, bottom = y + h;
-  if (x < 4)
-    x = 4;
-  if (y < 40)
-    y = 40;
-  if (right > 196)
-    right = 196;
-  if (bottom > 200)
-    bottom = 200;
+  int left = ground_target ? 0 : 4, top = ground_target ? 0 : 40;
+  int maxx = ground_target ? 320 : 196, maxy = ground_target ? 256 : 200;
+  if (x < left)
+    x = left;
+  if (y < top)
+    y = top;
+  if (right > maxx)
+    right = maxx;
+  if (bottom > maxy)
+    bottom = maxy;
   if (right <= x || bottom <= y)
     return;
   SetAPen(&canvas, pen);
@@ -296,10 +304,28 @@ static void detail_tile(const ba_world *w, unsigned cell, int x, int y) {
            k = ba_terrain(w, cell % w->width, cell / w->width);
   const uint8_t *at = 0, *h = 0;
   BltBitMapRastPort(&atlas, 0, tile * 16, &canvas, x, y, 16, 16, 0xc0);
-  if (tar_tiles[cell] && k != 1) {
-    rect(x + 2, y + 14, 3, 1, 4);
-    rect(x + 10, y + 14, 3, 1, 4);
+  /* Sparse edge patterns sit below objects. Distinct geometry, not only colour.
+   */
+  if (danger[cell] & BA_TAR) {
+    rect(x + 1, y + 12, 3, 1, 9);
+    rect(x + 5, y + 14, 3, 1, 9);
+    rect(x + 9, y + 12, 3, 1, 9);
+    rect(x + 13, y + 14, 2, 1, 9);
   }
+  if (danger[cell] & BA_BURST) {
+    rect(x + 1, y + 1, 3, 1, 12);
+    rect(x + 1, y + 1, 1, 3, 12);
+    rect(x + 12, y + 14, 3, 1, 12);
+    rect(x + 14, y + 12, 1, 3, 12);
+  }
+  if (danger[cell] & BA_TURRET) {
+    rect(x + 7, y + 1, 2, 2, 4);
+    rect(x + 1, y + 7, 2, 2, 4);
+  }
+  if (danger[cell] & BA_LASER_H)
+    rect(x, y + 7, 16, 1, 12);
+  if (danger[cell] & BA_LASER_V)
+    rect(x + 7, y, 1, 16, 12);
   if (k == 9 || k == 11)
     at = ba_attribute(w, cell % w->width, cell / w->width);
   if (at && (k == 9 || k == 11))
@@ -320,9 +346,6 @@ static void detail_tile(const ba_world *w, unsigned cell, int x, int y) {
       Text(&canvas, n, 1);
     }
   }
-  if (ba_viewport.inspect && ba_related(w, ba_viewport.x, ba_viewport.y,
-                                        cell % w->width, cell / w->width))
-    outline(x, y, 16, 10);
 }
 static void overview(const ba_world *w) {
   unsigned x, y, i, k;
@@ -338,6 +361,16 @@ static void overview(const ba_world *w) {
            : k == 5 ? 13
            : k      ? 3
                     : 1);
+      if (danger[y * w->width + x] & BA_TAR)
+        rect(bx + x * 8 + 1, by + y * 8 + 6, 6, 1, 9);
+      if (danger[y * w->width + x] & BA_BURST)
+        outline(bx + x * 8 + 1, by + y * 8 + 1, 6, 12);
+      if (danger[y * w->width + x] & BA_TURRET)
+        rect(bx + x * 8 + 1, by + y * 8 + 1, 1, 1, 4);
+      if (danger[y * w->width + x] & BA_LASER_H)
+        rect(bx + x * 8, by + y * 8 + 3, 8, 1, 12);
+      if (danger[y * w->width + x] & BA_LASER_V)
+        rect(bx + x * 8 + 3, by + y * 8, 1, 8, 12);
       if (k == 3 && at)
         outline(bx + x * 8 + 1, by + y * 8 + 1, 6, 5 + at[2]);
       if (k == 9 || k == 7 || k == 11)
@@ -373,7 +406,7 @@ static void overview(const ba_world *w) {
 }
 void ba_draw(const ba_world *w, const ba_editor *e, const char *status,
              const ba_animation *a) {
-  unsigned i, j, force;
+  unsigned i, force, geometry_changed, inspect_changed;
   int changed = 0;
   ULONG begin = ba_display_time(), elapsed;
   ba_view_sync(&ba_viewport, w);
@@ -402,6 +435,8 @@ void ba_draw(const ba_world *w, const ba_editor *e, const char *status,
     BltBitMapRastPort(&back, 0, 38, ba_window->RPort, 0, 38, 320, 166, 0xc0);
     ba_ui_reset();
   }
+  inspect_changed = !initialized || old_view.inspect != ba_viewport.inspect ||
+                    old_view.x != ba_viewport.x || old_view.y != ba_viewport.y;
   board_mode = ba_viewport.panel;
   old_view = ba_viewport;
   ox =
@@ -414,32 +449,65 @@ void ba_draw(const ba_world *w, const ba_editor *e, const char *status,
       rect(4, 40, 192, 160, 0);
       ++full;
     }
-    if (!initialized || memcmp(last_groups, w->groups, sizeof last_groups)) {
-      for (i = 0; i < w->tile_count; ++i) {
-        tile_images[i] = ba_tile_image(w, i);
-        if (!initialized)
-          tar_tiles[i] = ba_tarred(w, i % w->width, i / w->width);
+    geometry_changed = !initialized || hazard_count != w->hazards_count ||
+                       memcmp(hazard_state, w->hazards, sizeof hazard_state);
+    if (geometry_changed) {
+      ba_danger(w, danger);
+      memset(hazard_cells, 0, sizeof hazard_cells);
+      for (i = 0; i < w->attributes_count; ++i) {
+        const uint8_t *at = w->attributes[i], *h;
+        unsigned k = ba_terrain(w, at[0], at[1]);
+        if (k != 9 && k != 11)
+          continue;
+        h = ba_hazard(w, k == 9 ? 1 : 2, at[2]);
+        if (h)
+          hazard_cells[at[1] * w->width + at[0]] = h[2] + h[3] * 4;
       }
+      memcpy(hazard_state, w->hazards, sizeof hazard_state);
+      hazard_count = w->hazards_count;
+    }
+    if (!initialized || memcmp(last_groups, w->groups, sizeof last_groups)) {
+      for (i = 0; i < w->tile_count; ++i)
+        tile_images[i] = ba_tile_image(w, i);
       memcpy(last_groups, w->groups, sizeof last_groups);
     }
+    if (inspect_changed) {
+      memset(inspect_cells, 0, sizeof inspect_cells);
+      if (ba_viewport.inspect)
+        for (i = 0; i < w->tile_count; ++i)
+          inspect_cells[i] = ba_related(w, ba_viewport.x, ba_viewport.y,
+                                        i % w->width, i / w->width);
+    }
+    /* Retained planar terrain: pans become one blit, not 120 library calls.
+     * Only authoritative hazard/group changes repaint the cached tiles. */
+    WaitBlit();
+    ground_target = 1;
+    canvas.BitMap = &ground;
     for (i = 0; i < w->tile_count; ++i) {
-      signatures[i] = tile_images[i] + 1;
+      uint32_t key = tile_images[i] + 1 + ((uint32_t)danger[i] << 8) +
+                     ((uint32_t)hazard_cells[i] << 16);
+      if (!initialized || key != ground_keys[i])
+        detail_tile(w, i, (i % w->width) * 16, (i / w->width) * 16);
+      ground_keys[i] = key;
+      signatures[i] = key;
       if (ba_viewport.inspect) {
-        if (ba_related(w, ba_viewport.x, ba_viewport.y, i % w->width,
-                       i / w->width))
-          signatures[i] += 0x10000;
-        if (i == ba_viewport.y * w->width + ba_viewport.x)
-          signatures[i] += 0x20000;
+        if (inspect_cells[i])
+          signatures[i] += 0x1000000;
+        if (i == (unsigned)ba_viewport.y * w->width + ba_viewport.x)
+          signatures[i] += 0x2000000;
       }
     }
-    for (j = 0; j < w->hazards_count; ++j)
-      for (i = 0; i < w->attributes_count; ++i) {
-        const uint8_t *at = w->attributes[i], *h = w->hazards[j];
-        unsigned cell = at[1] * w->width + at[0];
-        unsigned kind = ba_terrain(w, at[0], at[1]);
-        if (at[2] == h[1] && kind == (h[0] == 1 ? 9 : 11))
-          signatures[cell] += h[2] * 256 + h[3] * 1024;
-      }
+    WaitBlit();
+    ground_target = 0;
+    canvas.BitMap = &back;
+    if (force && !ba_viewport.overview) {
+      unsigned width = w->width < 12 ? w->width : 12,
+               height = w->height < 10 ? w->height : 10;
+      BltBitMapRastPort(&ground, ba_viewport.cx * 16, ba_viewport.cy * 16,
+                        &canvas, ox + ba_viewport.cx * 16,
+                        oy + ba_viewport.cy * 16, width * 16, height * 16,
+                        0xc0);
+    }
     if (w->valid)
       objects(w, a, 0);
     for (i = 0; i < w->tile_count; ++i) {
@@ -447,8 +515,13 @@ void ba_draw(const ba_world *w, const ba_editor *e, const char *status,
       dirty[i] = force || previous[i] != signatures[i];
       if (dirty[i]) {
         ++changed;
-        if (!ba_viewport.overview && x >= 4 && x < 196 && y >= 40 && y < 200)
-          detail_tile(w, i, x, y);
+        if (!ba_viewport.overview && x >= 4 && x < 196 && y >= 40 && y < 200) {
+          if (!force)
+            BltBitMapRastPort(&ground, (i % w->width) * 16, (i / w->width) * 16,
+                              &canvas, x, y, 16, 16, 0xc0);
+          if (ba_viewport.inspect && inspect_cells[i])
+            outline(x, y, 16, 10);
+        }
       }
     }
     if (changed) {
@@ -485,7 +558,8 @@ void ba_draw(const ba_world *w, const ba_editor *e, const char *status,
 }
 void ba_display_metrics(void) {
   printf("RENDER draws=%lu dirty_cells=%lu full_boards=%lu fields=%lu "
-         "max_fields=%lu chip_bitplanes=81920 chip_atlas=%lu chip_font=576\n",
+         "max_fields=%lu chip_bitplanes=81920 chip_atlas=%lu chip_font=576 "
+         "chip_ground=40960\n",
          draws, cells, full, ticks, worst, (ULONG)BA_ASSETS * 160);
 }
 void ba_capture(const ba_world *w) {

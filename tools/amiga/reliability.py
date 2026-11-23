@@ -89,7 +89,7 @@ def exercise(work,share,cases,ask,start,jp,bp,nio,proxy):
                 for slot,k in enumerate(orders):
                     key(k)
                     if slot!=2:key(78)
-                key(68);key(68)
+                key(40);key(40)
                 wait(lambda:f'SUBMIT round={rnd} ' in log(),90,'accepted target programme')
         if c['name']=='stall':
             os.kill(nio.pid,signal.SIGSTOP)

@@ -4,7 +4,7 @@
 #include <stdio.h>
 #include <string.h>
 static struct RastPort *rp, *target;
-static uint32_t cache[5];
+static uint32_t cache[12];
 static unsigned valid, copies, old_choice = 255;
 static int copy_rects[16][4];
 static const char *orders[] = {"FORWARD 1", "FORWARD 2",  "BACK 1",
@@ -271,7 +271,10 @@ static void side(const ba_world *w, const ba_editor *e) {
   }
   h = hash(h, &w->winners, 1);
   if (ba_viewport.inspect || ba_viewport.panel == 2) {
-    h = hash(h, w, sizeof *w);
+    h = hash(h, w->players, sizeof w->players);
+    h = hash(h, w->crates, w->crates_count * 7);
+    h = hash(h, w->hazards, w->hazards_count * 4);
+    h = hash(h, w->groups, w->groups_count * 2);
   }
   if (!region(1, h, ba_viewport.panel ? 0 : 200, 40,
               ba_viewport.panel ? 320 : 116, 160)) {
@@ -331,19 +334,26 @@ static void programme(const ba_world *w, const ba_editor *e,
   uint32_t h = hash(1, e, sizeof *e);
   h = hash(h, w->snapshot, 23);
   h = hash(h, status, strlen(status));
-  if (!region(2, h, 0, 204, 320, 24))
-    return;
   for (i = 0; i < 3; ++i) {
     int x = 4 + i * 73;
     unsigned selected = i == e->slot;
+    if (!region(8 + i, e->orders[i] + ((uint32_t)selected << 8), x, 204, 69,
+                24))
+      continue;
     rect(x, 204, 69, 24, selected ? 2 : 1);
     frame(x, 204, 69, 24, selected ? 5 : 3);
     sprintf(b, "%ld", (long)i + 1);
     text(x + 3, 207, b, 15);
-    ba_ui_icon(rp, BA_ORDER + e->orders[i], x + 9, 210);
-    text(x + 27, 213, ba_order_name(e->orders[i]), 5);
+    if (e->orders[i] < 9)
+      ba_ui_icon(rp, BA_ORDER + e->orders[i], x + 9, 210);
+    text(x + 27, 213, e->orders[i] < 9 ? ba_order_name(e->orders[i]) : "----",
+         5);
+    publish(x, 204, 69, 24);
   }
-  rect(224, 204, 92, 24, (!e->locked && !e->pending) ? 13 : 1);
+  if (!region(11, h, 224, 204, 92, 24))
+    return;
+  rect(224, 204, 92, 24,
+       (!e->locked && !e->pending && ba_complete(e)) ? 13 : 1);
   frame(224, 204, 92, 24, 3);
   text(229, 207,
        e->pending                        ? "SENDING"
@@ -352,14 +362,16 @@ static void programme(const ba_world *w, const ba_editor *e,
        : w->snapshot[0] == 1             ? "REPLAY"
        : !strncmp(status, "Accepted", 8) ? "ACCEPTED"
        : e->locked                       ? (ready ? "LOCKED" : "NOT EDITABLE")
-                                         : "ENTER: LOCK",
+       : ba_complete(e)                  ? "L: LOCK"
+                                         : "LOCK DISABLED",
        5);
   text(229, 217,
        e->pending            ? "PLEASE WAIT"
        : w->snapshot[0] == 1 ? "SERVER EVENTS"
-                             : "3 ORDERS",
+       : ba_complete(e)      ? "3 ORDERS"
+                             : "FILL 3 SLOTS",
        15);
-  publish(0, 204, 320, 24);
+  publish(224, 204, 92, 24);
 }
 void ba_ui_draw(struct RastPort *canvas, struct RastPort *screen,
                 const ba_world *w, const ba_editor *e, const char *status) {
@@ -375,9 +387,9 @@ void ba_ui_draw(struct RastPort *canvas, struct RastPort *screen,
   side(w, e);
   programme(w, e, status);
   if (ba_viewport.panel == 1) {
-    strcpy(lines[0], "3 PIPS = DURABILITY. GOLD BOX = NEUTRAL CRATE.");
-    strcpy(lines[1], "PICKUP/OWN-DOCK DELIVERY ARE AUTOMATIC.");
-    strcpy(lines[2], "F1 / ESC RETURN. SERVER CLOCK CONTINUES.");
+    strcpy(lines[0], "RED CORNERS=ARMED  PURPLE=TAR  LINE=LASER");
+    strcpy(lines[1], "DOTS=TURRET RANGE. GUIDES STAY BELOW OBJECTS.");
+    strcpy(lines[2], "F1 / ESC / RIGHT CLICK RETURN. CLOCK CONTINUES.");
   } else if (ba_viewport.panel == 2) {
     strcpy(lines[0], "++ MEANS SCORE ABOVE 99; EXACT VALUES ABOVE.");
     strcpy(lines[1], "PLY1-PLY4 ARE LOCAL LABELS, NOT BOT NAMES.");
@@ -385,7 +397,7 @@ void ba_ui_draw(struct RastPort *canvas, struct RastPort *screen,
   } else if (ba_viewport.inspect) {
     strcpy(lines[0], "INSPECTION: OUTLINE SHOWS LINKS / HAZARD RANGE.");
     strcpy(lines[1], "ARROWS MOVE CURSOR / PAN. NO OUTCOME PREDICTION.");
-    strcpy(lines[2], "I / ESC RETURN   V MAP   F2 EXACT SCORES");
+    strcpy(lines[2], "I / ESC / RIGHT CLICK RETURN   V MAP");
   } else {
     strncpy(lines[0],
             (!w->valid || e->pending || e->locked)
@@ -393,14 +405,15 @@ void ba_ui_draw(struct RastPort *canvas, struct RastPort *screen,
                 : explain[ba_viewport.choice],
             53);
     lines[0][53] = 0;
-    strcpy(lines[1], "UP/DN CHOOSE SPACE SET TAB SLOT ENTER LOCK");
+    strcpy(lines[1], "UP/DN CHOOSE SPACE/ENTER SET TAB SLOT L LOCK");
     strcpy(lines[2], "V MAP I INSPECT F1 GUIDE F2 SCORES ESC QUIT");
   }
-  h = hash(1, lines, sizeof lines);
-  if (region(3, h, 0, 230, 320, 26)) {
-    for (i = 0; i < 3; ++i)
+  for (i = 0; i < 3; ++i) {
+    h = hash(1, lines[i], strlen(lines[i]));
+    if (region(5 + i, h, 0, 230 + i * 8, 320, 8)) {
       text(4, 231 + i * 8, lines[i], i ? 4 : 5);
-    publish(0, 230, 320, 26);
+      publish(0, 230 + i * 8, 320, 8);
+    }
   }
   h = hash(1, &ba_viewport, sizeof ba_viewport);
   if (region(4, h, 0, 200, 320, 4)) {

@@ -1,4 +1,5 @@
 #include "view.h"
+#include <string.h>
 static unsigned limit(int v, unsigned max) {
   return v < 0 ? 0 : (unsigned)v > max ? max : (unsigned)v;
 }
@@ -52,6 +53,12 @@ unsigned ba_view_key(ba_view *v, ba_editor *e, const ba_world *w,
     v->inspect ^= 1;
     return BA_CHANGED;
   }
+  if (key == BA_LOCK_KEY) {
+    if (ba_edit(e, key) != 2)
+      return 0;
+    e->pending = 1;
+    return BA_SEND | BA_CHANGED;
+  }
   if (v->inspect) {
     if (key == 0x4c && v->y)
       --v->y;
@@ -79,7 +86,7 @@ unsigned ba_view_key(ba_view *v, ba_editor *e, const ba_world *w,
     v->choice = (v->choice + (key == 0x4c ? 8 : 1)) % 9;
     return BA_CHANGED;
   }
-  if (key == 0x40)
+  if (key == 0x40 || key == 0x44)
     key = v->choice + 1;
   edit = ba_edit(e, key);
   if (edit && key >= 1 && key <= 9)
@@ -89,6 +96,43 @@ unsigned ba_view_key(ba_view *v, ba_editor *e, const ba_world *w,
     return BA_SEND | BA_CHANGED;
   }
   return edit ? BA_CHANGED : 0;
+}
+unsigned ba_view_click(ba_view *v, ba_editor *e, const ba_world *w, int x,
+                       int y) {
+  unsigned slot;
+  int bx, by, size;
+  ba_view_sync(v, w);
+  if (v->panel)
+    return 0;
+  if (y >= 204 && y < 228) {
+    if (x >= 224 && x < 316)
+      return ba_view_key(v, e, w, BA_LOCK_KEY);
+    if (x >= 4 && x < 219) {
+      slot = (x - 4) / 73;
+      if ((x - 4) % 73 < 69 && ba_slot(e, slot))
+        return BA_CHANGED;
+    }
+    return 0;
+  }
+  if (!v->inspect && x >= 202 && x < 314 && y >= 54 && y < 198)
+    return ba_view_key(v, e, w, 1 + (y - 54) / 16);
+  if (!w->map_valid || x < 4 || x >= 196 || y < 40 || y >= 200)
+    return 0;
+  size = v->overview ? 8 : 16;
+  bx = 4 + (w->width * size < 192 ? (192 - w->width * size) / 2 : 0);
+  by = 40 + (w->height * size < 160 ? (160 - w->height * size) / 2 : 0);
+  if (x < bx || y < by)
+    return 0;
+  x = (x - bx) / size + (v->overview ? 0 : v->cx);
+  y = (y - by) / size + (v->overview ? 0 : v->cy);
+  if (x >= w->width || y >= w->height)
+    return 0;
+  v->x = x;
+  v->y = y;
+  v->inspect = 1;
+  if (v->overview)
+    ba_view_center(v, w, x, y);
+  return BA_CHANGED;
 }
 void ba_decimal(uint32_t value, char out[11]) {
   char reverse[10];
@@ -187,4 +231,44 @@ int ba_related(const ba_world *w, unsigned sx, unsigned sy, unsigned x,
     return 0;
   return (k == 6 && (t == 5 || t == 6)) || (k == 13 && t == 9) ||
          (k == 12 && t == 11);
+}
+
+/* Potential hazard geometry, not predicted victims. Objects do not truncate
+ * these guides: they may move before the authoritative machinery phase. */
+void ba_danger(const ba_world *w, uint8_t out[320]) {
+  unsigned sx, sy, x, y, k, flag;
+  const uint8_t *a, *h;
+  memset(out, 0, 320);
+  for (sy = 0; sy < w->height; ++sy)
+    for (sx = 0; sx < w->width; ++sx) {
+      k = ba_terrain(w, sx, sy);
+      flag = 0;
+      if (k == 10)
+        flag = BA_TAR;
+      else if (k == 11)
+        flag = BA_TURRET;
+      else if (k == 7) {
+        a = ba_attribute(w, sx, sy);
+        if (a)
+          flag = (a[4] & 1) ? BA_LASER_H : BA_LASER_V;
+      } else if (k == 9) {
+        a = ba_attribute(w, sx, sy);
+        h = a ? ba_hazard(w, 1, a[2]) : 0;
+        if (h && h[2])
+          flag = BA_BURST;
+      }
+      if (!flag)
+        continue;
+      for (y = 0; y < w->height; ++y)
+        for (x = 0; x < w->width; ++x)
+          if ((x != sx || y != sy) && ba_related(w, sx, sy, x, y)) {
+            unsigned t = ba_terrain(w, x, y);
+            if (flag == BA_BURST && t == 1)
+              continue;
+            if (flag == BA_TAR &&
+                (t == 1 || t == 7 || t == 8 || t == 9 || t == 10 || t == 11))
+              continue;
+            out[y * w->width + x] |= flag;
+          }
+    }
 }

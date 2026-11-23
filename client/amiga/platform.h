@@ -15,6 +15,8 @@ void ba_display_metrics(void);
 unsigned long ba_display_time(void);
 void ba_ui_draw(struct RastPort *, struct RastPort *, const ba_world *,
                 const ba_editor *, const char *);
+extern unsigned ba_input_kind;
+unsigned long ba_input_latency(void);
 unsigned ba_input(ba_editor *, const ba_world *);
 void ba_ui_reset(void);
 void ba_ui_icon(struct RastPort *, unsigned, int, int);

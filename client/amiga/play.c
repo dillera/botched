@@ -8,30 +8,50 @@ const char *ba_order_name(unsigned n) {
 void ba_editor_sync(ba_editor *e, const ba_world *w) {
   if (e->round != w->snapshot[1]) {
     e->round = w->snapshot[1];
-    e->orders[0] = e->orders[1] = e->orders[2] = 8;
+    e->orders[0] = e->orders[1] = e->orders[2] = BA_EMPTY;
     e->slot = 0;
     e->pending = 0;
   }
   e->locked = !w->valid || w->snapshot[0] != 0 || !w->player ||
               !!(w->snapshot[22] & (1u << (w->player - 1)));
 }
+int ba_complete(const ba_editor *e) {
+  return e->orders[0] < 9 && e->orders[1] < 9 && e->orders[2] < 9;
+}
+int ba_place(ba_editor *e, unsigned order) {
+  unsigned i, slot;
+  if (e->pending || e->locked || order > 8)
+    return 0;
+  for (i = 0; i < 3; ++i) {
+    slot = (e->slot + i) % 3;
+    if (e->orders[slot] == BA_EMPTY) {
+      e->orders[slot] = order;
+      e->slot = slot;
+      return 1;
+    }
+  }
+  return 0; /* Full means full: never silently replace an order. */
+}
+int ba_slot(ba_editor *e, unsigned slot) {
+  if (e->pending || e->locked || slot >= 3)
+    return 0;
+  e->slot = slot;
+  e->orders[slot] = BA_EMPTY;
+  return 1;
+}
 int ba_edit(ba_editor *e, unsigned key) {
   if (e->pending || e->locked)
     return 0;
-  if (key == 0x44)
-    return 2;
+  if (key == BA_LOCK_KEY)
+    return ba_complete(e) ? 2 : 0;
   if (key == 0x4f)
     e->slot = (e->slot + 2) % 3;
   else if (key == 0x4e || key == 0x42)
     e->slot = (e->slot + 1) % 3;
-  else if (key == 0x4c)
-    e->orders[e->slot] = (e->orders[e->slot] + 1) % 9;
-  else if (key == 0x4d)
-    e->orders[e->slot] = (e->orders[e->slot] + 8) % 9;
   else if (key >= 1 && key <= 9)
-    e->orders[e->slot] = key - 1;
+    return ba_place(e, key - 1);
   else if (key == 0x41)
-    e->orders[e->slot] = 8;
+    return ba_slot(e, e->slot);
   else
     return 0;
   return 1;

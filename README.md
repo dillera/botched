@@ -24,7 +24,7 @@ The headless prototype reuses `fn_stream_*` assembly and fits K4 on shipped maps
 **Amiga A1c:** [Mixed-client reliability acceptance](docs/amiga/a1c-review.md) covers gameplay, exact request recovery and cooperative shutdown on a stock A500/KS1.3 with 512 KB Chip + 512 KB slow expansion RAM. Broker blocking and unconfirmed remote Close limits are documented.
 **Amiga A2a:** [Graphical tiles, dirty-region rendering and authoritative event animation](docs/amiga/a2a-review.md)
 adds a 16-colour PAL presentation on the same minimum A500, with screenshots and measured resources.
-**Amiga A2b slice 1:** [UI/viewport review and minimum-machine evidence](docs/amiga/a2b-slice1-review.md). Four-character labels, two-digit scores with exact-value access, a visible command palette, larger tiles, inspection and priority preview. Event narration/animation redesign remains the next separately approved slice.
+**Amiga A2b slice 1:** [UI/viewport review and minimum-machine evidence](docs/amiga/a2b-slice1-review.md). Four-character labels, two-digit scores with exact-value access, a visible command palette, larger tiles, inspection and priority preview. The [interaction/hazard correction](docs/amiga/a2b-slice1-corrections.md) adds mouse input, empty orders, persistent hazard guides and faster cached panning. Event narration/animation redesign remains the next separately approved slice.
 **Not built yet:** complete retro gameplay clients, physical constrained-client acceptance, authentication beyond per-seat session tokens,
 and host persistence. See [`docs/binary-protocol-requirements.md`](docs/binary-protocol-requirements.md).
 
@@ -56,8 +56,12 @@ BT:botched-amiga tcp://127.0.0.1:7879 m1
 ```
 
 Amiga controls: Up/Down browses the nine labelled commands; Space puts the chosen
-command in the active slot. Tab or Left/Right selects a slot; 1–9 are direct
-shortcuts; Backspace restores WAIT. Enter submits and locks the three orders.
+command in the selected empty slot (or the next empty slot). Enter also places;
+Tab or Left/Right selects a slot; 1–9 are direct shortcuts. All slots start empty:
+WAIT must be selected explicitly. Backspace clears the selected slot. **L** or
+clicking **LOCK** submits only when all three slots are filled. Click a command to
+place it, or a programme slot to select/clear it. Click the board to inspect;
+right-click closes inspection or a panel. Mouse and keyboard share the same editor.
 `V` toggles the full-map overview, `I` enables cursor inspection/panning, `F1`
 shows the field guide, and `F2` shows exact scores. Escape closes an overlay or
 inspection first, then quits from the main view. `PLY1`–`PLY4` are local display

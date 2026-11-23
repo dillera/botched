@@ -5,7 +5,7 @@
 #include <stdio.h>
 #include <string.h>
 static ba_world shown, incoming;
-static ba_editor editor = {{8, 8, 8}, 0, 0, 1, 0};
+static ba_editor editor = {{BA_EMPTY, BA_EMPTY, BA_EMPTY}, 0, 0, 1, 0};
 static ba_replay replay;
 static ba_notice notice;
 static ba_animation animation;
@@ -232,10 +232,15 @@ int main(int argc, char **argv) {
       unsigned long draw_start = ba_display_time();
       ba_draw(&shown, &editor, status, &animation);
       if (capture && (actions & BA_CHANGED)) {
-        printf("UI panel=%u inspect=%u overview=%u x=%u y=%u cx=%u cy=%u choice=%u slot=%u pending=%u fields=%lu\n",
+        printf("UI panel=%u inspect=%u overview=%u x=%u y=%u cx=%u cy=%u "
+               "choice=%u slot=%u pending=%u o0=%u o1=%u o2=%u mx=%d my=%d "
+               "source=%u dispatch_ms=%lu fields=%lu\n",
                ba_viewport.panel, ba_viewport.inspect, ba_viewport.overview,
                ba_viewport.x, ba_viewport.y, ba_viewport.cx, ba_viewport.cy,
-               ba_viewport.choice, editor.slot, editor.pending, ba_display_time()-draw_start);
+               ba_viewport.choice, editor.slot, editor.pending, editor.orders[0],
+               editor.orders[1], editor.orders[2], ba_window->MouseX,
+               ba_window->MouseY, ba_input_kind, ba_input_latency(),
+               ba_display_time()-draw_start);
         fflush(stdout);
       }
       redraw = 0;

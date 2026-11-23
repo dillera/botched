@@ -174,13 +174,15 @@ int main() {
       for (unsigned round = 1; round <= 3; ++round) {
         ba_editor edit{};
         ba_editor_sync(&edit, &world);
-        check(!edit.locked && edit.orders[0] == 8, "editor reset");
+        check(!edit.locked && edit.orders[0] == BA_EMPTY, "editor reset");
         check(ba_edit(&edit, 2) == 1 && ba_edit(&edit, 0x4e) == 1 &&
                   ba_edit(&edit, 8) == 1,
               "edit controls");
-        check(ba_edit(&edit, 0x44) == 2, "enter");
+        check(ba_edit(&edit, BA_LOCK_KEY) == 0, "incomplete lock disabled");
+        check(ba_edit(&edit, 9) == 1, "explicit WAIT");
+        check(ba_edit(&edit, BA_LOCK_KEY) == 2, "explicit lock");
         edit.pending = 1;
-        check(ba_edit(&edit, 1) == 0 && ba_edit(&edit, 0x44) == 0,
+        check(ba_edit(&edit, 1) == 0 && ba_edit(&edit, BA_LOCK_KEY) == 0,
               "pending changed");
         if (round != 2) {
           uint8_t b[18];

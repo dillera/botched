@@ -12,6 +12,15 @@ enum { BA_QUIT = 1, BA_REFRESH = 2, BA_CHANGED = 4, BA_SEND = 8 };
 void ba_view_sync(ba_view *, const ba_world *);
 void ba_view_center(ba_view *, const ba_world *, int x, int y);
 unsigned ba_view_key(ba_view *, ba_editor *, const ba_world *, unsigned key);
+unsigned ba_view_click(ba_view *, ba_editor *, const ba_world *, int x, int y);
+enum {
+  BA_TAR = 1,
+  BA_BURST = 2,
+  BA_LASER_H = 4,
+  BA_LASER_V = 8,
+  BA_TURRET = 16
+};
+void ba_danger(const ba_world *, uint8_t out[320]);
 void ba_decimal(uint32_t value, char out[11]);
 void ba_score_text(uint32_t score, char out[3]);
 const char *ba_player_label(unsigned player);
