@@ -1,7 +1,7 @@
 {
   "server": {
     "max_concurrent_matches": 8,
-    "default_planning_seconds": 60,
+    "default_planning_seconds": 90,
     "finished_retention_seconds": 300
   },
   "offerings": [
@@ -18,7 +18,7 @@
       ],
       "rounds": 30,
       "target_score": 30,
-      "planning_seconds": 60
+      "planning_seconds": 90
     },
     {
       "id": "human-duel",
@@ -29,7 +29,7 @@
       "bots": [],
       "rounds": 12,
       "target_score": 0,
-      "planning_seconds": 60
+      "planning_seconds": 90
     }
   ]
 }
