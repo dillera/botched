@@ -1,7 +1,8 @@
 # Botched! binary wire protocol — normative requirements for M1
 
-**Status:** B1 accepted; B2 implemented for review, 2026-11-22. B3–B5 not started.
-B2 evidence and explicit budget deviations: [implementation review](binary-v1/b2-review.md).
+**Status:** B1/B2 accepted; B3 implemented for review, 2026-11-23. B4/B5 not started.
+B2 evidence and explicit budget deviations: [codec review](binary-v1/b2-review.md).
+B3 direct TCP / Linux terminal and SDL acceptance: [transport review](binary-v1/b3-review.md).
 **Authority:** current G1–G4 game implementation and the owner-confirmed decisions below.
 **Rules version:** `botched/1`, the initial **unreleased** ruleset; no `botched/2` migration.
 **Binary wire:** major 1, minor 0, independent of the rules label. Existing JSON remains unchanged.
@@ -575,9 +576,9 @@ without making arbitrary unknown opcodes legal. B1 assigns ff to this sentinel; 
   A restarted host has no room/session persistence; report that failure rather than replaying
   an old submission into a newly created match.
 
-## 11. Bounded implementation sequence (B1 accepted; B2 for review; B3–B5 not started)
+## 11. Bounded implementation sequence (B1/B2 accepted; B3 for review; B4/B5 not started)
 
-Each step ends with a reviewable commit and its focused tests. B2 stops before transport integration in B3. No renderer, bot/engine rewrite, new firmware game service or platform-wide rollout is
+Each step ends with a reviewable commit and its focused tests. B3 stops before NIO integration in B4. No renderer, bot/engine rewrite, new firmware game service or platform-wide rollout is
 part of these steps.
 
 | Step | Deliverable / boundary | Required evidence before proceeding |

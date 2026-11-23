@@ -509,6 +509,7 @@ struct App {
     client::ClientOptions opt;
     client::ClientResult res;
     client::Connection conn;
+    explicit App(const client::ClientOptions& options) : opt(options), conn(options.binary) {}
     std::string err;       // last network error
     std::string fatal;     // set when the session cannot continue
     std::string match_id, session;
@@ -1595,8 +1596,7 @@ bool screenshot(SDL_Renderer* r, const char* path) {
 }  // namespace
 
 client::ClientResult run_ui(const client::ClientOptions& opt) {
-    App app;
-    app.opt = opt;
+    App app(opt);
     app.play.set_speed(opt.anim_speed);
     auto fail = [&](const std::string& m) { app.res.ok = false; app.res.error = m; return app.res; };
     if (SDL_Init(SDL_INIT_VIDEO | SDL_INIT_TIMER) < 0) return fail(std::string("SDL: ") + SDL_GetError());

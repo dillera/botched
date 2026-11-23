@@ -16,7 +16,8 @@ void usage() {
     std::cerr <<
         "usage: botched-client (--create | --join MATCH_ID) [options]\n"
         "  --host H              server host (default 127.0.0.1)\n"
-        "  --port N              server port (default 7878)\n"
+        "  --port N              server port (default 7878 JSON / 7879 binary)\n"
+        "  --wire json|binary    transport encoding (default json)\n"
         "  --create              create a match and join it as player 1\n"
         "    --players N         seats, 2-4 (default 2)\n"
         "    --map-id ID         map to play (see --list-maps; default training-01)\n"
@@ -41,6 +42,7 @@ void usage() {
 int main(int argc, char** argv) {
     botched::client::ClientOptions opt;
     opt.tty = isatty(1) != 0;
+    bool explicit_port = false;
     bool ascii = false, no_color = std::getenv("NO_COLOR") != nullptr;
     {
         const char* loc = std::getenv("LC_ALL");
@@ -57,7 +59,12 @@ int main(int argc, char** argv) {
             return argv[++i];
         };
         if (a == "--host") opt.host = next();
-        else if (a == "--port") opt.port = std::atoi(next());
+        else if (a == "--port") { opt.port = std::atoi(next()); explicit_port = true; }
+        else if (a == "--wire") {
+            std::string wire = next();
+            if (wire != "json" && wire != "binary") { usage(); return 2; }
+            opt.binary = wire == "binary";
+        }
         else if (a == "--create") opt.create = true;
         else if (a == "--join") opt.match_id = next();
         else if (a == "--players") opt.players = std::atoi(next());
@@ -86,6 +93,7 @@ int main(int argc, char** argv) {
         else { usage(); return 2; }
     }
     if (!opt.list_maps && !opt.create && opt.match_id.empty()) { usage(); return 2; }
+    if (opt.binary && !explicit_port) opt.port = 7879;
     opt.unicode = opt.tty && !ascii;
     opt.color = opt.tty && !no_color;
     if (opt.bot) opt.refresh_ms = 200;

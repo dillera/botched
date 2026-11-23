@@ -12,9 +12,10 @@ reference simulator, covered by tests for all 14 acceptance categories of the sp
 ASan/UBSan; identical results in Debug and Release).
 
 **M1-A (minimal playable POSIX multiplayer) is built:** a TCP server and an interactive terminal
-client play a complete 2-4 player match (see "Play a match" below). **Not built yet:** the NIO
-transport, retro clients and the binary wire protocol (`docs/binary-protocol-requirements.md`),
-reconnection, authentication beyond per-seat session tokens, and host persistence.
+client play a complete 2-4 player match (see "Play a match" below). **B3 is implemented for review:** an optional binary TCP listener and Linux terminal/SDL client
+mode share the existing server and UI. Binary sessions support transient disconnect recovery.
+**Not built yet:** NIO transport, retro clients, authentication beyond per-seat session tokens,
+and host persistence. See [`docs/binary-protocol-requirements.md`](docs/binary-protocol-requirements.md).
 
 ## Play a match (2-4 players, separate terminals)
 
@@ -32,6 +33,29 @@ Build once (`cmake -S . -B build && cmake --build build -j`), then:
 # Terminals 3 and 4: join (use --host and --port when the server is on another machine)
 ./build/botched-client --join m1
 ```
+
+### Mixed JSON and binary play (B3)
+
+The JSON service remains the default on port 7878. Enable a separate binary listener explicitly:
+
+```sh
+./build/botched-tcp-server --binary-port 7879
+./build/botched-client --wire binary --ui --create --players 2
+./build/botched-client --wire json --ui --join m1
+```
+
+Use the match ID printed by the creating client. `--wire binary` also works without `--ui`, with
+`--bot`, and with `--list-maps`. Both modes use the same board, orders, narration and playback.
+The client defaults to JSON/7878; binary defaults to 7879. `--port N` overrides either default,
+and `--host H` applies to both. There is no protocol autodetection on the JSON port.
+
+Binary requests resume and retry once on a transient socket failure, retaining exact exchange
+bytes and the server-issued recovery secret in memory. The adapter lease is 30 minutes. A lost
+CREATE/JOIN response is recoverable within that lease; expiry reports uncertainty instead of
+creating another room/seat. Quitting the process discards recovery state; restarting the server
+still loses rooms. This does not add persistent reconnect or a new authentication system.
+
+[B3 review and verification](docs/binary-v1/b3-review.md) records transport limits and acceptance.
 
 ### Maps
 
@@ -221,7 +245,7 @@ SDL2_ttf at build time (found automatically; disable with `-DBOTCHED_SDL=OFF`) a
 --screenshot out.bmp ...`.
 
 **Limits of this MVP:** there is no authentication beyond the per-seat session token, so keep the
-server on `127.0.0.1` or a trusted LAN; a client that quits or crashes cannot rejoin (its robot waits
+server on `127.0.0.1` or a trusted LAN; a client process that quits or crashes cannot rejoin through the CLI (its robot waits
 every round); one server hosts up to 16 matches; no TLS.
 
 Tests: `ctest --test-dir build` (the TCP host and a full match over real sockets are in `tests/test_tcp.cpp`).
@@ -234,11 +258,12 @@ Tests: `ctest --test-dir build` (the TCP host and a full match over real sockets
 | `server/` | **Orchestration**: rooms, sessions, planning deadlines, the logical API of spec 9.2. JSON in, JSON out. | rules |
 | `apps/botched_server_main.cpp` | Host: JSON lines over stdin/stdout. The seam where a NIO channel adapter attaches later. | server |
 | `server/tcp_host.*`, `apps/botched_tcpd_main.cpp` | **TCP host**: single-threaded `poll()` loop around `GameServer`; advances planning deadlines without requests. | server |
-| `apps/client_core.*`, `apps/botched_client_main.cpp` | **Terminal client** (and `--bot` auto-play) over the JSON API. | server, sim lib |
+| `apps/client_core.*`, `apps/botched_client_main.cpp` | **Terminal client** (and `--bot` auto-play); JSON default, `--wire binary` optional. | server, sim lib |
+| `server/binary_tcp_host.*`, `apps/binary_connection.*` | Separate binary TCP listener and resumable Linux connection using the frozen B2 codec/bridge. | binary codec, server |
 | `apps/botched_sim.cpp`, `bot.*`, `ascii_render.*`, `sim_runner.*` | **POSIX reference app**: four simulated players play a full match through the public API. | server |
 | `tests/` | doctest suites mapped to spec section 11. | all |
 
-Transport (SLIP/FujiBus/NIO) and platform clients are *not* part of this repository's current
+Transport (SLIP/FujiBus/NIO) and retro platform clients are *not* part of this repository's current
 scope; they are milestone M1/M2 and sit above `GameServer::handle()`.
 
 ## Build and test

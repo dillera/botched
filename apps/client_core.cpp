@@ -1,4 +1,5 @@
 #include "client_core.hpp"
+#include "binary_connection.hpp"
 
 #include <arpa/inet.h>
 #include <netdb.h>
@@ -267,15 +268,18 @@ std::vector<std::string> summarize_events(const Json& events) {
 
 // ------------------------------------------------------------------ connection
 
+Connection::Connection(bool binary) { if(binary) binary_ = std::make_unique<BinaryConnection>(); }
 Connection::~Connection() { close(); }
 
 void Connection::close() {
+    if(binary_) binary_->close_socket();
     if (fd_ >= 0) ::close(fd_);
     fd_ = -1;
     buf_.clear();
 }
 
 bool Connection::open(const std::string& host, int port, std::string& error) {
+    if (binary_) { snapshot_match_.clear(); snapshot_version_ = 0; return binary_->open(host, port, error); }
     addrinfo hints{};
     hints.ai_family = AF_INET;
     hints.ai_socktype = SOCK_STREAM;
@@ -297,6 +301,41 @@ bool Connection::open(const std::string& host, int port, std::string& error) {
 }
 
 std::optional<Json> Connection::request(const Json& req, std::string& error, int timeout_ms) {
+    if (binary_) {
+        // Present the existing semantic API to both UIs. Drain bounded wire windows up to
+        // the snapshot they are rendering, so playback never skips a paged version range.
+        const auto deadline = std::chrono::steady_clock::now() + std::chrono::milliseconds(timeout_ms);
+        auto reply = binary_->request(req, error, timeout_ms);
+        if (!reply) return std::nullopt;
+        if (const auto* snapshot = reply->find("snapshot")) {
+            snapshot_match_ = snapshot->get_string("match_id").value_or("");
+            snapshot_version_ = static_cast<int>(snapshot->get_int("state_version").value_or(0));
+        }
+        if (req.get_string("type") == "GET_EVENTS" && req.get_string("match_id") == snapshot_match_ &&
+            reply->get_bool("ok").value_or(false)) {
+            Json all = *reply->find("events");
+            size_t bytes = all.dump().size();
+            if (bytes > (8u << 20)) { error = "binary playback history exceeds host client limit"; return std::nullopt; }
+            int high = static_cast<int>(reply->get_int("state_version").value_or(0));
+            while (high < snapshot_version_) {
+                auto next = req; next.set("since_version", high);
+                auto left = std::chrono::duration_cast<std::chrono::milliseconds>(deadline - std::chrono::steady_clock::now()).count();
+                if (left <= 0) { error = "binary event catch-up timed out"; return std::nullopt; }
+                auto window = binary_->request(next, error, static_cast<int>(left));
+                if (!window) return std::nullopt;
+                if (!window->get_bool("ok").value_or(false)) return window;
+                int h = static_cast<int>(window->get_int("state_version").value_or(0));
+                if (h <= high) { error = "binary event window did not advance"; return std::nullopt; }
+                bytes += window->find("events")->dump().size();
+                if (bytes > (8u << 20)) { error = "binary playback history exceeds host client limit"; return std::nullopt; }
+                for (const auto& event : window->find("events")->items()) all.push(event);
+                high = h;
+            }
+            reply->set("events", std::move(all));
+            reply->set("state_version", high);
+        }
+        return reply;
+    }
     if (fd_ < 0) { error = "not connected"; return std::nullopt; }
     std::string line = req.dump() + "\n";
     for (std::size_t off = 0; off < line.size();) {
@@ -372,7 +411,7 @@ std::string join_ids(const Json* arr) {
 ClientResult run_client(const ClientOptions& opt, std::ostream& out) {
     ClientResult res;
     auto fail = [&](std::string msg) { res.ok = false; res.error = std::move(msg); return res; };
-    Connection conn;
+    Connection conn(opt.binary);
     std::string err;
     bool connected = false;
     for (int attempt = 0; attempt < 20 && !connected; ++attempt) {

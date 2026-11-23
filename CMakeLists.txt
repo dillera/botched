@@ -55,13 +55,13 @@ target_link_libraries(botched_sim_lib PUBLIC botched_server)
 
 # --- Minimal POSIX multiplayer MVP (M1-A): TCP host + terminal client. POSIX sockets only.
 if(UNIX)
-  add_library(botched_tcp_host STATIC server/tcp_host.cpp)
+  add_library(botched_tcp_host STATIC server/tcp_host.cpp server/binary_tcp_host.cpp)
   target_include_directories(botched_tcp_host PUBLIC server)
-  target_link_libraries(botched_tcp_host PUBLIC botched_server)
+  target_link_libraries(botched_tcp_host PUBLIC botched_server botched_binary)
 
-  add_library(botched_client_lib STATIC apps/client_core.cpp)
+  add_library(botched_client_lib STATIC apps/client_core.cpp apps/binary_connection.cpp)
   target_include_directories(botched_client_lib PUBLIC apps server)
-  target_link_libraries(botched_client_lib PUBLIC botched_sim_lib)
+  target_link_libraries(botched_client_lib PUBLIC botched_sim_lib botched_binary)
 endif()
 
 # --- Optional SDL2 graphical client (`botched-client --ui`). Built when SDL2 + SDL2_ttf are found.
@@ -140,4 +140,13 @@ if(BOTCHED_BUILD_TESTS)
     endif()
   endif()
   add_test(NAME botched_wire_c_test COMMAND botched_wire_c_test)
+  if(BOTCHED_HAVE_SDL AND BOTCHED_BUILD_APPS)
+    find_package(Python3 COMPONENTS Interpreter QUIET)
+    if(Python3_Interpreter_FOUND)
+      add_test(NAME botched_binary_cli COMMAND ${Python3_EXECUTABLE}
+        ${CMAKE_CURRENT_SOURCE_DIR}/tests/binary_tcp_cli.py
+        $<TARGET_FILE:botched-tcp-server> $<TARGET_FILE:botched-client>)
+      set_tests_properties(botched_binary_cli PROPERTIES TIMEOUT 60)
+    endif()
+  endif()
 endif()

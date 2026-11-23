@@ -1,22 +1,25 @@
 // Terminal client for Botched!: joins a match on a TCP host, shows the factory, lets a human
 // enter three orders per round, and (with `bot`) can auto-play using the simulator's Bot over
-// exactly the same request path. It speaks only the public JSON API.
+// exactly the same request path. The public semantic API is shared by JSON and binary wire modes.
 #pragma once
 
 #include <array>
 #include <cstdint>
 #include <iosfwd>
 #include <optional>
+#include <memory>
 #include <string>
 #include <vector>
 
 #include "botched/json.hpp"
 
 namespace botched::client {
+class BinaryConnection;
 
 struct ClientOptions {
     std::string host = "127.0.0.1";
     int port = 7878;
+    bool binary = false;           // opt-in binary TCP on the selected port
     bool create = false;           // create a match, then join it as player 1
     std::string match_id;          // join this match (when not creating)
     int players = 2;               // with create: seats (2-4)
@@ -69,15 +72,19 @@ std::optional<std::int64_t> parse_utc_ms(const std::string& text);
 // Human-readable lines for an array of events (orders grouped per tick, then what happened).
 std::vector<std::string> summarize_events(const Json& events);
 
-// Blocking line-oriented JSON-over-TCP connection.
+// Synchronous semantic connection; JSON lines by default, opt-in binary framing/recovery.
 class Connection {
 public:
+    explicit Connection(bool binary = false);
     ~Connection();
     bool open(const std::string& host, int port, std::string& error);
-    // Sends one request line and waits for one response line.
+    // Sends one semantic request and reconstructs its public response.
     std::optional<Json> request(const Json& req, std::string& error, int timeout_ms = 10000);
     void close();
 private:
+    std::unique_ptr<BinaryConnection> binary_;
+    std::string snapshot_match_;
+    int snapshot_version_ = 0;
     int fd_ = -1;
     std::string buf_;
 };
