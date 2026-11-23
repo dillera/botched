@@ -12,7 +12,7 @@ struct Offering {
   std::vector<sim::NamedBot> bots;
 };
 struct PoolConfig {
-  std::optional<int> max_matches, planning_seconds;
+  std::optional<int> max_matches, planning_seconds, finished_retention_seconds;
   std::vector<Offering> offerings;
 };
 // Configuration-only decimal support; the network Json parser remains

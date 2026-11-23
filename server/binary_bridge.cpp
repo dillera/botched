@@ -217,6 +217,9 @@ Bytes Bridge::dispatch(Session &s, std::span<const std::uint8_t> p) {
     }
     if (s.transfer_id == UINT32_MAX)
         return fault(ex, 9);
+    // Resolve fresh commands against the post-retention registry, including BIND.
+    // FETCH and identical exchange retries above retain immutable old-instance bytes.
+    server_.poll();
     Binding binding = s.binding;
     Json response;
     Command cmd;
@@ -278,6 +281,7 @@ Bytes Bridge::dispatch(Session &s, std::span<const std::uint8_t> p) {
             });
         } else if (op == 22) {
             server_.poll();
+            map = server_.room_map(cmd.match);
             auto m = server_.find_match(cmd.match);
             if (!map)
                 response = server::make_error("UNKNOWN_MATCH", "no such match", &cmd.json);

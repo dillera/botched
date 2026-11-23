@@ -1,6 +1,6 @@
 # Botched! — Server-managed match pool and lifecycle
 
-**Status:** Reviewed and approved for **S1 only**; S2–S4 require separate approval
+**Status:** S1 accepted and manually playtested (`5d99bbd4`); S2 fixed-timeout lifecycle authorized. S3–S4 require separate approval.
 
 **Scope:** Botched server orchestration and deployment configuration
 
@@ -16,7 +16,7 @@ An offering persists conceptually across successive match instances. After a gam
 
 This specification intentionally separates the immediate **startup provisioning** work from **recycling/presence**, **bot takeover**, and **lobby discovery**. Implementing the first phase must not implicitly undertake the later phases.
 
-## 2. Existing behaviour (verified against current server source)
+## 2. Historical baseline before S1 (verified against A1c server source)
 
 - `ServerConfig::max_matches` defaults to **16** and limits retained rooms; finished rooms are not currently retired.
 - `CREATE_MATCH` creates a room but not a running `Match`. `JOIN_MATCH` admits a human until the available human seats (`capacity - bots`) are filled; the last required human causes `start_room()` to execute.
@@ -86,19 +86,21 @@ These numbers are AI implementation traits, **not new wire fields**. For example
 
 **S1-11 — Bot identity and compatibility.** A configured bot's name belongs to the server-side opponent identity (logs, traces, startup status, and future lobby display) and stays unchanged for the match. The current frozen binary v1 reports numeric bot seats and legacy archetype metadata, not arbitrary bot names or blended weights. **Do not extend the frozen protocol in S1.** Do not incorrectly label a blended bot as a pure archetype: document how existing `GET_MATCH_STATUS` / binary bot-personality fields are handled for blended bots without inventing wire enum values, changing lengths, or misleading clients. If faithfully representing mixed traits through the existing status contract is impossible, surface names/blends in server-side diagnostics and defer client-visible detailed identity to a separately reviewed metadata/discovery feature. Existing numeric `CREATE_MATCH` `bots` counts and their automatic personality selection must remain backward compatible; the array format applies to configured offerings only.
 
-### 4.2 Finished-instance lifecycle — **Phase S2: follow-up, not part of S1**
+### 4.2 Finished-instance lifecycle — **Phase S2: fixed-timeout implementation**
 
 **S2-01 — Stable offering, new instance.** Each completed/retired instance is replaced with a **fresh `match_id`**, session/seat state, event history and bot state (while retaining the offering’s configured bot names and personality blends). Never recycle the match ID or its credentials. The configured offering ID persists.
 
-**S2-02 — Results retention.** A finished instance remains readable (status, map, snapshot, event history) until all participating humans have explicitly departed **or** a configurable maximum retention deadline expires. A timeout must prevent an AFK client from holding a pool slot indefinitely. Make the precise clock starts and default times explicit before implementation.
+**S2-02 — Results retention.** Configured finished instances remain readable (status, map, snapshot, retained event history) for `server.finished_retention_seconds`, default **300**, integer **1–86400** seconds. The deadline is completion time plus that interval, using the existing server clock in milliseconds. Completion time is sampled immediately after the authoritative round finishes, whether triggered by ready submissions or a planning deadline; a late planning poll starts retention when execution actually finishes. Retirement occurs at the first poll with `now >= deadline`, including polling before a fresh request. Reads, retries and disconnections do not refresh the deadline. No per-offering override or new CLI flag in S2. Ad-hoc CREATE_MATCH rooms retain the existing indefinite retention behaviour.
 
-**S2-03 — Presence versus TCP connectivity.** A socket disconnect is **not** automatically a player leave: FujiNet clients may reconnect or reboot. Define explicit leave/release and presence/lease semantics and distinguish transient disconnection from abandonment. Ordinary unauthenticated `GET_SNAPSHOT`/`GET_EVENTS` must not be treated as proof that a seat owner is present.
+**S2-03 — Presence versus TCP connectivity.** A socket disconnect is **not** automatically a player leave: FujiNet clients may reconnect or reboot. Explicit leave/release and presence/lease semantics are deferred. S2 uses the fixed completion timeout alone. Neither authenticated traffic nor ordinary unauthenticated `GET_SNAPSHOT`/`GET_EVENTS` affects retention.
 
-**S2-04 — Capacity accounting.** Retained finished instances still occupy memory and the global match limit. Replenishment must not exceed the limit; define whether a newly provisioned replacement waits until the old instance is retired (recommended initial policy) versus an explicitly budgeted overlap. The server must remain usable after many successive completions.
+**S2-04 — Capacity accounting.** Retained finished instances still occupy memory and the global match limit. Replenishment retires the old room before inserting its replacement, in the single-threaded server poll with no client interleaving. Configuration and a map node are prepared first so allocation failure cannot leave a retired slot empty. No second hosted match exists during replacement. Waiting/running games are untouched; each completed slot is independently replaced. The ID counter never wraps or reuses an ID in the process and stays within the frozen 16-character limit; exhaustion retains the old room with an error diagnostic rather than reusing an ID.
 
-**S2-05 — Crash/restart policy.** In-memory instance state is currently lost on process restart. Full server persistence is out of scope unless separately specified; S2 must document that restart creates a fresh pool and invalidates prior match IDs/credentials.
+**S2-05 — Crash/restart policy.** In-memory instance state is currently lost on process restart. Full server persistence is out of scope unless separately specified; Restart creates a fresh pool and invalidates prior instances/credentials and binary resume secrets. Textual IDs such as `m1` can recur after a process restart; they are process-local, not persistent offering IDs. OS-random seat credentials and the binary boot epoch prevent previous credentials/resume secrets from authenticating a new instance. Deterministic token seeds remain test-only.
 
-**S2-06 — Protocol boundary.** Define a safe way to release seats and discover the replacement instance. Existing binary v1 has no `LEAVE_MATCH` or `LIST_MATCHES`. Prefer server-side/lobby control APIs where possible. Any proposed on-wire extension must receive **separate explicit review**, not an implicit edit to frozen v1.
+**S2-06 — Protocol boundary.** No seat-release or discovery API is added. Operators read `pool {JSON}` startup/runtime diagnostics: `provisioned`, `retained` (completion/retirement timestamps), and `replaced` (both `retired_match_id` and fresh `match_id`, stable offering/instance number, names and blends). Replacements wait for the original required human seat count. Clients must explicitly join the new ID supplied by the operator; no old request is redirected.
+
+Fresh operations against retired IDs return existing `UNKNOWN_MATCH`; a fresh binary BIND using a retired ID or wrong credentials fails with existing authentication fault 3. Binary exchange retries can still return their cached old response, and FETCH can finish immutable old-instance bytes. Such bytes retain the old match context and never operate on a replacement. These caches hold no Room/Match references and retain existing bounded binary session lifetime/storage limits (64 sessions, 30-minute inactivity expiry, existing transfer/global byte caps); retirement does not reset or transfer bindings, exchanges or event cursors. Cached JOIN/SUBMIT replies are historical results, not renewed admission. A fresh command resolves retirement before seat/map lookup, including BIND. No fields, opcodes or enum values change.
 
 ### 4.3 Mid-game bot replacement — **Phase S3: separate approval**
 
@@ -126,7 +128,8 @@ Illustrative JSON — exact field names should be frozen during the S1 review, n
 {
   "server": {
     "max_concurrent_matches": 8,
-    "default_planning_seconds": 60
+    "default_planning_seconds": 60,
+    "finished_retention_seconds": 300
   },
   "offerings": [
     {
@@ -217,14 +220,47 @@ No bot takeover, hot-join, auto-replenishment, explicit seat departure, persiste
 - **Should a configured pool permit standalone ad-hoc `CREATE_MATCH`?** Recommended: preserve it for development, subject to the global cap; optional production disabling can be a later setting.
 - **Should offerings have stable human-facing IDs or only generated match IDs?** Recommended: both; fixed offering ID, fresh match ID for each instance.
 - **If a map supports 2–4, which seat count should be offered?** Recommended: explicit `player_count` rather than guessing.
-- **How will we detect finished-game viewers leaving?** Needs S2 presence/release design; never assume a closed TCP connection means leave.
+- **How will we detect finished-game viewers leaving?** Deferred. S2 uses only fixed retention and never treats a closed TCP connection as leaving.
 - **What happens when there are no free slots but a replacement is due?** Recommended: postpone replenishment until sufficient capacity is available; report degraded pool status.
 - **How will future clients discover current matches without changing binary v1?** Needs S4 separate architecture review.
 - **S1 compatibility metadata:** Binary v1 requires an existing archetype value for every bot; it has no absent/mixed value. For configured bots, report the dominant archetype in JSON and binary: highest original configured weight, before normalization/rounding; exact ties prefer hauler, then opportunist, then saboteur. Pure personalities retain their values and behaviour; legacy numeric bots retain seeded categories. All decisions use the full blended traits independently of this metadata. This frozen compatibility category is not a description of configured behaviour. Names, original configured weights, normalized blends and actual tuning remain server-side. Existing clients may still display the legacy category; faithful client-visible blended identity is deferred. No new fields, opcodes or enum values are introduced.
 - **Should a familiar bot name appear identically in several offering instances?** Recommended: yes; uniqueness applies within one offering, while individual seat/instance IDs remain distinct.
 
-## 10. Implementation boundaries and review checkpoints
+## 10. S2 acceptance and implementation boundaries
 
-**Next agent request should implement S1 only.** Keep the spec's later phases as recorded requirements, not permission to begin them. Commit the config parser, startup provisioning, named/weighted bot integration, bounded focused tests, example configuration, and concise operator documentation. Stop for review.
+S2 verification covers:
 
-After S1 acceptance, review S2 separately (retention, leave/presence, replenishment), then S3 (bot takeover), then S4 (lobby integration). Each phase should retain and extend the existing functional and resource tests.
+- Configuration default/bounds and rejection of malformed retention values.
+- Retained results at deadline minus 1 ms, retirement exactly at deadline, delayed planning execution, simultaneous expiry and untouched waiting/running rooms.
+- Twelve successive named/blended replacements at full global capacity, distinct IDs/tokens, reset event/key state, preserved definition/instance metadata, and indefinite ad-hoc result retention.
+- Mixed JSON/binary binding, old JOIN/SUBMIT exchange retries, immutable multipage snapshot completion across retirement, fresh stale-ID requests and credentials rejected, and eventual bounded session/transfer expiry.
+- Real TCP integration completing/rejoining three mixed JSON/Linux-binary games while another match runs and a waiting room remains occupied. Disconnect/reconnect does not shorten retention.
+
+Run `build/botched_tests --test-case='S2*'` and
+`ctest --test-dir build -R 'botched_pool.*integration' --output-on-failure`.
+Exact time boundaries use ManualClock; the TCP acceptance uses real wall-clock expiry.
+Focused results: four S2 cases / 451 assertions passed. Combined S1/S2:
+10 cases / 825 assertions passed under ASan/UBSan with leak detection:
+
+```sh
+source ../../scripts/env.sh
+cmake --build build/asan-spike -j4 --target botched_tests
+ASAN_OPTIONS=detect_leaks=1 UBSAN_OPTIONS=halt_on_error=1 build/asan-spike/botched_tests --test-case='S1*,S2*'
+```
+
+Regression command (native engine/server/codec tests plus existing real NIO and
+Linux binary CLI integration, startup and lifecycle TCP tests):
+
+```sh
+ctest --test-dir build -R '^(botched_tests|botched_nio_real|botched_binary_cli|botched_pool.*integration)$' --output-on-failure
+```
+
+All five selected CTest checks passed (85.26 seconds). The new real TCP lifecycle
+check completed three mixed-client games/replacements in 6.50 seconds.
+No physical hardware/Amiga run is claimed for S2.
+
+### Historical S1 checkpoint
+
+**S1 was implemented and accepted.** Keep the spec's later phases as recorded requirements, not permission to begin them. Commit the config parser, startup provisioning, named/weighted bot integration, bounded focused tests, example configuration, and concise operator documentation. Stop for review.
+
+The current authorization is S2 with fixed retention only; leave/presence is deferred. Commit S2 and stop for review. S3 (bot takeover) and S4 (lobby integration) remain separate future approvals.

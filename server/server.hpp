@@ -63,6 +63,8 @@ ParseLimits request_parse_limits();
 struct ServerConfig {
     int default_planning_seconds = 60;  // spec 2 suggestion; 0 disables the timer
     int max_matches = 16;               // simultaneously hosted matches (spec 14: deployment setting)
+    int finished_retention_seconds = 300; // configured offerings only, 1..86400
+    std::ostream* pool_log = nullptr;     // runtime lifecycle diagnostics; must outlive server
     int request_budget_per_round = kDefaultRequestBudget;  // new request ids per player per round (8-128)
     // Session tokens come from OS entropy (std::random_device, 256 bits). Set this ONLY for
     // reproducible tests/simulations: it makes tokens predictable.
@@ -129,7 +131,9 @@ private:
         int planning_seconds = 0;
         int rounds = kDefaultRounds;      // fixed length, or the safety cap when target_score > 0
         int target_score = 0;             // 0 = fixed-round mode
-        std::string offering;
+        std::string offering, offering_name;
+        int instance = 0;
+        std::optional<std::int64_t> finished_ms;
         std::vector<sim::NamedBot> named_bots;
         int bots = 0;                     // seats played by the server (always the highest player ids)
         // Adapter metadata only. Observe JSON as well as binary requests without touching H3.
@@ -158,13 +162,15 @@ private:
     void open_planning(Room& r);
     void plan_bots(Room& r);
     void advance(Room& r);
+    Json pool_record(const Room& r) const;
+    void replenish(const std::string& id);
 
     ServerConfig cfg_;
     const Clock& clock_;
     std::map<std::string, LoadedMap> maps_;
     MapDirReport map_report_;
     std::map<std::string, Room> rooms_;
-    int next_room_ = 1;
+    std::uint64_t next_room_ = 1; // never wrap/reuse; limited to 16-character wire IDs
     std::uint64_t token_counter_ = 0;
     std::string make_token(const std::string& room, int pid);
 };

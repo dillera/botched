@@ -1,7 +1,8 @@
 {
   "server": {
     "max_concurrent_matches": 8,
-    "default_planning_seconds": 60
+    "default_planning_seconds": 60,
+    "finished_retention_seconds": 300
   },
   "offerings": [
     {

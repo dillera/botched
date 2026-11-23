@@ -243,6 +243,8 @@ Json GameServer::create(const Json& req, bool validate_only) {
     if (!errors.empty()) return make_error("INVALID_MAP", errors.front(), &req);
 
     if (validate_only) { Json ok = Json::object(); ok.set("ok",true); return ok; }
+    if (next_room_ > 999999999999999ULL)
+        return make_error("TOO_MANY_MATCHES", "match identifier space exhausted", &req);
     Room r;
     r.id = "m" + std::to_string(next_room_++);
     r.map = mit->second.map;
@@ -267,6 +269,9 @@ Json GameServer::create(const Json& req, bool validate_only) {
 bool GameServer::provision_pool(const std::vector<Offering>& offerings, std::ostream& report, std::string& error) {
     if (!rooms_.empty()) { error = "pool provisioning requires an empty server"; return false; }
     if (cfg_.max_matches < 1) { error = "max_concurrent_matches must be positive"; return false; }
+    if (cfg_.finished_retention_seconds < 1 || cfg_.finished_retention_seconds > 86400) {
+        error = "finished_retention_seconds must be in [1,86400]"; return false;
+    }
     uint64_t total = 0;
     std::vector<Json> requests;
     for (const auto& o : offerings) {
@@ -299,19 +304,51 @@ bool GameServer::provision_pool(const std::vector<Offering>& offerings, std::ost
             auto made=create(requests[i]);
             auto id=made.get_string("match_id").value();
             auto& r=rooms_.at(id); r.offering=o.id; r.named_bots=o.bots;
-            Json line=Json::object();
-            line.set("offering",o.id); line.set("name",o.name); line.set("instance",instance);
-            line.set("match_id",id); line.set("map_id",r.map->id); line.set("player_count",r.capacity);
-            line.set("bots",r.bots); line.set("state","LOBBY");
-            Json names=Json::array(), blends=Json::array();
-            for(const auto& bot:o.bots) { names.push(bot.name); blends.push(bot.blend.describe()); }
-            line.set("bot_names",names); line.set("bot_blends",blends);
+            r.offering_name=o.name; r.instance=instance;
+            auto line=pool_record(r); line.set("action","provisioned");
             report << "pool " << line.dump() << '\n';
         }
     }
-    report << "pool warning: S1 retains finished matches; no recycling. Configured and ad-hoc rooms share max_concurrent_matches="
+    report << "pool retention: finished_retention_seconds=" << cfg_.finished_retention_seconds
+           << "; replacements retire before provisioning; ad-hoc rooms are retained. max_concurrent_matches="
            << cfg_.max_matches << '\n' << std::flush;
     return true;
+}
+
+Json GameServer::pool_record(const Room& r) const {
+    Json line=Json::object();
+    line.set("offering",r.offering); line.set("name",r.offering_name); line.set("instance",r.instance);
+    line.set("match_id",r.id); line.set("map_id",r.map->id); line.set("player_count",r.capacity);
+    line.set("bots",r.bots); line.set("state",r.match ? "FINISHED" : "LOBBY");
+    Json names=Json::array(), blends=Json::array();
+    for(const auto& bot:r.named_bots) { names.push(bot.name); blends.push(bot.blend.describe()); }
+    line.set("bot_names",names); line.set("bot_blends",blends);
+    return line;
+}
+
+void GameServer::replenish(const std::string& id) {
+    const auto& old=rooms_.at(id);
+    // Prepare configuration only, never copy Match, credentials, history or AI state.
+    // Allocation happens before retirement. No client can interleave this single-threaded transition.
+    if (next_room_ > 999999999999999ULL) {
+        if (cfg_.pool_log) *cfg_.pool_log << "pool error: match identifier space exhausted; retaining " << id << '\n';
+        return;
+    }
+    Room fresh;
+    fresh.id="m" + std::to_string(next_room_++);
+    fresh.map=old.map; fresh.capacity=old.capacity; fresh.planning_seconds=old.planning_seconds;
+    fresh.rounds=old.rounds; fresh.target_score=old.target_score; fresh.bots=old.bots;
+    fresh.offering=old.offering; fresh.offering_name=old.offering_name; fresh.instance=old.instance;
+    fresh.named_bots=old.named_bots;
+    auto line=pool_record(fresh);
+    line.set("action","replaced"); line.set("retired_match_id",id);
+    // Preallocate the map node so retirement cannot leave a missing slot on allocation failure.
+    std::map<std::string,Room> pending;
+    auto new_id=fresh.id;
+    pending.emplace(new_id,std::move(fresh));
+    rooms_.erase(id);
+    rooms_.insert(pending.extract(new_id));
+    if (cfg_.pool_log) *cfg_.pool_log << "pool " << line.dump() << '\n' << std::flush;
 }
 
 std::string GameServer::make_token(const std::string& room, int pid) {
@@ -536,6 +573,15 @@ void GameServer::advance(Room& r) {
         *cfg_.trace << "\n";
     }
     r.match->run_round();  // close planning (missing -> WAIT x3), execute, start next round
+    if (r.match->finished() && !r.offering.empty() && !r.finished_ms) {
+        r.finished_ms=clock_.now_unix_ms();
+        if (cfg_.pool_log) {
+            auto line=pool_record(r); line.set("action","retained");
+            line.set("finished_ms",*r.finished_ms);
+            line.set("retire_at_ms",*r.finished_ms + int64_t(cfg_.finished_retention_seconds)*1000);
+            *cfg_.pool_log << "pool " << line.dump() << '\n' << std::flush;
+        }
+    }
     if (cfg_.trace) {
         auto ev = r.match->events_since(before_version);
         *cfg_.trace << "--- events of that round (" << (ev ? ev->size() : 0) << "):\n";
@@ -551,12 +597,16 @@ void GameServer::advance(Room& r) {
 
 void GameServer::poll() {
     const std::int64_t now = clock_.now_unix_ms();
+    std::vector<std::string> expired;
     for (auto& kv : rooms_) {
         Room& r = kv.second;
         if (!r.match) continue;
         if (!r.match->finished() && r.deadline_ms != 0 && now >= r.deadline_ms) advance(r);
         observe_history(r);
+        if (r.finished_ms && now >= *r.finished_ms + int64_t(cfg_.finished_retention_seconds)*1000)
+            expired.push_back(r.id);
     }
+    for (const auto& id : expired) replenish(id);
 }
 
 // ------------------------------------------------------------------ spec 9.2 API

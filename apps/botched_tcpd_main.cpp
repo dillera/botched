@@ -34,6 +34,8 @@ int main(int argc, char** argv) {
                        a == "--max-matches" || a == "--maps-dir" || a == "--trace-file") ++i;
         }
         if (pool) {
+            if (pool->finished_retention_seconds) cfg.finished_retention_seconds = *pool->finished_retention_seconds;
+            cfg.pool_log = &std::cout;
             if (pool->max_matches) cfg.max_matches = *pool->max_matches;
             if (pool->planning_seconds) cfg.default_planning_seconds = *pool->planning_seconds;
         }

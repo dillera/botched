@@ -220,7 +220,7 @@ TEST_CASE("S1 configured rooms wait, isolate instances, retain results and "
   std::ostringstream report;
   provision(s, p, report);
   CHECK(report.str().find("Sneaky Pete") != std::string::npos);
-  CHECK(report.str().find("no recycling") != std::string::npos);
+  CHECK(report.str().find("finished_retention_seconds=300") != std::string::npos);
   for (auto id : {"m1", "m2", "m3"})
     CHECK(s.handle(query("GET_MATCH_STATUS", id))
               .find("status")
@@ -259,7 +259,7 @@ TEST_CASE("S1 configured rooms wait, isolate instances, retain results and "
   }
   CHECK(s.find_match("m1")->finished());
   auto finished = s.handle(query("GET_SNAPSHOT", "m1"));
-  clock.advance_ms(999999);
+  clock.advance_ms(299999);
   s.poll();
   CHECK(s.handle(query("GET_SNAPSHOT", "m1")) == finished);
   CHECK(s.handle(query("CREATE_MATCH")).get_string("match_id") == "m4");
@@ -309,4 +309,117 @@ TEST_CASE("S1 named definitions are copied per instance with independent "
   REQUIRE(records.size() == 3);
   CHECK(*records[0].find("bot_names") == *records[1].find("bot_names"));
   CHECK(*records[0].find("bot_blends") == *records[1].find("bot_blends"));
+}
+
+TEST_CASE("S2 retention configuration is bounded and optional") {
+  CHECK_FALSE(parse_pool_config(base).finished_retention_seconds.has_value());
+  for (int seconds : {1, 300, 86400}) {
+    auto j = Json::parse(base).value();
+    member(j, "server").set("finished_retention_seconds", seconds);
+    CHECK(parse_pool_config(j.dump()).finished_retention_seconds == seconds);
+  }
+  for (auto value : {"0", "-1", "86401", "1.5", "1e3", "true", "null", "\"10\""}) {
+    auto text = std::string("{\"server\":{\"finished_retention_seconds\":") + value + "},\"offerings\":[]}";
+    CHECK_THROWS(parse_pool_config(text));
+  }
+  for (int bad : {0, -1, 86401}) {
+    ServerConfig cfg; cfg.finished_retention_seconds=bad;
+    ManualClock clock; GameServer s(cfg,clock);
+    std::ostringstream log; std::string error;
+    CHECK_FALSE(s.provision_pool(parse_pool_config(base).offerings,log,error));
+    CHECK(log.str().empty());
+  }
+}
+TEST_CASE("S2 repeated named recycling preserves slots and frees all per-game state") {
+  auto pool=parse_pool_config(base);
+  pool.offerings.resize(1); // two independent named instances
+  pool.offerings[0].bots[1].blend=sim::PersonalityBlend::from_weights({.2,.3,.5});
+  pool.offerings[0].bots[2].blend=sim::PersonalityBlend::from_weights({.9,.1,0});
+  pool.offerings[0].rules.set("rounds",1);
+  ServerConfig cfg; cfg.max_matches=3; cfg.finished_retention_seconds=1;
+  cfg.deterministic_token_seed=42;
+  std::ostringstream log; cfg.pool_log=&log;
+  ManualClock clock(0); GameServer s(cfg,clock);
+  provision(s,pool,log);
+  auto create=query("CREATE_MATCH"); create.set("player_count",2); create.set("bots",1);
+  create.set("rounds",1); create.set("planning_seconds",1);
+  auto adhoc=s.handle(create);
+  REQUIRE(adhoc.get_string("match_id")=="m3");
+  REQUIRE(s.handle(query("JOIN_MATCH","m3")).get_bool("started")==true);
+  auto concurrent=s.handle(query("JOIN_MATCH","m2"));
+  auto untouched=s.handle(query("GET_SNAPSHOT","m2"));
+  std::string current="m1", prior_token;
+  size_t initial_events=0; int initial_version=0;
+  for (int cycle=0; cycle<12; ++cycle) {
+    auto joined=s.handle(query("JOIN_MATCH",current));
+    REQUIRE(joined.get_bool("started")==true);
+    auto token=joined.get_string("session").value();
+    CHECK(token!=prior_token); prior_token=token;
+    REQUIRE(s.find_match(current));
+    CHECK(s.find_match(current)->state().round==1);
+    if(cycle==0) { initial_events=s.find_match(current)->all_events().size(); initial_version=s.find_match(current)->state_version(); }
+    CHECK(s.find_match(current)->all_events().size()==initial_events);
+    CHECK(s.find_match(current)->state_version()==initial_version);
+    CHECK(s.numeric_key_hint(current,1).first==0);
+    auto submit=query("SUBMIT_PROGRAM",current);
+    submit.set("player_id",1); submit.set("session",token);
+    submit.set("round",1); submit.set("revision",1); submit.set("ready",true);
+    submit.set("request_id","b:1");
+    auto orders=Json::array(); for(int i=0;i<3;++i) orders.push("WAIT");
+    submit.set("orders",orders);
+    REQUIRE(s.handle(submit).get_bool("ok")==true);
+    REQUIRE(s.find_match(current)->finished());
+    auto final=s.handle(query("GET_SNAPSHOT",current));
+    clock.advance_ms(999); s.poll();
+    CHECK(s.handle(query("GET_SNAPSHOT",current))==final);
+    CHECK(s.handle(query("GET_MAP",current)).get_bool("ok")==true);
+    auto events=query("GET_EVENTS",current); events.set("since_version",0);
+    CHECK(s.handle(events).get_bool("ok")==true);
+    CHECK(s.handle(query("CREATE_MATCH")).get_string("code")=="TOO_MANY_MATCHES");
+    clock.advance_ms(1); s.poll();
+    CHECK(s.handle(query("GET_SNAPSHOT",current)).get_string("code")=="UNKNOWN_MATCH");
+    CHECK(s.handle(submit).get_string("code")=="UNKNOWN_MATCH");
+    auto next="m"+std::to_string(cycle+4);
+    auto status=s.handle(query("GET_MATCH_STATUS",next));
+    REQUIRE(status.find("status"));
+    CHECK(status.find("status")->get_string("phase")=="LOBBY");
+    CHECK(s.check_seat(next,1,token)!="");
+    CHECK(s.handle(query("GET_SNAPSHOT","m2"))==untouched);
+    REQUIRE(s.find_match("m3")); CHECK(s.find_match("m3")->finished()); // ad-hoc results retained
+    CHECK(s.handle(query("CREATE_MATCH")).get_string("code")=="TOO_MANY_MATCHES");
+    CHECK(log.str().find("\"retired_match_id\":\""+current+"\"")!=std::string::npos);
+    current=next;
+  }
+  // Each replacement retains the offering/instance and exact named definitions.
+  std::istringstream lines(log.str()); std::string line; int replacements=0;
+  while(std::getline(lines,line)) if(line.starts_with("pool {")) {
+    auto j=Json::parse(line.substr(5)).value();
+    if(j.get_string("action")!="replaced") continue;
+    ++replacements;
+    CHECK(j.get_string("offering")=="named"); CHECK(j.get_int("instance")==1);
+    CHECK(j.find("bot_names")->dump()==R"(["Nasty","Sneaky Pete","Bob"])");
+    REQUIRE(j.find("bot_blends")->items().size()==3);
+    for(size_t i=0;i<3;++i)
+      CHECK(j.find("bot_blends")->items()[i].as_string()==pool.offerings[0].bots[i].blend.describe());
+  }
+  CHECK(replacements==12);
+}
+TEST_CASE("S2 deadline completions start retention at completion and expire together") {
+  auto pool=parse_pool_config(base); pool.offerings.resize(1);
+  pool.offerings[0].rules.set("rounds",1);
+  pool.offerings[0].rules.set("planning_seconds",1);
+  ServerConfig cfg; cfg.max_matches=2; cfg.finished_retention_seconds=1;
+  ManualClock clock; GameServer s(cfg,clock); std::ostringstream log;
+  provision(s,pool,log);
+  for(auto id : {"m1","m2"}) REQUIRE(s.handle(query("JOIN_MATCH",id)).get_bool("started")==true);
+  clock.advance_ms(5000); s.poll(); // late poll: completion NOW, not at expired planning deadline
+  for(auto id : {"m1","m2"}) REQUIRE(s.find_match(id)->finished());
+  clock.advance_ms(999); s.poll();
+  CHECK(s.room_map("m1")!=nullptr); CHECK(s.room_map("m2")!=nullptr);
+  clock.advance_ms(1); s.poll();
+  CHECK(s.room_map("m1")==nullptr); CHECK(s.room_map("m2")==nullptr);
+  CHECK(s.room_map("m3")!=nullptr); CHECK(s.room_map("m4")!=nullptr);
+  CHECK(s.handle(query("CREATE_MATCH")).get_string("code")=="TOO_MANY_MATCHES");
+  clock.advance_ms(1000000); s.poll(); // empty replacements never expire
+  CHECK(s.room_map("m3")!=nullptr); CHECK(s.room_map("m4")!=nullptr);
 }

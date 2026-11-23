@@ -251,4 +251,8 @@ if(BOTCHED_BUILD_TESTS AND BOTCHED_BUILD_APPS AND UNIX)
     ${CMAKE_CURRENT_SOURCE_DIR}/tests/pool_integration.py
     $<TARGET_FILE:botched-tcp-server> $<TARGET_FILE:botched-client>)
   set_tests_properties(botched_pool_integration PROPERTIES TIMEOUT 120)
+  add_test(NAME botched_pool_lifecycle_integration COMMAND ${Python3_EXECUTABLE}
+    ${CMAKE_CURRENT_SOURCE_DIR}/tests/pool_lifecycle_integration.py
+    $<TARGET_FILE:botched-tcp-server> $<TARGET_FILE:botched-client>)
+  set_tests_properties(botched_pool_lifecycle_integration PROPERTIES TIMEOUT 90)
 endif()

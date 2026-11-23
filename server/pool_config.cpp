@@ -146,10 +146,12 @@ PoolConfig parse_pool_config(std::string_view text) {
   fields(d.root, "config", {"server", "offerings"});
   if (auto s = d.root.find("server")) {
     fields(*s, "server",
-           {"max_concurrent_matches", "default_planning_seconds"});
+           {"max_concurrent_matches", "default_planning_seconds", "finished_retention_seconds"});
     if (auto v = s->find("max_concurrent_matches"))
       out.max_matches = d.integer(*v, "server.max_concurrent_matches", 1,
                                   std::numeric_limits<int>::max());
+    if (auto v = s->find("finished_retention_seconds"))
+      out.finished_retention_seconds = d.integer(*v, "server.finished_retention_seconds", 1, 86400);
     if (auto v = s->find("default_planning_seconds"))
       out.planning_seconds =
           d.integer(*v, "server.default_planning_seconds", 0, 86400);

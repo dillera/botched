@@ -632,3 +632,58 @@ TEST_CASE("S1 named blend compatibility metadata survives frozen binary status")
     CHECK(wire.dump().find("Private") == std::string::npos);
     CHECK(wire.dump().find("weights") == std::string::npos);
 }
+
+TEST_CASE("S2 binary retries and immutable pages never bind to replacement instances") {
+    server::ManualClock clock;
+    auto cfg=config(); cfg.max_matches=1; cfg.finished_retention_seconds=1;
+    server::GameServer s(cfg,clock);
+    auto pool=server::parse_pool_config(R"({"offerings":[{"id":"duel","name":"Duel","map_id":"training-01","instances":1,"player_count":2,"rounds":1,"planning_seconds":1,"bots":[]}]})");
+    std::ostringstream log; std::string error;
+    REQUIRE(s.provision_pool(pool.offerings,log,error));
+    Bridge b(s,clock); Client c(b,1), pages(b,2,128);
+    auto join_request=encode_request(request("JOIN_MATCH","m1"),c.next++);
+    auto join_reply=c.raw(join_request);
+    auto joined=c.gather(join_reply);
+    auto token=joined.get_string("session").value();
+    auto json_join=s.handle(request("JOIN_MATCH","m1"));
+    REQUIRE(json_join.get_bool("started")==true);
+    REQUIRE(pages.bind("m1",1,token).get_bool("ok")==true);
+    Client submitter(b,5); REQUIRE(submitter.bind("m1",1,token).get_bool("ok")==true);
+    auto submit_packet=encode_request(program("m1",1,1,1,true,"1"),submitter.next++);
+    auto submit_reply=submitter.raw(submit_packet);
+    REQUIRE(submitter.gather(submit_reply).get_bool("ok")==true);
+    clock.advance_ms(1000); s.poll(); REQUIRE(s.find_match("m1")->finished());
+    auto snapshot_request=encode_request(request("GET_SNAPSHOT","m1"),pages.next++);
+    auto first=pages.raw(snapshot_request);
+    REQUIRE(first[0]==0x82); REQUIRE((first[20]&1)==0); // genuinely paged
+    auto expected=s.handle(request("GET_SNAPSHOT","m1"));
+    b.disconnect(1); // disconnect does not retire a retained room
+    clock.advance_ms(999); s.poll(); CHECK(s.find_match("m1")!=nullptr);
+    clock.advance_ms(1);
+    // Fresh BIND must itself observe expiry even without an intervening host poll.
+    Client probe(b,6); Fields expired; expired.b(1).str("m1").i(1).str(token);
+    auto expired_reply=probe.raw(packet(2,probe.next++,expired.span()));
+    REQUIRE(expired_reply[0]==255); CHECK(expired_reply[3]==3);
+    REQUIRE(s.room_map("m1")==nullptr);
+    REQUIRE(s.room_map("m2")!=nullptr);
+    c.connection=3; c.hello(true);
+    CHECK(c.raw(join_request)==join_reply); // lost JOIN response stays m1, no new admission
+    CHECK(submitter.raw(submit_packet)==submit_reply); // H3/exchange retry never resubmits to m2
+    CHECK(pages.raw(snapshot_request)==first);
+    CHECK(pages.gather(first)==expected); // FETCH can finish immutable old-instance bytes
+    CHECK(pages.call(request("GET_EVENTS","m1")).get_string("code")=="UNKNOWN_MATCH");
+    CHECK(pages.call(request("GET_SNAPSHOT","m1")).get_string("code")=="UNKNOWN_MATCH");
+    Fields old_bind; old_bind.b(1).str("m1").i(1).str(token);
+    auto rejected=pages.raw(packet(2,pages.next++,old_bind.span()));
+    REQUIRE(rejected[0]==255); CHECK(rejected[3]==3);
+    Client fresh(b,4); auto next=fresh.call(request("JOIN_MATCH","m2"));
+    REQUIRE(next.get_bool("ok")==true);
+    CHECK(next.get_string("session")!=token);
+    Fields stolen; stolen.b(1).str("m2").i(1).str(token);
+    rejected=pages.raw(packet(2,pages.next++,stolen.span()));
+    REQUIRE(rejected[0]==255); CHECK(rejected[3]==3);
+    auto stale=program("m1",1,1,1,true,"1");
+    CHECK(pages.call(stale).get_string("code")=="UNKNOWN_MATCH");
+    CHECK(s.handle(request("GET_MATCH_STATUS","m2")).find("status")->get_int("joined")==1);
+    clock.advance_ms(1800000); b.expire(); CHECK(b.session_count()==0); CHECK(b.transfer_storage()==0);
+}

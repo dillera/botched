@@ -42,7 +42,7 @@ Build once (`cmake -S . -B build && cmake --build build -j`), then:
 ./build/botched-client --join m1
 ```
 
-### Configured games and named bots (S1)
+### Configured games and named bots (S1–S2)
 
 Start ready-to-join rooms without a client creating them:
 
@@ -112,13 +112,31 @@ Existing clients may display that label. Server diagnostics retain the original
 configured weights (round-trip decimal values) alongside normalized millionths. No new
 wire fields, opcodes or personality values are added.
 
-**S1 limits:** rooms, including finished rooms, consume the shared global cap.
-Ad-hoc CREATE_MATCH remains enabled only within remaining capacity and never
-evicts configured rooms. Finished rooms are retained; the startup warning calls
-out that this finite pool is consumed, with no recycling. There is no presence
-tracking, bot takeover, lobby, hot reload or persistence. Restart loses games and
-credentials, recreating the pool; reused textual IDs after restart do not identify
-old sessions. S2–S4 are not implemented.
+**Finished-match lifecycle (S2):** `server.finished_retention_seconds` in the
+configuration file defaults to **300** seconds (integer **1–86400**). Configured
+matches keep their results until that interval elapses after the server completes
+the final round. The first poll at or after expiry retires the room and provisions
+a new waiting room with a new ID, credentials, history and bot state, preserving
+the offering, instance number, rules, named bots and blends. Reads and TCP
+disconnections do not alter the timer. Waiting and running rooms never expire.
+
+All rooms, including retained results and ad-hoc CREATE_MATCH rooms, consume the
+same global cap. Replacement retires before provisioning, with no client request
+interleaving. Ad-hoc rooms retain their previous indefinite retention policy.
+Runtime `pool {JSON}` records show `retained` timestamps and `replaced` records
+containing both `retired_match_id` and the new `match_id`; use that new ID to join.
+There is no automatic client redirection or lobby/discovery API.
+
+After retirement, fresh requests for the old ID return `UNKNOWN_MATCH`; fresh
+binary BIND fails authentication. Cached binary exchange replies and immutable
+FETCH pages can still describe the old match until superseded/cancelled or the
+existing session inactivity timeout expires. They never bind to a replacement.
+Those caches retain the existing 64-session/30-minute inactivity and storage
+limits independently of room retention; old cached replies are historical only.
+Restart loses games, credentials and binary sessions and recreates the pool.
+Textual IDs can recur after restart and must not be treated as persistent identity.
+There is no presence tracking, explicit departure, bot takeover, lobby, hot reload
+or persistence. S3–S4 are not implemented.
 
 Verification: `build/botched_tests --test-case='S1*'` and
 `ctest --test-dir build -R botched_pool_integration --output-on-failure` cover
@@ -133,7 +151,11 @@ real TCP integration also checks the expected dominant categories. The full
 native `botched_tests` regression suite also passes after this clarification. The earlier
 Amiga run `build/amiga/evidence/a500-z1r97kpk` completed both configured matches (89 and 57 ordered events), with the accepted A1c executable
 unchanged; this is emulator/NIO evidence, not physical hardware testing.
-The approved scope is [the S1 specification](docs/server-managed-matches-spec-v2.md).
+S2 checks: `build/botched_tests --test-case='S2*'` and
+`ctest --test-dir build -R 'botched_pool.*integration' --output-on-failure` cover
+exact expiry boundaries, repeated full-capacity replacement, stale credentials,
+immutable binary pages/retries and three real mixed-client games through recycling.
+The approved scope is [the pool specification](docs/server-managed-matches-spec-v2.md).
 
 ### Mixed JSON and binary play (B3)
 
