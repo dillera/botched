@@ -9,8 +9,10 @@ extern "C" {
 typedef struct {
   ba_world before;
   uint8_t event, frame, duration, active;
+  uint8_t effect, sx, sy, tx, ty, subject;
 } ba_animation;
 void ba_animation_begin(ba_animation *, unsigned event);
+void ba_animation_record(ba_animation *, const uint8_t *, unsigned);
 int ba_animation_tick(ba_animation *); /* exactly one completion per event */
 int ba_lerp(int from, int to, const ba_animation *);
 unsigned ba_tile_image(const ba_world *, unsigned cell);

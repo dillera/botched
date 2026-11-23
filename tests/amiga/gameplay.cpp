@@ -1,6 +1,7 @@
 #include "binary_bridge.hpp"
 #include "play.h"
 #include "visual.h"
+#include "narration.h"
 #include "ui_playback.hpp"
 #include <algorithm>
 #include <cstring>
@@ -86,6 +87,7 @@ int main() {
       bw_stream_init(&stream, 0);
       ba_world world{};
       ba_replay replay{};
+      ba_narration story{};
       auto transfer = [&](Bytes request, unsigned op,
                           ui::BoardView *expected = nullptr) {
         auto bytes = bridge.handle(conn, request);
@@ -119,7 +121,13 @@ int main() {
               if (e) {
                 ++total_events;
                 ba_world authoritative=world;
+                ba_narrate(&story,replay.event_record,replay.event_size);
+                check(story.count>0 && story.count<=16,"bounded captions");
+                auto caption=ba_caption_at(&story,0);
+                check(caption && caption->event==e && caption->round==world.snapshot[1] && caption->tick==world.snapshot[2],"caption event context");
+                check(caption->line[0][0] && strlen(caption->line[0])<=52 && strlen(caption->line[1])<=52,"caption bounds");
                 ba_animation_begin(&animation,e);
+                ba_animation_record(&animation,replay.event_record,replay.event_size);
                 unsigned completed=0,frames=0;
                 while(animation.active) {
                   for(unsigned p=0;p<4;++p) {

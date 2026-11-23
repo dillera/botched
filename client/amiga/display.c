@@ -188,6 +188,15 @@ static void mark(const ba_world *w, int x, int y, uint32_t hash) {
         signatures[yy * w->width + xx] =
             signatures[yy * w->width + xx] * 33 + hash;
 }
+static int moving_dirty(const ba_world *w, int x, int y) {
+  int xx, yy;
+  for (yy = y / 16; yy <= (y + 15) / 16; ++yy)
+    for (xx = x / 16; xx <= (x + 15) / 16; ++xx)
+      if (xx >= 0 && yy >= 0 && xx < w->width && yy < w->height &&
+          dirty[yy * w->width + xx])
+        return 1;
+  return 0;
+}
 static void objects(const ba_world *w, const ba_animation *a, int paint) {
   unsigned i, j;
   int x, y;
@@ -207,9 +216,9 @@ static void objects(const ba_world *w, const ba_animation *a, int paint) {
           break;
         }
       }
-    if (paint)
+    if (paint && moving_dirty(w, x, y))
       sprite(BA_CRATE, ox + x, oy + y);
-    else
+    else if (!paint)
       mark(w, x, y, 10000 + x * 17 + y);
   }
   /* Pickups/delivery/destruction briefly retain the old loose crate;
@@ -227,9 +236,9 @@ static void objects(const ba_world *w, const ba_animation *a, int paint) {
       if (j == w->crates_count) {
         x = p[4] * 16;
         y = p[5] * 16;
-        if (paint)
+        if (paint && moving_dirty(w, x, y))
           sprite(BA_CRATE, ox + x, oy + y);
-        else
+        else if (!paint)
           mark(w, x, y, 20000 + x * 17 + y);
       }
     }
@@ -261,6 +270,8 @@ static void objects(const ba_world *w, const ba_animation *a, int paint) {
                p[5] * 9000 + flash * 77);
       continue;
     }
+    if (!moving_dirty(w, x, y))
+      continue;
     sprite(BA_ROBOT + i * 4 + (dir & 3), ox + x, oy + y);
     if (p[1] & 2)
       rect(ox + x + 11, oy + y + 12, 4, 4, 10);
@@ -410,8 +421,8 @@ void ba_draw(const ba_world *w, const ba_editor *e, const char *status,
   int changed = 0;
   ULONG begin = ba_display_time(), elapsed;
   ba_view_sync(&ba_viewport, w);
-  /* Keep existing sequential animation; only bring a moved subject into view.
-   * Rich action focus/narration belongs to the next slice. */
+  /* Keep the camera fixed during each authoritative movement. Bring an
+   * offscreen destination into view before its first interpolation frame. */
   if (a->active && a->frame == 0 && !ba_viewport.inspect &&
       !ba_viewport.overview)
     for (i = 0; i < w->players_count; ++i)
@@ -508,6 +519,21 @@ void ba_draw(const ba_world *w, const ba_editor *e, const char *status,
                         oy + ba_viewport.cy * 16, width * 16, height * 16,
                         0xc0);
     }
+    if (a->active && a->effect) {
+      for (i = 0; i < w->tile_count; ++i) {
+        int x = i % w->width, y = i / w->width;
+        if ((a->effect == 2 && x >= a->sx - 1 && x <= a->sx + 1 &&
+             y >= a->sy - 1 && y <= a->sy + 1) ||
+            (a->effect == 3 && x == a->sx && y == a->sy) ||
+            (a->effect == 1 && ((x == a->sx && x == a->tx &&
+                                 y >= (a->sy < a->ty ? a->sy : a->ty) &&
+                                 y <= (a->sy > a->ty ? a->sy : a->ty)) ||
+                                (y == a->sy && y == a->ty &&
+                                 x >= (a->sx < a->tx ? a->sx : a->tx) &&
+                                 x <= (a->sx > a->tx ? a->sx : a->tx)))))
+          signatures[i] += 0x4000000 + a->frame;
+      }
+    }
     if (w->valid)
       objects(w, a, 0);
     for (i = 0; i < w->tile_count; ++i) {
@@ -530,6 +556,21 @@ void ba_draw(const ba_world *w, const ba_editor *e, const char *status,
       else {
         if (w->valid)
           objects(w, a, 1);
+        if (a->active && a->effect) {
+          if (a->effect == 1) {
+            int x0 = ox + a->sx * 16 + 8, y0 = oy + a->sy * 16 + 8,
+                x1 = ox + a->tx * 16 + 8, y1 = oy + a->ty * 16 + 8;
+            rect(x0 < x1 ? x0 : x1, y0 < y1 ? y0 : y1,
+                 (x0 > x1 ? x0 - x1 : x1 - x0) + 2,
+                 (y0 > y1 ? y0 - y1 : y1 - y0) + 2, a->frame & 1 ? 15 : 12);
+          } else if (a->effect == 2) {
+            for (i = 0; i < 9; ++i)
+              outline(ox + (a->sx + (int)(i % 3) - 1) * 16 + 2,
+                      oy + (a->sy + (int)(i / 3) - 1) * 16 + 2, 12,
+                      a->frame & 1 ? 15 : 12);
+          } else
+            outline(ox + a->sx * 16 + 2, oy + a->sy * 16 + 2, 12, 12);
+        }
         if (ba_viewport.inspect)
           outline(ox + ba_viewport.x * 16, oy + ba_viewport.y * 16, 16, 5);
       }

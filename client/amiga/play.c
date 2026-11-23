@@ -99,6 +99,10 @@ int ba_replay_next(ba_replay *r, ba_world *w) {
     if (p[0] == 22)
       r->batch_events = ba_u32(p + 6);
     if (p[0] == 21) {
+      if (n > sizeof r->event_record)
+        return -1;
+      memcpy(r->event_record, p, n);
+      r->event_size = n;
       r->actor = (p[2] >= 5 && p[2] <= 7) ? p[13] : 0;
       r->order = r->actor ? p[14] : 8;
       if (!ba_event(w, p, n))

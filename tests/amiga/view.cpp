@@ -1,4 +1,5 @@
 #include "view.h"
+#include "narration.h"
 #include "binary_codec.hpp"
 #include "botched/engine.hpp"
 #include "visual.h"
@@ -256,6 +257,16 @@ int main() {
       ba_danger(&map, danger);
       check((danger[5 * 8 + 2] & BA_TURRET) && !(danger[5 * 8 + 1] & BA_TURRET),
             "turret range two");
+    }
+    {
+      ba_story = {}; ba_story.count = 16;
+      v.panel = 0;
+      check(ba_view_key(&v, &e, &w, 0x25) == BA_CHANGED && v.panel == 3, "H opens history");
+      for (int i=0;i<20;++i) ba_view_key(&v,&e,&w,0x4c);
+      check(ba_story.scroll==15,"history oldest bound");
+      for (int i=0;i<20;++i) ba_view_key(&v,&e,&w,0x4d);
+      check(!ba_story.scroll,"history newest bound");
+      ba_view_key(&v,&e,&w,0x45);check(!v.panel,"Escape returns from history");
     }
     for (unsigned y = 1; y <= 16; ++y)
       for (unsigned x = 1; x <= 20; ++x) {

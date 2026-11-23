@@ -1,4 +1,5 @@
 #include "view.h"
+#include "narration.h"
 #include <string.h>
 static unsigned limit(int v, unsigned max) {
   return v < 0 ? 0 : (unsigned)v > max ? max : (unsigned)v;
@@ -43,6 +44,17 @@ unsigned ba_view_key(ba_view *v, ba_editor *e, const ba_world *w,
   }
   if (key == 0x13)
     return BA_REFRESH;
+  if (key == 0x25) {
+    v->panel = v->panel == 3 ? 0 : 3;
+    return BA_CHANGED;
+  }
+  if (v->panel == 3 && (key == 0x4c || key == 0x4d)) {
+    if (key == 0x4c && ba_story.scroll + 1 < ba_story.count)
+      ++ba_story.scroll;
+    else if (key == 0x4d && ba_story.scroll)
+      --ba_story.scroll;
+    return BA_CHANGED;
+  }
   if (v->panel)
     return 0;
   if (key == 0x34) {

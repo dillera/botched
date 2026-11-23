@@ -3,6 +3,7 @@
 #include "session.h"
 #include "view.h"
 #include "visual.h"
+#include "narration.h"
 extern ba_view ba_viewport;
 #include <exec/types.h>
 #include <intuition/intuition.h>

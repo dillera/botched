@@ -11,6 +11,7 @@ typedef struct {
   uint16_t size, pos;
   uint32_t cursor, ack, high, batch_events;
   uint8_t final, active, actor, order;
+  uint8_t event_record[99], event_size; /* owned narration input across pages */
 } ba_replay;
 enum { BA_EMPTY = 255, BA_LOCK_KEY = 0x28 }; /* L: explicit local action */
 typedef struct {

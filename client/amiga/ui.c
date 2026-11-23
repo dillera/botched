@@ -90,6 +90,7 @@ static void top(const ba_world *w) {
     h = hash(h, w->players[i] + 1, 1);
   }
   h = hash(h, &left, sizeof left);
+  h = hash(h, &ba_story.round, 12);
   if (!region(0, h, 0, 0, 320, 38))
     return;
   text(4, 2, "BOTCHED!", 15);
@@ -135,8 +136,22 @@ static void top(const ba_world *w) {
     for (j = 0; j < n; ++j) {
       unsigned p = ba_priority(w->snapshot[1], i, n, j);
       sprintf(b, "%ld", (long)p);
+      if (w->snapshot[0] == 1 && ba_story.tick == i &&
+          (ba_story.phase == 1 || ba_story.phase == 3) && ba_story.actor == p)
+        frame(x + 21 + j * 15, 27, 11, 10, 15);
       text(x + 23 + j * 15, 28, b, 5 + p);
+      if (ba_story.round == w->snapshot[1] &&
+          (ba_story.done[i - 1] & (1u << (p - 1))))
+        rect(x + 24 + j * 15, 35, 5, 1, 5);
+      if (ba_story.round == w->snapshot[1] &&
+          (ba_story.skipped[i - 1] & (1u << (p - 1))))
+        rect(x + 21 + j * 15, 30, 10, 1, 4);
     }
+    if (w->snapshot[0] == 1 && ba_story.tick == i && ba_story.phase == 2)
+      frame(x + 84, 27, 11, 10, 15);
+    if (ba_story.round == w->snapshot[1] &&
+        (ba_story.machinery & (1u << (i - 1))))
+      rect(x + 86, 35, 5, 1, 5);
     text(x + 86, 28, "M", 15);
   }
   publish(0, 0, 320, 38);
@@ -225,6 +240,18 @@ static void panel(const ba_world *w) {
       ba_ui_icon(rp, icons[i], x, y);
       text(x + 22, y + 4, names[i], 5);
     }
+  } else if (ba_viewport.panel == 3) {
+    text(5, 42, "CAPTION HISTORY / UP OLDER / DOWN NEWER", 15);
+    for (i = 0; i < 4; ++i) {
+      const ba_caption *c = ba_caption_at(&ba_story, ba_story.scroll + i);
+      int y = 56 + i * 35;
+      if (!c)
+        break;
+      sprintf(b, "R%ld T%ld", (long)c->round, (long)c->tick);
+      text(5, y, b, 4);
+      text(5, y + 9, c->line[0], 15);
+      text(5, y + 18, c->line[1], 5);
+    }
   } else {
     text(5, 42, "EXACT SCORES / LOCAL DISPLAY LABELS", 15);
     for (i = 0; i < w->players_count; ++i) {
@@ -270,6 +297,11 @@ static void side(const ba_world *w, const ba_editor *e) {
     h = hash(h, &off, sizeof off);
   }
   h = hash(h, &w->winners, 1);
+  if (ba_viewport.panel == 3)
+    h = hash(h, &ba_story.serial, sizeof ba_story.serial);
+  else
+    h = hash(h, &ba_story.round, 5);
+  h = hash(h, &ba_story.scroll, 1);
   if (ba_viewport.inspect || ba_viewport.panel == 2) {
     h = hash(h, w->players, sizeof w->players);
     h = hash(h, w->crates, w->crates_count * 7);
@@ -308,6 +340,40 @@ static void side(const ba_world *w, const ba_editor *e) {
       }
     text(205, 152, "F2: EXACT SCORES", 4);
     text(205, 180, "ESC: QUIT", 5);
+  } else if (w->valid && w->snapshot[0] == 1) {
+    unsigned next = 0, k;
+    text(205, 43, "SERVER REPLAY", 15);
+    text(205, 60,
+         ba_story.phase == 2   ? "M: MACHINERY"
+         : ba_story.phase == 1 ? "PLAYER ORDER"
+         : ba_story.phase == 3 ? "PUSH SOURCE"
+                               : "ROUND EDGE",
+         5);
+    if (ba_story.phase == 1 || ba_story.phase == 3) {
+      sprintf(b, "P%ld %s", (long)ba_story.actor,
+              ba_player_label(ba_story.actor));
+      text(205, 78, b, 5 + ba_story.actor);
+      text(205, 94,
+           ba_story.phase == 3 ? "PUSH" : ba_order_name(ba_story.order), 15);
+    }
+    if (ba_story.phase == 1) {
+      for (k = 0; k < w->players_count; ++k)
+        if (ba_priority(ba_story.round, ba_story.tick, w->players_count, k) ==
+                ba_story.actor &&
+            k + 1 < w->players_count)
+          next = ba_priority(ba_story.round, ba_story.tick, w->players_count,
+                             k + 1);
+      if (next)
+        sprintf(b, "NEXT P%ld", (long)next);
+      else
+        strcpy(b, "NEXT MACHINERY");
+      text(205, 116, b, 4);
+    }
+    text(205, 140, "H: LAST 16", 4);
+    text(205, 160, "SERVER CLOCK", 4);
+    text(205, 170, "KEEPS RUNNING", 4);
+    if (ba_story.phase == 3)
+      text(205, 187, "PHASE UNRESOLVED", 4);
   } else {
     text(205, 43, "COMMANDS", 15);
     text(261, 43, "OFF", 4);
@@ -386,7 +452,15 @@ void ba_ui_draw(struct RastPort *canvas, struct RastPort *screen,
   top(w);
   side(w, e);
   programme(w, e, status);
-  if (ba_viewport.panel == 1) {
+  if (ba_story.phase == 4) {
+    strncpy(lines[0], status, 53);
+    lines[0][53] = 0;
+    strcpy(lines[1], "PLAYBACK STOPPED; SESSION RESULT UNCERTAIN");
+    strcpy(lines[2], "H HISTORY  ESC CLOSE PANEL / QUIT");
+  } else if (ba_viewport.panel == 3) {
+    strcpy(lines[0], "LAST 16 CAPTIONS. EVENTS CONTINUE IN ORDER.");
+    strcpy(lines[1], "UP/DOWN SCROLL; H / ESC / RIGHT CLICK RETURN");
+  } else if (ba_viewport.panel == 1) {
     strcpy(lines[0], "RED CORNERS=ARMED  PURPLE=TAR  LINE=LASER");
     strcpy(lines[1], "DOTS=TURRET RANGE. GUIDES STAY BELOW OBJECTS.");
     strcpy(lines[2], "F1 / ESC / RIGHT CLICK RETURN. CLOCK CONTINUES.");
@@ -398,6 +472,13 @@ void ba_ui_draw(struct RastPort *canvas, struct RastPort *screen,
     strcpy(lines[0], "INSPECTION: OUTLINE SHOWS LINKS / HAZARD RANGE.");
     strcpy(lines[1], "ARROWS MOVE CURSOR / PAN. NO OUTCOME PREDICTION.");
     strcpy(lines[2], "I / ESC / RIGHT CLICK RETURN   V MAP");
+  } else if ((w->snapshot[0] == 1 || w->snapshot[0] == 2 ||
+              ba_story.refreshed) &&
+             ba_story.count) {
+    const ba_caption *c = ba_caption_at(&ba_story, 0);
+    strcpy(lines[0], c->line[0]);
+    strcpy(lines[1], c->line[1]);
+    strcpy(lines[2], "H HISTORY  V MAP  I INSPECT; CLOCK CONTINUES");
   } else {
     strncpy(lines[0],
             (!w->valid || e->pending || e->locked)
@@ -406,7 +487,7 @@ void ba_ui_draw(struct RastPort *canvas, struct RastPort *screen,
             53);
     lines[0][53] = 0;
     strcpy(lines[1], "UP/DN CHOOSE SPACE/ENTER SET TAB SLOT L LOCK");
-    strcpy(lines[2], "V MAP I INSPECT F1 GUIDE F2 SCORES ESC QUIT");
+    strcpy(lines[2], "V MAP I INSPECT H HISTORY F1 GUIDE F2 SCORES");
   }
   for (i = 0; i < 3; ++i) {
     h = hash(1, lines[i], strlen(lines[i]));

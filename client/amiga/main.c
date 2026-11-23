@@ -23,7 +23,9 @@ int main(int argc, char **argv) {
   unsigned actions, job = 0, delay = 0, pace = 0, send_round = 0, events = 0,
                     frames = 0;
   uint8_t orders[3];
-  unsigned long worker_stack = 0, reserved, animation_start = 0;
+  unsigned long worker_stack = 0, reserved, animation_start = 0,
+                round_start = 0, frame_previous = 0;
+  unsigned animation_draws = 0;
   char status[40] = "Connecting through NIO...";
   reserved = ba_stack_mark();
   if (argc < 3 || argc > 4 || (argc == 4 && strcmp(argv[3], "--capture"))) {
@@ -45,18 +47,18 @@ int main(int argc, char **argv) {
     return 20;
   }
   while (!quit) {
+    int completed = 0;
     if (animation.active) {
-      redraw=1;
-      if(ba_animation_tick(&animation) && capture) {
-        printf("ANIM ordinal=%u type=%u frames=%u fields=%lu\n",events,animation.event,animation.duration,ba_display_time()-animation_start);
-        fflush(stdout);
-      }
+      redraw = 1;
+      completed = ba_animation_tick(&animation);
     }
     actions = ba_input(&editor, &shown);
     if (actions & BA_QUIT)
       quit = 1;
-    if (actions & BA_CHANGED)
+    if (actions & BA_CHANGED) {
       redraw = 1;
+      ba_story.refreshed = 0;
+    }
     if ((actions & BA_SEND) && !queued) {
       queued = 1;
       send_round = editor.round;
@@ -107,6 +109,10 @@ int main(int argc, char **argv) {
           delay = 0;
           continue;
         }
+        if (rebase) {
+          ba_story.round = incoming.snapshot[1];
+          ba_narration_refresh(&ba_story);
+        }
         rebase = 0;
         shown = incoming;
         ba_replay_snapshot(&replay, notice.high);
@@ -116,7 +122,7 @@ int main(int argc, char **argv) {
           job = 0;
         } else {
           strcpy(status, editor.locked ? "Accepted: waiting for players"
-                                       : "Choose three orders; ENTER to ready");
+                                       : "Choose three orders; L to lock");
           job = BA_EVENTS;
           delay = 40;
         }
@@ -161,12 +167,12 @@ int main(int argc, char **argv) {
           job = (notice.page[20] & 1) ? BA_SNAPSHOT : BA_FETCH;
       }
     }
-    if (replay.active && !animation.active && !halted && !busy) {
+    if (replay.active && !animation.active && !completed && !halted && !busy) {
       if (pace)
         --pace;
       else {
         int event;
-        animation.before=shown;
+        animation.before = shown;
         event = ba_replay_next(&replay, &shown);
         if (event < 0) {
           halted = 1;
@@ -183,10 +189,21 @@ int main(int argc, char **argv) {
                                  : "disabled");
           else
             strcpy(status, ba_event_name(event));
-          ba_animation_begin(&animation,event);
-          animation_start=ba_display_time();
+          ba_narrate(&ba_story, replay.event_record, replay.event_size);
+          ba_animation_begin(&animation, event);
+          ba_animation_record(&animation, replay.event_record,
+                              replay.event_size);
+          animation_draws = 0;
+          frame_previous = ba_display_time();
+          if (event == 1)
+            round_start = frame_previous;
+          animation_start = ba_display_time();
           pace = 0;
           if (capture) {
+            const ba_caption *caption = ba_caption_at(&ba_story, 0);
+            printf("CAPTION ordinal=%u phase=%u actor=%u text=%s | %s\n",
+                   events, ba_story.phase, ba_story.actor, caption->line[0],
+                   caption->line[1]);
             printf("EVENT ordinal=%u type=%d round=%u tick=%u\n", events, event,
                    shown.snapshot[1], shown.snapshot[2]);
             fflush(stdout);
@@ -222,8 +239,10 @@ int main(int argc, char **argv) {
         redraw = 1;
       }
     }
-    if (halted)
+    if (halted) {
       editor.locked = 1;
+      ba_story.phase = 4; /* faults must remain visible over replay captions */
+    }
     if (++frames == 50) {
       frames = 0;
       redraw = 1;
@@ -231,16 +250,43 @@ int main(int argc, char **argv) {
     if (redraw) {
       unsigned long draw_start = ba_display_time();
       ba_draw(&shown, &editor, status, &animation);
+      if (capture && (animation.active || completed)) {
+        unsigned long now = ba_display_time();
+        ++animation_draws;
+        int px = -1, py = -1;
+        if ((animation.event == 8 || animation.event == 9) &&
+            animation.subject) {
+          unsigned p = animation.subject - 1;
+          px = ba_lerp(animation.before.players[p][2] * 16,
+                       shown.players[p][2] * 16, &animation);
+          py = ba_lerp(animation.before.players[p][3] * 16,
+                       shown.players[p][3] * 16, &animation);
+        }
+        printf("FRAME ordinal=%u step=%u render_fields=%lu interval_fields=%lu "
+               "px=%d py=%d\n",
+               events, animation.frame, now - draw_start, now - frame_previous,
+               px, py);
+        frame_previous = now;
+        if (completed) {
+          printf("ANIM ordinal=%u type=%u frames=%u fields=%lu draws=%u\n",
+                 events, animation.event, animation.duration,
+                 now - animation_start, animation_draws);
+          if (animation.event == 3)
+            printf("ROUND round=%u fields=%lu\n", shown.snapshot[1],
+                   now - round_start);
+        }
+        fflush(stdout);
+      }
       if (capture && (actions & BA_CHANGED)) {
         printf("UI panel=%u inspect=%u overview=%u x=%u y=%u cx=%u cy=%u "
                "choice=%u slot=%u pending=%u o0=%u o1=%u o2=%u mx=%d my=%d "
                "source=%u dispatch_ms=%lu fields=%lu\n",
                ba_viewport.panel, ba_viewport.inspect, ba_viewport.overview,
                ba_viewport.x, ba_viewport.y, ba_viewport.cx, ba_viewport.cy,
-               ba_viewport.choice, editor.slot, editor.pending, editor.orders[0],
-               editor.orders[1], editor.orders[2], ba_window->MouseX,
-               ba_window->MouseY, ba_input_kind, ba_input_latency(),
-               ba_display_time()-draw_start);
+               ba_viewport.choice, editor.slot, editor.pending,
+               editor.orders[0], editor.orders[1], editor.orders[2],
+               ba_window->MouseX, ba_window->MouseY, ba_input_kind,
+               ba_input_latency(), ba_display_time() - draw_start);
         fflush(stdout);
       }
       redraw = 0;
@@ -254,7 +300,8 @@ int main(int argc, char **argv) {
     while (!ba_worker_stop_poll(&worker_stack, &close_failed)) {
       ba_input(&editor, &shown);
       if (++waiting == 500)
-        ba_draw(&shown, &editor, "Waiting for broker; exit not safe yet", &animation);
+        ba_draw(&shown, &editor, "Waiting for broker; exit not safe yet",
+                &animation);
       WaitTOF();
     }
     printf("CLOSE confirmed=%u wait_frames=%u\n", !close_failed, waiting);

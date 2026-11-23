@@ -16,7 +16,8 @@ def wait(predicate,seconds,label):
         time.sleep(.2)
     raise RuntimeError('Timeout: '+label)
 def listening(p):return f':{p:04X} ' in pathlib.Path('/proc/net/tcp').read_text()
-def main(a1c=False, s1=False, a2a=False, a2b=False):
+def main(a1c=False, s1=False, a2a=False, a2b=False, a2b2=False):
+    a2b = a2b or a2b2
     a2a = a2a or a2b
     out=ROOT/'build/amiga/evidence';out.mkdir(parents=True,exist_ok=True)
     work=pathlib.Path(tempfile.mkdtemp(prefix='a500-',dir=out));share=work/'share';share.mkdir()
@@ -53,7 +54,8 @@ def main(a1c=False, s1=False, a2a=False, a2b=False):
         previews=[]
         if a2a:
             for map_id in ('training-01','laserworks-01','trapworks-01','turretworks-01','tarworks-01','shuntworks-01','crossroads-01'):
-                room=ask(dict(type='CREATE_MATCH',map_id=map_id,player_count=4,bots=3,rounds=2 if a2b and map_id=='trapworks-01' else 1,planning_seconds=0))
+                mixed=a2b2 and map_id=='shuntworks-01'
+                room=ask(dict(type='CREATE_MATCH',map_id=map_id,player_count=2 if mixed else 4,bots=0 if mixed else 3,rounds=3 if mixed else (2 if a2b and map_id=='trapworks-01' else 1),planning_seconds=0))
                 assert room['ok'],room
                 previews.append((map_id,room['match_id']))
         if a1c:
@@ -225,7 +227,17 @@ channel:
                     ipc('SCREENSHOT',str(work/f'animation-{frame}.png'))
                     time.sleep(.05)
                 ipc('SCREENSHOT',str(work/'replay.png'))
-        wait(lambda:'phase=2' in client_log(),180,'match completion')
+                if a2b2:
+                    key(0x25);wait(lambda:ui_state().get('panel')==3,30,'history open')
+                    ipc('SCREENSHOT',str(work/'caption-history.png'))
+                    key(0x4c);key(0x4d)
+                    key(0x25);wait(lambda:ui_state().get('panel')==0,30,'history close')
+                    def machinery_frame():
+                        captions=re.findall(r'CAPTION ordinal=(\d+) phase=(\d+)',client_log())
+                        return captions and captions[-1][1]=='2' and re.search(r'FRAME ordinal='+captions[-1][0]+r' step=[1-9] ',client_log())
+                    wait(machinery_frame,60,'machinery frame')
+                    ipc('SCREENSHOT',str(work/'machinery.png'))
+        wait(lambda:re.search(r'^RESULT .* phase=2 ',client_log(),re.M),180,'match completion')
         log=client_log();assert log.count('SUBMIT round=')==3,log
         assert len(re.findall(r'EVENT ordinal=',log))>30,log
         finished=ask(dict(type='GET_SNAPSHOT',match_id=match))
@@ -241,6 +253,20 @@ channel:
             assert [(r[2],r[3]) for r in rows]==[(e['round'],e['tick']) for e in authoritative]
             animations=[tuple(map(int,m)) for m in re.findall(r'ANIM ordinal=(\d+) type=(\d+)',log)]
             assert animations==[r[:2] for r in rows],(len(animations),len(rows))
+            if a2b2:
+                captions=[int(n) for n in re.findall(r'CAPTION ordinal=(\d+)',log)]
+                assert captions==list(range(1,len(authoritative)+1)),captions
+                frame_rows=[tuple(map(int,m)) for m in re.findall(r'FRAME ordinal=(\d+) step=(\d+) render_fields=(\d+) interval_fields=(\d+) px=(-?\d+) py=(-?\d+)',log)]
+                for ordinal,event in enumerate(authoritative,1):
+                    fr=[r for r in frame_rows if r[0]==ordinal]
+                    assert fr and [r[1] for r in fr]==list(range(len(fr))),fr
+                    if event['type'] in ('ROBOT_MOVED','ROBOT_PUSHED'):
+                        p=event['params']
+                        assert fr[0][4:]==(p['from_x']*16,p['from_y']*16),fr
+                        assert fr[-1][4:]==(p['x']*16,p['y']*16),fr
+                        assert len(fr)==(17 if event['type']=='ROBOT_PUSHED' else 13)
+                        assert all(abs(b[4]-a[4])+abs(b[5]-a[5])<=2 for a,b in zip(fr,fr[1:])),fr
+                assert 'ROUND round=' in log
             return authoritative
         authoritative=check_replay(match,log,snap['state_version'])
         (work/'events.json').write_text(json.dumps(authoritative,indent=2))
@@ -256,7 +282,7 @@ channel:
         wait(lambda:(share/'client2.log').exists() and 'RESULT' in (share/'client2.log').read_text(),120,'second join')
         assert 'RESULT error=0 map=1 snapshot=1' in (share/'client2.log').read_text()
         wait(lambda:(share/'state.bin').read_bytes()[:2]!=data[:2],10,'second map')
-        wait(lambda:'phase=2' in (share/'client2.log').read_text(),180,'deadline-only completion')
+        wait(lambda:re.search(r'^RESULT .* phase=2 ',(share/'client2.log').read_text(),re.M),180,'deadline-only completion')
         second_log=(share/'client2.log').read_text()
         assert 'SUBMIT round=' not in second_log and 'type=1 ' in second_log,second_log
         baseline=int(re.search(r'RESULT .*?cursor=(\d+)',second_log)[1])
@@ -269,6 +295,10 @@ channel:
             wait(lambda:(share/'games-done').exists(),60,'second clean exit')
             for i,(map_id,mid) in enumerate(previews):
                 plog=share/f'preview-{i}.log'
+                if a2b2 and map_id=='shuntworks-01':
+                    wait(lambda:ask(dict(type='GET_MATCH_STATUS',match_id=mid))['status']['joined']==1,180,'Amiga first seat')
+                    peer=ask(dict(type='JOIN_MATCH',match_id=mid))
+                    assert peer['ok'] and peer['player_id']==2
                 wait(lambda:plog.exists() and 'RESULT error=0 map=1 snapshot=1' in plog.read_text(),180,'map '+map_id)
                 # RESULT precedes planar capture; wait for completed display publication.
                 time.sleep(1)
@@ -280,13 +310,38 @@ channel:
                         for order in program:key(order)
                         key(40)
                         wait(lambda:f'SUBMIT round={rnd} ' in plog.read_text(),60,'trap programme')
-                    wait(lambda:'phase=2' in plog.read_text(),180,'trap completion')
+                    wait(lambda:re.search(r'^RESULT .* phase=2 ',plog.read_text(),re.M),180,'trap completion')
                     trap_events=check_replay(mid,plog.read_text(),baseline)
                     assert any(e['type']=='TRAP_TRIGGERED' for e in trap_events),trap_events
                     final_traps=ask(dict(type='GET_SNAPSHOT',match_id=mid))['snapshot']['traps']
                     assert all(not t['armed'] for t in final_traps),final_traps
                     (work/'trap-events.json').write_text(json.dumps(trap_events,indent=2))
                     ipc('SCREENSHOT',str(work/'trap-disarmed.png'))
+                if a2b2 and map_id=='shuntworks-01':
+                    baseline=int(re.search(r'RESULT .*?cursor=(\d+)',plog.read_text())[1])
+                    programmes=[((2,2,5),['FORWARD_2','FORWARD_2','TURN_LEFT']),((1,4,1),['FORWARD_2','WAIT','WAIT']),((5,1,9),['WAIT']*3)]
+                    for rnd,(keys,orders) in enumerate(programmes,1):
+                        wait(lambda:f'round={rnd} phase=0' in plog.read_text(),120,'mixed planning')
+                        reply=ask(dict(type='SUBMIT_PROGRAM',match_id=mid,player_id=2,session=peer['session'],round=rnd,revision=1,orders=orders,ready=True,request_id=f'shunt-{rnd}'))
+                        assert reply['ok'],reply
+                        for raw in keys:key(raw)
+                        key(40)
+                        wait(lambda:f'SUBMIT round={rnd} ' in plog.read_text(),60,'mixed accepted')
+                    wait(lambda:re.search(r'EVENT ordinal=\d+ type=9 ',plog.read_text()),120,'authoritative push')
+                    for frame in range(4):
+                        ipc('SCREENSHOT',str(work/f'push-{frame}.png'));time.sleep(.15)
+                    def shunt_caption_frame():
+                        match=re.search(r'CAPTION ordinal=(\d+).*SHUNT',plog.read_text())
+                        return match and re.search(r'FRAME ordinal='+match[1]+r' step=1 ',plog.read_text())
+                    wait(shunt_caption_frame,60,'SHUNT caption frame')
+                    ipc('SCREENSHOT',str(work/'shunt-score.png'))
+                    wait(lambda:re.search(r'^RESULT .* phase=2 ',plog.read_text(),re.M),180,'mixed completion')
+                    shunt_events=check_replay(mid,plog.read_text(),baseline)
+                    assert any(e['type']=='SCORE_AWARDED' and e['params']['reason']=='SHUNT' and e['params']['points']==8 for e in shunt_events)
+                    (work/'shunt-events.json').write_text(json.dumps(shunt_events,indent=2))
+                    key(0x25);time.sleep(.5)
+                    ipc('SCREENSHOT',str(work/'shunt-history.png'))
+                    key(0x25) # close history before Escape quits the client
                 ipc('SEND_KEY','69','1');time.sleep(.12);ipc('SEND_KEY','69','0')
                 wait(lambda:(share/f'preview-{i}-done').exists(),60,'preview exit')
         wait(lambda:(share/'done').exists(),60,'all clean exits')
@@ -322,6 +377,9 @@ channel:
             chip_installed=524288,expansion_installed=524288,expansion_kind='A500 slow RAM (no true Fast RAM)',
             avail_before=before,avail_after_first=first,avail_after_second=last,
             verification=['two real NIO HELLO/JOIN/MAP/SNAPSHOT instances','authoritative player positions/scores','three keyboard/mouse programmes accepted exactly once' if a2b else 'three raw-key programmes accepted exactly once','sequential event playback','server deadline WAIT completion','raw-key quit','clean exit'])
+        if a2b2:
+            from replay_metrics import measure
+            (work/'replay-metrics.json').write_text(json.dumps(measure(work),indent=2)+'\n')
         (work/'results.json').write_text(json.dumps(result,indent=2)+'\n')
         (ROOT/'build/amiga/latest-evidence').write_text(str(work)+'\n')
         print(client_log);print('PASS',work)
@@ -346,5 +404,6 @@ if __name__=='__main__':
     group.add_argument('--s1',action='store_true',help='join startup-provisioned named-bot matches')
     group.add_argument('--a2a',action='store_true',help='visual gameplay plus all nine maps on stock A500')
     group.add_argument('--a2b',action='store_true',help='UI, inspection, palette and all nine maps')
+    group.add_argument('--a2b2',action='store_true',help='narration, history and continuous replay timing')
     args=parser.parse_args()
-    main(args.a1c,args.s1,args.a2a,args.a2b)
+    main(args.a1c,args.s1,args.a2a,args.a2b,args.a2b2)
