@@ -16,7 +16,7 @@ def wait(predicate,seconds,label):
         time.sleep(.2)
     raise RuntimeError('Timeout: '+label)
 def listening(p):return f':{p:04X} ' in pathlib.Path('/proc/net/tcp').read_text()
-def main():
+def main(a1c=False):
     out=ROOT/'build/amiga/evidence';out.mkdir(parents=True,exist_ok=True)
     work=pathlib.Path(tempfile.mkdtemp(prefix='a500-',dir=out));share=work/'share';share.mkdir()
     env=json.loads(subprocess.check_output(['bash','-c',
@@ -29,7 +29,7 @@ def main():
     pkg=WS/'build/amiga-artifacts/wb13/NIO'
     for f in ('fujinet-nio.device','fujinet-load-resident'):shutil.copy2(pkg/f,share/f)
     shutil.copy2(ROOT/'build/amiga/botched-amiga',share/'botched-amiga')
-    procs=[];logs=[]
+    procs=[];logs=[];proxy=None
     def start(name,args,**kw):
         f=(work/(name+'.log')).open('w');logs.append(f)
         p=subprocess.Popen(list(map(str,args)),stdout=f,stderr=subprocess.STDOUT,**kw);procs.append(p);return p
@@ -40,16 +40,22 @@ def main():
         conn=socket.create_connection(('127.0.0.1',jp));stream=conn.makefile('rwb')
         def ask(data):
             stream.write(json.dumps(data).encode()+b'\n');stream.flush();return json.loads(stream.readline())
-        made=ask(dict(type='CREATE_MATCH',map_id='foundry-01',player_count=4,bots=3,rounds=3,planning_seconds=0))
-        assert made['ok'],made
-        match=made['match_id']
-        second=ask(dict(type='CREATE_MATCH',map_id='factory-01',player_count=4,bots=3,rounds=2,planning_seconds=8))
-        assert second['ok'],second
-        (share/'run').write_text('FailAt 21\nStack 16384\nAvail >BT:os-memory.log\nBT:fujinet-load-resident BT:fujinet-nio.device fujinet-nio.device\nAvail >BT:broker-memory.log\n'
-            +f'BT:botched-amiga >BT:client.log tcp://127.0.0.1:{bp} {match} --capture\n'
-            +'If WARN\nEcho >BT:error ERROR\nEndIf\nAvail >BT:first-exit-memory.log\nEcho >BT:first-exited DONE\n'
-            +f'BT:botched-amiga >BT:client2.log tcp://127.0.0.1:{bp} {second["match_id"]} --capture\n'
-            +'If WARN\nEcho >BT:error ERROR\nEndIf\nAvail >BT:exit-memory.log\nEcho >BT:done DONE\n')
+        if a1c:
+            import reliability
+            cases=reliability.setup(ask)
+            proxy=reliability.Proxy(bp)
+            (share/'run').write_text(reliability.startup(cases,proxy.port))
+        else:
+            made=ask(dict(type='CREATE_MATCH',map_id='foundry-01',player_count=4,bots=3,rounds=3,planning_seconds=0))
+            assert made['ok'],made
+            match=made['match_id']
+            second=ask(dict(type='CREATE_MATCH',map_id='factory-01',player_count=4,bots=3,rounds=2,planning_seconds=8))
+            assert second['ok'],second
+            (share/'run').write_text('FailAt 21\nStack 16384\nAvail >BT:os-memory.log\nBT:fujinet-load-resident BT:fujinet-nio.device fujinet-nio.device\nAvail >BT:broker-memory.log\n'
+                +f'BT:botched-amiga >BT:client.log tcp://127.0.0.1:{bp} {match} --capture\n'
+                +'If WARN\nEcho >BT:error ERROR\nEndIf\nAvail >BT:first-exit-memory.log\nEcho >BT:first-exited DONE\n'
+                +f'BT:botched-amiga >BT:client2.log tcp://127.0.0.1:{bp} {second["match_id"]} --capture\n'
+                +'If WARN\nEcho >BT:error ERROR\nEndIf\nAvail >BT:exit-memory.log\nEcho >BT:done DONE\n')
         (work/'startup').write_text('Path C: SYS:System S: ADD\nExecute BT:run\n')
         for cmd in [('delete','s/Startup-Sequence'),('write',str(work/'startup'),'s/Startup-Sequence')]:
             subprocess.run(['xdftool',str(work/'boot.adf'),*cmd],check=True,stdout=subprocess.DEVNULL)
@@ -70,7 +76,7 @@ channel:
     stop_bits: 1
     flow_control: none
 ''')
-        start('nio',[WS/'repos/fujinet-nio/build/fujibus-tcp-debug/fujinet-nio'],cwd=work/'nio')
+        nio=start('nio',[WS/'repos/fujinet-nio/build/fujibus-tcp-debug/fujinet-nio'],cwd=work/'nio')
         wait(lambda:listening(np),15,'NIO')
         args=['amiberry','--log','--config',WS/'configs/amiga/base-68000.uae','-G','-r',work/'rom/kickstart.rom','-0',work/'boot.adf']
         settings=['chipset=ocs','cpu_model=68000','cpu_type=68000','chipmem_size=1','bogomem_size=2','fastmem_size=0','z3mem_size=0',
@@ -81,6 +87,9 @@ channel:
         wait(lambda:listening(sp),60,'Amiberry serial')
         start('bridge',['socat',f'TCP:127.0.0.1:{sp}',f'TCP:127.0.0.1:{np}'])
         print('Guest evidence:',work,flush=True)
+        if a1c:
+            reliability.exercise(work,share,cases,ask,start,jp,bp,nio,proxy)
+            return
         wait(lambda:(share/'state.bin').exists() or (share/'done').exists(),180,'snapshot')
         assert (share/'state.bin').exists(),(share/'client.log').read_text()
         wait(lambda:(share/'screen.bin').exists() and (share/'screen.bin').stat().st_size==24000,10,'display capture')
@@ -182,6 +191,7 @@ channel:
         (ROOT/'build/amiga/latest-evidence').write_text(str(work)+'\n')
         print(client_log);print('PASS',work)
     finally:
+        if proxy:proxy.close()
         try:
             ipc_path=re.search(r'IPC: Listening on (\S+)',(work/'amiberry.log').read_text())[1]
             with socket.socket(socket.AF_UNIX) as s:
@@ -193,4 +203,8 @@ channel:
                 try:p.wait(timeout=8)
                 except subprocess.TimeoutExpired:p.kill();p.wait()
         for f in logs:f.close()
-if __name__=='__main__':main()
+if __name__=='__main__':
+    import argparse
+    parser=argparse.ArgumentParser(description=__doc__)
+    parser.add_argument('--a1c',action='store_true',help='mixed-human reliability scenarios')
+    main(parser.parse_args().a1c)

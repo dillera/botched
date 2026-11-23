@@ -1,7 +1,8 @@
 # Amiga A1 review
 
-**Current status:** A1a (`53feea99`) is accepted. [A1b gameplay interaction and
-verification](a1b-review.md) is implemented for review. A1c acceptance remains.
+**Current status:** A1a (`53feea99`) and A1b (`6171f12b`) are accepted.
+[A1c reliability and multiplayer acceptance](a1c-review.md) is ready for review,
+with explicit broker-level limits.
 The following is the retained A1a baseline; its remaining-work statements describe
 that accepted slice, not the current client.
 

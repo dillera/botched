@@ -1,5 +1,8 @@
 # A1b — keyboard programmes and authoritative replay
 
+**Accepted baseline:** `6171f12b`. [A1c reliability acceptance](a1c-review.md)
+now covers the follow-up work; remaining-work statements below describe A1b.
+
 A1b adds playable keyboard input and bounded sequential event replay to the
 accepted A1a client. It retains the stock 68000, Kickstart 1.3, **512 KB Chip +
 512 KB slow expansion RAM** target. A1c's exhaustive multiplayer, disconnect and

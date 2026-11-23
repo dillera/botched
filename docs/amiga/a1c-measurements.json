@@ -1,0 +1,436 @@
+{
+  "scenarios": [
+    {
+      "case": {
+        "name": "target",
+        "map_id": "training-01",
+        "rounds": 10,
+        "target_score": 5,
+        "planning_seconds": 0,
+        "match": "m1"
+      },
+      "event_count": 34,
+      "memory": [
+        {
+          "chip": 439344,
+          "expansion": 342128,
+          "total": 781472,
+          "largest_chip": 439272,
+          "largest_expansion": 330392
+        },
+        {
+          "chip": 415184,
+          "expansion": 340232,
+          "total": 755416,
+          "largest_chip": 414944,
+          "largest_expansion": 330392
+        },
+        {
+          "chip": 415184,
+          "expansion": 323704,
+          "total": 738888,
+          "largest_chip": 414944,
+          "largest_expansion": 322536
+        },
+        {
+          "chip": 415184,
+          "expansion": 323536,
+          "total": 738720,
+          "largest_chip": 414944,
+          "largest_expansion": 322536
+        },
+        {
+          "chip": 415184,
+          "expansion": 323536,
+          "total": 738720,
+          "largest_chip": 414944,
+          "largest_expansion": 322536
+        },
+        {
+          "chip": 439344,
+          "expansion": 334152,
+          "total": 773496,
+          "largest_chip": 439272,
+          "largest_expansion": 322536
+        }
+      ],
+      "stack": [
+        1856,
+        1940
+      ],
+      "close_wait_frames": 4
+    },
+    {
+      "case": {
+        "name": "deadline",
+        "map_id": "foundry-01",
+        "rounds": 3,
+        "planning_seconds": 8,
+        "match": "m2"
+      },
+      "event_count": 40,
+      "memory": [
+        {
+          "chip": 439344,
+          "expansion": 334152,
+          "total": 773496,
+          "largest_chip": 439272,
+          "largest_expansion": 322536
+        },
+        {
+          "chip": 415184,
+          "expansion": 332256,
+          "total": 747440,
+          "largest_chip": 414944,
+          "largest_expansion": 322536
+        },
+        {
+          "chip": 415184,
+          "expansion": 323704,
+          "total": 738888,
+          "largest_chip": 414944,
+          "largest_expansion": 322536
+        },
+        {
+          "chip": 415184,
+          "expansion": 323704,
+          "total": 738888,
+          "largest_chip": 414944,
+          "largest_expansion": 322536
+        },
+        {
+          "chip": 415184,
+          "expansion": 323704,
+          "total": 738888,
+          "largest_chip": 414944,
+          "largest_expansion": 322536
+        },
+        {
+          "chip": 439344,
+          "expansion": 334152,
+          "total": 773496,
+          "largest_chip": 439272,
+          "largest_expansion": 322536
+        }
+      ],
+      "stack": [
+        1856,
+        1940
+      ],
+      "close_wait_frames": 7
+    },
+    {
+      "case": {
+        "name": "long",
+        "map_id": "foundry-01",
+        "rounds": 12,
+        "planning_seconds": 5,
+        "match": "m3"
+      },
+      "event_count": 148,
+      "memory": [
+        {
+          "chip": 439344,
+          "expansion": 334152,
+          "total": 773496,
+          "largest_chip": 439272,
+          "largest_expansion": 322536
+        },
+        {
+          "chip": 415184,
+          "expansion": 332256,
+          "total": 747440,
+          "largest_chip": 414944,
+          "largest_expansion": 322536
+        },
+        {
+          "chip": 415184,
+          "expansion": 323704,
+          "total": 738888,
+          "largest_chip": 414944,
+          "largest_expansion": 322536
+        },
+        {
+          "chip": 415184,
+          "expansion": 323704,
+          "total": 738888,
+          "largest_chip": 414944,
+          "largest_expansion": 322536
+        },
+        {
+          "chip": 439344,
+          "expansion": 334152,
+          "total": 773496,
+          "largest_chip": 439272,
+          "largest_expansion": 322536
+        }
+      ],
+      "stack": [
+        1856,
+        1940
+      ],
+      "close_wait_frames": 6
+    },
+    {
+      "case": {
+        "name": "stall",
+        "map_id": "foundry-01",
+        "rounds": 3,
+        "planning_seconds": 0,
+        "match": "m4"
+      },
+      "event_count": 0,
+      "memory": [
+        {
+          "chip": 439344,
+          "expansion": 334152,
+          "total": 773496,
+          "largest_chip": 439272,
+          "largest_expansion": 322536
+        },
+        {
+          "chip": 415184,
+          "expansion": 332256,
+          "total": 747440,
+          "largest_chip": 414944,
+          "largest_expansion": 322536
+        },
+        {
+          "chip": 415184,
+          "expansion": 323704,
+          "total": 738888,
+          "largest_chip": 414944,
+          "largest_expansion": 322536
+        },
+        {
+          "chip": 439344,
+          "expansion": 334152,
+          "total": 773496,
+          "largest_chip": 439272,
+          "largest_expansion": 322536
+        }
+      ],
+      "stack": [
+        1856,
+        1940
+      ],
+      "close_wait_frames": 138
+    },
+    {
+      "case": {
+        "name": "repeat",
+        "map_id": "foundry-01",
+        "rounds": 3,
+        "planning_seconds": 5,
+        "match": "m5"
+      },
+      "event_count": 40,
+      "memory": [
+        {
+          "chip": 439344,
+          "expansion": 334152,
+          "total": 773496,
+          "largest_chip": 439272,
+          "largest_expansion": 322536
+        },
+        {
+          "chip": 415184,
+          "expansion": 332256,
+          "total": 747440,
+          "largest_chip": 414944,
+          "largest_expansion": 322536
+        },
+        {
+          "chip": 415184,
+          "expansion": 323704,
+          "total": 738888,
+          "largest_chip": 414944,
+          "largest_expansion": 322536
+        },
+        {
+          "chip": 415184,
+          "expansion": 323704,
+          "total": 738888,
+          "largest_chip": 414944,
+          "largest_expansion": 322536
+        },
+        {
+          "chip": 439344,
+          "expansion": 334152,
+          "total": 773496,
+          "largest_chip": 439272,
+          "largest_expansion": 322536
+        }
+      ],
+      "stack": [
+        1856,
+        1940
+      ],
+      "close_wait_frames": 4
+    }
+  ],
+  "post_exit_avail": [
+    {
+      "chip": [
+        439344,
+        83888,
+        523232,
+        439272
+      ],
+      "fast": [
+        411968,
+        104920,
+        516888,
+        322536
+      ],
+      "total": [
+        851312,
+        188808,
+        1040120,
+        439272
+      ]
+    },
+    {
+      "chip": [
+        439344,
+        83888,
+        523232,
+        439272
+      ],
+      "fast": [
+        411968,
+        104920,
+        516888,
+        322536
+      ],
+      "total": [
+        851312,
+        188808,
+        1040120,
+        439272
+      ]
+    },
+    {
+      "chip": [
+        439344,
+        83888,
+        523232,
+        439272
+      ],
+      "fast": [
+        411968,
+        104920,
+        516888,
+        322536
+      ],
+      "total": [
+        851312,
+        188808,
+        1040120,
+        439272
+      ]
+    },
+    {
+      "chip": [
+        439344,
+        83888,
+        523232,
+        439272
+      ],
+      "fast": [
+        411968,
+        104920,
+        516888,
+        322536
+      ],
+      "total": [
+        851312,
+        188808,
+        1040120,
+        439272
+      ]
+    },
+    {
+      "chip": [
+        439344,
+        83888,
+        523232,
+        439272
+      ],
+      "fast": [
+        411968,
+        104920,
+        516888,
+        322536
+      ],
+      "total": [
+        851312,
+        188808,
+        1040120,
+        439272
+      ]
+    }
+  ],
+  "executable_bytes": 55568,
+  "executable_sha256": "a1926164b21948c95460cd4e28ebaa5fd577f80057252606792f4c16535a6f11",
+  "library_sha256": "7831bc08243effa5df603ef867d384921202dbd59f731cfe5b8f18941eb0b159",
+  "broker_sha256": "c97f02ffb6a13884861199c63594c7dc052c87a680f46047012755bebf43852f",
+  "exact_retried_opcodes": [
+    18,
+    20
+  ],
+  "machine": [
+    "chipset=ocs",
+    "cpu_model=68000",
+    "cpu_type=68000",
+    "chipmem_size=1",
+    "bogomem_size=2",
+    "fastmem_size=0",
+    "z3mem_size=0",
+    "ntsc=false",
+    "serial_direct=true",
+    "serial_hardware_ctsrts=false"
+  ],
+  "linked_segments": {
+    "text": 45324,
+    "data": 312,
+    "bss": 17364,
+    "resident_hunks": 63000
+  },
+  "chip_installed": 524288,
+  "slow_expansion_installed": 524288,
+  "true_fast_ram": 0,
+  "display_bitplanes_bytes": 24000,
+  "stack_reservations": {
+    "main": 16384,
+    "worker": 8192
+  },
+  "compiler": "m68k-amigaos-gcc 15.2.0; -m68000 -mcrt=nix13 -Os",
+  "library_close_confirmation": "API success only; not independent remote handle enumeration",
+  "native_verification": [
+    "exact lost JOIN/SUBMIT replay and timeout resume",
+    "session expiry blocks fresh JOIN and key allocation",
+    "60-second between-calls timeout bound",
+    "cooperative cancellation and three-attempt Close",
+    "eventless ready submission and lost-read replay",
+    "150 rounds trigger retained-history expiry",
+    "immutable paged playback during deadline advancement",
+    "ASan/UBSan and nine-map 803-event presentation equivalence"
+  ],
+  "post_run_assertions": [
+    "planning missing=[] for target, [1] for every deadline round",
+    "actual emulator log KS ROM v1.3 and Slow memory"
+  ],
+  "os-memory": [
+    "Type  Available    In-Use   Maximum   Largest",
+    "chip     439344     83888    523232    439272",
+    "fast     451088     65800    516888    450312",
+    "total    890432    149688   1040120    450312"
+  ],
+  "broker-memory": [
+    "Type  Available    In-Use   Maximum   Largest",
+    "chip     439344     83888    523232    439272",
+    "fast     419944     96944    516888    392112",
+    "total    859288    180832   1040120    439272"
+  ]
+}

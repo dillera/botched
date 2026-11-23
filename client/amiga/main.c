@@ -76,7 +76,14 @@ int main(int argc, char **argv) {
           strcpy(status, "History expired: refreshing");
           job = BA_SNAPSHOT;
         } else {
-          sprintf(status, "Network/game error %ld", (long)notice.error);
+          if (notice.error == 107)
+            strcpy(status, "Session expired: outcome uncertain");
+          else
+            sprintf(status, "Network/game error %ld", (long)notice.error);
+          if (capture) {
+            printf("FAULT code=%u kind=%u\n", notice.error, notice.kind);
+            fflush(stdout);
+          }
           halted = 1;
           code = 10;
           editor.locked = 1;
@@ -213,7 +220,21 @@ int main(int argc, char **argv) {
     WaitTOF();
   }
   ba_draw(&shown, &editor, "Closing connection; please wait...");
-  worker_stack = ba_worker_stop();
+  {
+    unsigned close_failed = 0, waiting = 0;
+    ba_worker_stop_begin();
+    while (!ba_worker_stop_poll(&worker_stack, &close_failed)) {
+      ba_input(&editor);
+      if (++waiting == 500)
+        ba_draw(&shown, &editor, "Waiting for broker; exit not safe yet");
+      WaitTOF();
+    }
+    printf("CLOSE confirmed=%u wait_frames=%u\n", !close_failed, waiting);
+    if (close_failed) {
+      puts("Network Close unconfirmed; remote handle may remain until expiry");
+      code = 10;
+    }
+  }
   ba_display_close();
   memory("closed");
   printf("EXIT main_stack=%lu worker_stack=%lu reserved_main=%lu "

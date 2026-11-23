@@ -126,7 +126,7 @@ void ba_draw(const ba_world *w, const ba_editor *editor, const char *status) {
   SetAPen(rp, 1);
   text(4, 153, status);
   for (i = 0; i < 3; ++i) {
-    SetAPen(rp, i == ((editor->locked && w->snapshot[2]) ? w->snapshot[2] - 1
+    SetAPen(rp, i == ((editor->locked && w->snapshot[2]) ? (unsigned)w->snapshot[2] - 1u
                                                          : editor->slot)
                     ? 7
                     : 1);
