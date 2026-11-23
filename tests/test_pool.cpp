@@ -160,7 +160,8 @@ TEST_CASE("S1 deterministic blend rounding and pure archetype decisions") {
       cfg.match_id = "pure";
       Match match(cfg);
       Bot legacy(1, *map, seed, Personality(p)),
-          named(1, *map, seed, Personality(p), {"Named", blend});
+          named(1, *map, seed, {"Named", blend});
+      CHECK(named.personality() == Personality(p));
       for (int round = 1; round <= 6; ++round) {
         auto a = legacy.plan(match.snapshot()),
              b = named.plan(match.snapshot());
@@ -172,9 +173,20 @@ TEST_CASE("S1 deterministic blend rounding and pure archetype decisions") {
         match.run_round();
       }
     }
-  auto blend = PersonalityBlend::from_weights({.2, .3, .5});
-  Bot a(1, *map, 42, Personality::Hauler, {"Mixed", blend}),
-      b(1, *map, 42, Personality::Saboteur, {"Mixed", blend});
+  CHECK(PersonalityBlend::from_weights({.2, .3, .5}).dominant() == Personality::Saboteur);
+  CHECK(PersonalityBlend::from_weights({.5, .5, 0}).dominant() == Personality::Hauler);
+  CHECK(PersonalityBlend::from_weights({0, .5, .5}).dominant() == Personality::Opportunist);
+  CHECK(PersonalityBlend::from_weights({.5, 0, .5}).dominant() == Personality::Hauler);
+  CHECK(PersonalityBlend::from_weights({1./3, 1./3, 1./3}).dominant() == Personality::Hauler);
+  // Equal quantized traits, different dominant original weights: metadata must
+  // neither round away the winner nor affect planning/RNG consumption.
+  auto blend = PersonalityBlend::from_weights({.5000001, .4999999, 0});
+  auto other = PersonalityBlend::from_weights({.4999999, .5000001, 0});
+  CHECK(blend.millionths == other.millionths);
+  Bot a(1, *map, 42, {"Mixed", blend}), b(1, *map, 42, {"Mixed", other});
+  CHECK(a.personality() == Personality::Hauler);
+  CHECK(b.personality() == Personality::Opportunist);
+  CHECK(other.describe().find("weights(H/O/S)=0.4999999/0.5000001/0") != std::string::npos);
   MatchConfig cfg;
   cfg.map = std::make_shared<Map>(*map);
   cfg.player_count = 4;
@@ -185,6 +197,9 @@ TEST_CASE("S1 deterministic blend rounding and pure archetype decisions") {
     auto orders = a.plan(m.snapshot());
     CHECK(orders == b.plan(m.snapshot()));
     CHECK(a.traits() == blend.traits());
+    CHECK(a.traits() == b.traits());
+    CHECK(a.goal_kind() == b.goal_kind());
+    CHECK(a.goals_chosen() == b.goals_chosen());
     m.submit_program(1, r, 1, {orders[0], orders[1], orders[2]}, true,
                      std::to_string(r));
     m.run_round();

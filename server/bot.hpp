@@ -53,6 +53,9 @@ struct PersonalityBlend {
     // Normalized millionths, computed once. Construction validates finite weights
     // in [0,1], sum within 1e-6; largest remainders break ties H/O/S.
     std::array<int,3> millionths;
+    std::array<double,3> configured_weights;
+    // Highest original weight; exact ties prefer H/O/S. Compatibility only.
+    Personality dominant() const;
     static PersonalityBlend from_weights(const std::array<double,3>&);
     Traits traits() const;
     std::string describe() const;
@@ -79,8 +82,7 @@ public:
     Bot(int player_id, const Map& map, std::uint64_t seed) : Bot(player_id, map, seed, personality_for(seed)) {}
     Bot(int player_id, const Map& map, std::uint64_t seed, Personality p);
 
-    Bot(int player_id, const Map& map, std::uint64_t seed, Personality legacy,
-        const NamedBot& definition);
+    Bot(int player_id, const Map& map, std::uint64_t seed, const NamedBot& definition);
     const Traits& traits() const { return traits_; }
     std::string identity() const;
 

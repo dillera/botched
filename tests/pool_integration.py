@@ -69,7 +69,7 @@ with tempfile.TemporaryDirectory(prefix='botched-s1-') as td:
         botmatch=linux('m1');assert botmatch.wait(timeout=40)==0,(root/'m1.log').read_text()
         status=peer.call('GET_MATCH_STATUS',match_id='m1')['status'];assert status['phase']=='FINISHED' and status['bots']==3
         assert status['bot_players']==[2,3,4]
-        assert all(k in ['hauler','opportunist','saboteur'] for k in status['bot_personalities'])
+        assert status['bot_personalities']==['saboteur','saboteur','hauler']
         assert 'Sneaky Pete' not in json.dumps(status) and 'blend' not in json.dumps(status)
         assert peer.call('GET_MATCH_STATUS',match_id='m3')['status']['phase']=='LOBBY'
         assert peer.call('CREATE_MATCH')['match_id']=='m4'

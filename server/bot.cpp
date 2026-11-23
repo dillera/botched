@@ -1,6 +1,7 @@
 #include "bot.hpp"
 
 #include <algorithm>
+#include <charconv>
 #include <optional>
 #include <cmath>
 #include <stdexcept>
@@ -162,6 +163,7 @@ PersonalityBlend PersonalityBlend::from_weights(const std::array<double,3>& w) {
     if (std::abs(sum - 1.0) > 1e-6)
         throw std::invalid_argument("personality weights must sum to 1 within 1e-6");
     PersonalityBlend out{};
+    out.configured_weights = w;
     std::array<double,3> remainder{};
     int allocated = 0;
     for (int i = 0; i < 3; ++i) {
@@ -204,8 +206,19 @@ Traits PersonalityBlend::traits() const {
     t.blunder = rounded(&Traits::blunder); t.fumble = rounded(&Traits::fumble); t.patience = rounded(&Traits::patience);
     return t;
 }
+Personality PersonalityBlend::dominant() const {
+    return static_cast<Personality>(std::max_element(configured_weights.begin(),
+        configured_weights.end()) - configured_weights.begin());
+}
 std::string PersonalityBlend::describe() const {
-    return "blend(H/O/S millionths)=" + std::to_string(millionths[0]) + "/" +
+    std::string configured = "weights(H/O/S)=";
+    for (unsigned i = 0; i < configured_weights.size(); ++i) {
+        char buffer[64];
+        auto result = std::to_chars(buffer, buffer + sizeof(buffer), configured_weights[i]);
+        if (i) configured += "/";
+        configured.append(buffer, result.ptr);
+    }
+    return configured + " blend(H/O/S millionths)=" + std::to_string(millionths[0]) + "/" +
         std::to_string(millionths[1]) + "/" + std::to_string(millionths[2]);
 }
 
@@ -303,8 +316,8 @@ struct Bot::Ctx {
 Bot::Bot(int player_id, const Map& map, std::uint64_t seed, Personality p)
     : id_(player_id), map_(map), rng_(seed), personality_(p), traits_(traits_of(p)), blunder_percent_(traits_.blunder), fumble_percent_(traits_.fumble) {}
 
-Bot::Bot(int player_id, const Map& map, std::uint64_t seed, Personality legacy, const NamedBot& definition)
-    : Bot(player_id, map, seed, legacy) {
+Bot::Bot(int player_id, const Map& map, std::uint64_t seed, const NamedBot& definition)
+    : Bot(player_id, map, seed, definition.blend.dominant()) {
     traits_ = definition.blend.traits();
     blunder_percent_ = traits_.blunder; fumble_percent_ = traits_.fumble;
     identity_ = "name=" + Json(definition.name).dump() + " " + definition.blend.describe();

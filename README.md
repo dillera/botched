@@ -103,10 +103,13 @@ exactly 100. Pure blends preserve existing decisions and RNG consumption.
 
 **Identity compatibility:** names and blends appear only in server startup output,
 `--bot-log` and `--trace`. Frozen binary v1 mandates one of three legacy categories
-per bot and cannot represent mixed/unknown. JSON/binary therefore retain the
-existing seeded seat category as compatibility metadata; it does **not** describe
-a configured blend. Existing clients may display that legacy label. Diagnostics
-show the actual named blend instead of pretending it is a pure archetype. No new
+per bot and cannot represent mixed/unknown. JSON/binary report the
+highest configured weight as compatibility metadata, before normalization or
+rounding; exact ties prefer hauler, then opportunist, then saboteur. This label
+does **not** describe the full blend or drive decisions. Pure blends retain their
+existing values and behaviour; legacy numeric bots keep seeded seat categories.
+Existing clients may display that label. Server diagnostics retain the original
+configured weights (round-trip decimal values) alongside normalized millionths. No new
 wire fields, opcodes or personality values are added.
 
 **S1 limits:** rooms, including finished rooms, consume the shared global cap.
@@ -122,10 +125,13 @@ Verification: `build/botched_tests --test-case='S1*'` and
 validation, deterministic blends and real mixed JSON/binary play. With existing
 licensed workspace Amiga media/tools, `python3 tools/amiga/accept.py --s1` runs the
 unchanged A500/KS1.3 client against two startup-provisioned named-bot matches
-through real NIO. S1 verification passed the existing 11 CTest checks, the new real
-TCP integration check, and five focused tests (319 assertions), also under
-ASan/UBSan. The Amiga run `build/amiga/evidence/a500-z1r97kpk` completed both
-configured matches (89 and 57 ordered events), with the accepted A1c executable
+through real NIO. Initial S1 verification passed the existing 11 CTest checks and
+the new real TCP integration check. The dominant-archetype clarification passes six focused
+tests (374 assertions), also under ASan/UBSan, including pre-rounding near ties,
+metadata-independent decisions and frozen binary/JSON status equivalence; the
+real TCP integration also checks the expected dominant categories. The full
+native `botched_tests` regression suite also passes after this clarification. The earlier
+Amiga run `build/amiga/evidence/a500-z1r97kpk` completed both configured matches (89 and 57 ordered events), with the accepted A1c executable
 unchanged; this is emulator/NIO evidence, not physical hardware testing.
 The approved scope is [the S1 specification](docs/server-managed-matches-spec-v2.md).
 

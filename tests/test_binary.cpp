@@ -1,4 +1,5 @@
 #include "binary_bridge.hpp"
+#include "pool_config.hpp"
 #include "botched/serialize.hpp"
 #include "doctest.h"
 #include <fstream>
@@ -609,4 +610,25 @@ TEST_CASE("binary: measured packet budgets and session-local cursor reset") {
     auto bad = program("m1", 1, 1, 1, false);
     bad.set("revision", INT64_MAX);
     CHECK_THROWS_AS(encode_request(bad, 1), CodecError);
+}
+
+TEST_CASE("S1 named blend compatibility metadata survives frozen binary status") {
+    server::ManualClock clock;
+    server::GameServer s(config(), clock);
+    auto pool = server::parse_pool_config(R"({"offerings":[{"id":"blend","name":"Blend","map_id":"foundry-01","player_count":4,"instances":1,"planning_seconds":0,"bots":[{"name":"Private A","personality":{"hauler":0.2,"opportunist":0.3,"saboteur":0.5}},{"name":"Private B","personality":{"hauler":0.4999999,"opportunist":0.5000001,"saboteur":0}},{"name":"Private C","personality":{"hauler":0.5,"opportunist":0,"saboteur":0.5}}]}]})");
+    std::ostringstream report;
+    std::string error;
+    REQUIRE(s.provision_pool(pool.offerings, report, error));
+    Bridge b(s, clock);
+    Client c(b, 1);
+    REQUIRE(c.call(request("JOIN_MATCH", "m1")).get_bool("ok").value());
+    auto json = s.handle(request("GET_MATCH_STATUS", "m1"));
+    auto wire = c.call(request("GET_MATCH_STATUS", "m1"));
+    CHECK(wire == json);
+    REQUIRE(wire.find("status"));
+    auto kinds = wire.find("status")->find("bot_personalities");
+    REQUIRE(kinds);
+    CHECK(kinds->dump() == R"(["saboteur","opportunist","hauler"])");
+    CHECK(wire.dump().find("Private") == std::string::npos);
+    CHECK(wire.dump().find("weights") == std::string::npos);
 }
