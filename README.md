@@ -19,6 +19,8 @@ NetworkDevice TCP service; see [B4 integration and verification](docs/binary-v1/
 **B5 measurements are ready for review:** [6502 costs and full RAM accounting](docs/binary-v1/b5-review.md).
 The codec/storage harness fits K4; the current complete general-NIO configuration needs K8
 for shipped maps. Historical CPU targets are not met.
+**Atari feasibility spike:** [compact stream transport, thin decoder and measured full-client budget](docs/atari-feasibility.md).
+The headless prototype reuses `fn_stream_*` assembly and fits K4 on shipped maps; physical hardware and graphics remain unverified.
 **Not built yet:** retro renderers, physical constrained-client acceptance, authentication beyond per-seat session tokens,
 and host persistence. See [`docs/binary-protocol-requirements.md`](docs/binary-protocol-requirements.md).
 
