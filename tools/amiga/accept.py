@@ -16,7 +16,7 @@ def wait(predicate,seconds,label):
         time.sleep(.2)
     raise RuntimeError('Timeout: '+label)
 def listening(p):return f':{p:04X} ' in pathlib.Path('/proc/net/tcp').read_text()
-def main(a1c=False, s1=False):
+def main(a1c=False, s1=False, a2a=False):
     out=ROOT/'build/amiga/evidence';out.mkdir(parents=True,exist_ok=True)
     work=pathlib.Path(tempfile.mkdtemp(prefix='a500-',dir=out));share=work/'share';share.mkdir()
     env=json.loads(subprocess.check_output(['bash','-c',
@@ -49,6 +49,12 @@ def main(a1c=False, s1=False):
         conn=socket.create_connection(('127.0.0.1',jp));stream=conn.makefile('rwb')
         def ask(data):
             stream.write(json.dumps(data).encode()+b'\n');stream.flush();return json.loads(stream.readline())
+        previews=[]
+        if a2a:
+            for map_id in ('training-01','laserworks-01','trapworks-01','turretworks-01','tarworks-01','shuntworks-01','crossroads-01'):
+                room=ask(dict(type='CREATE_MATCH',map_id=map_id,player_count=4,bots=3,rounds=1,planning_seconds=0))
+                assert room['ok'],room
+                previews.append((map_id,room['match_id']))
         if a1c:
             import reliability
             cases=reliability.setup(ask)
@@ -71,6 +77,12 @@ def main(a1c=False, s1=False):
                 +'If WARN\nEcho >BT:error ERROR\nEndIf\nAvail >BT:first-exit-memory.log\nEcho >BT:first-exited DONE\n'
                 +f'BT:botched-amiga >BT:client2.log tcp://127.0.0.1:{bp} {second["match_id"]} --capture\n'
                 +'If WARN\nEcho >BT:error ERROR\nEndIf\nAvail >BT:exit-memory.log\nEcho >BT:done DONE\n')
+        if a2a:
+            script=(share/'run').read_text().replace('Echo >BT:done DONE\n','Echo >BT:games-done DONE\n')
+            for i,(map_id,mid) in enumerate(previews):
+                script+=f'BT:botched-amiga >BT:preview-{i}.log tcp://127.0.0.1:{bp} {mid} --capture\nIf WARN\nEcho >BT:error ERROR\nEndIf\nAvail >BT:preview-{i}-memory.log\nEcho >BT:preview-{i}-done DONE\n'
+            script+='Echo >BT:done DONE\n'
+            (share/'run').write_text(script)
         (work/'startup').write_text('Path C: SYS:System S: ADD\nExecute BT:run\n')
         for cmd in [('delete','s/Startup-Sequence'),('write',str(work/'startup'),'s/Startup-Sequence')]:
             subprocess.run(['xdftool',str(work/'boot.adf'),*cmd],check=True,stdout=subprocess.DEVNULL)
@@ -95,7 +107,7 @@ channel:
         wait(lambda:listening(np),15,'NIO')
         args=['amiberry','--log','--config',WS/'configs/amiga/base-68000.uae','-G','-r',work/'rom/kickstart.rom','-0',work/'boot.adf']
         settings=['chipset=ocs','cpu_model=68000','cpu_type=68000','chipmem_size=1','bogomem_size=2','fastmem_size=0','z3mem_size=0',
-            'ntsc=false',f'serial_port=tcp://127.0.0.1:{sp}','serial_direct=true','serial_hardware_ctsrts=false',f'filesystem2=rw,DH1:BT:{share},0']
+            'ntsc=false','immediate_blits=false',f'serial_port=tcp://127.0.0.1:{sp}','serial_direct=true','serial_hardware_ctsrts=false',f'filesystem2=rw,DH1:BT:{share},0']
         (work/'machine.json').write_text(json.dumps(settings,indent=2))
         for s in settings:args+=['-s',s]
         start('amiberry',args)
@@ -105,9 +117,9 @@ channel:
         if a1c:
             reliability.exercise(work,share,cases,ask,start,jp,bp,nio,proxy)
             return
-        wait(lambda:(share/'state.bin').exists() or (share/'done').exists(),180,'snapshot')
+        wait(lambda:((share/'client.log').exists() and 'RESULT error=0 map=1 snapshot=1' in (share/'client.log').read_text()) or (share/'done').exists(),180,'snapshot publication')
         assert (share/'state.bin').exists(),(share/'client.log').read_text()
-        wait(lambda:(share/'screen.bin').exists() and (share/'screen.bin').stat().st_size==24000,10,'display capture')
+        wait(lambda:(share/'screen.bin').exists() and (share/'screen.bin').stat().st_size==40960,10,'display capture')
         log=(share/'client.log').read_text();assert 'RESULT error=0 map=1 snapshot=1' in log,log
         snapshot=ask(dict(type='GET_SNAPSHOT',match_id=match))
         (work/'snapshot.json').write_text(json.dumps(snapshot,indent=2))
@@ -137,7 +149,10 @@ channel:
             key(68);key(68) # duplicate Enter while pending must not submit twice
             wait(lambda:f'SUBMIT round={round_number} orders=1,7,8 accepted=1' in client_log(),60,'accepted programme')
             if round_number==1:
-                wait(lambda:'EVENT ordinal=' in client_log(),60,'visual event playback')
+                wait(lambda:re.search(r'EVENT ordinal=\d+ type=(8|9) ',client_log()),60,'authoritative movement animation')
+                for frame in range(8):
+                    ipc('SCREENSHOT',str(work/f'animation-{frame}.png'))
+                    time.sleep(.05)
                 ipc('SCREENSHOT',str(work/'replay.png'))
         wait(lambda:'phase=2' in client_log(),180,'match completion')
         log=client_log();assert log.count('SUBMIT round=')==3,log
@@ -150,6 +165,11 @@ channel:
             authoritative=ask(dict(type='GET_EVENTS',match_id=match_id,since_version=baseline))['events']
             actual=[int(x) for x in re.findall(r'EVENT ordinal=\d+ type=(\d+)',log)]
             assert actual==[event_names.index(e['type'])+1 for e in authoritative],(len(actual),len(authoritative))
+            rows=[tuple(map(int,m)) for m in re.findall(r'EVENT ordinal=(\d+) type=(\d+) round=(\d+) tick=(\d+)',log)]
+            assert [r[0] for r in rows]==list(range(1,len(authoritative)+1))
+            assert [(r[2],r[3]) for r in rows]==[(e['round'],e['tick']) for e in authoritative]
+            animations=[tuple(map(int,m)) for m in re.findall(r'ANIM ordinal=(\d+) type=(\d+)',log)]
+            assert animations==[r[:2] for r in rows],(len(animations),len(rows))
             return authoritative
         authoritative=check_replay(match,log,snap['state_version'])
         (work/'events.json').write_text(json.dumps(authoritative,indent=2))
@@ -174,7 +194,17 @@ channel:
         assert ask(dict(type='GET_SNAPSHOT',match_id=second['match_id']))['snapshot']['phase']=='FINISHED'
         ipc('SCREENSHOT',str(work/'display-second.png'))
         ipc('SEND_KEY','69','1');time.sleep(.1);ipc('SEND_KEY','69','0')
-        wait(lambda:(share/'done').exists(),60,'second clean exit')
+        if a2a:
+            wait(lambda:(share/'games-done').exists(),60,'second clean exit')
+            for i,(map_id,mid) in enumerate(previews):
+                plog=share/f'preview-{i}.log'
+                wait(lambda:plog.exists() and 'RESULT error=0 map=1 snapshot=1' in plog.read_text(),180,'map '+map_id)
+                # RESULT precedes planar capture; wait for completed display publication.
+                time.sleep(1)
+                ipc('SCREENSHOT',str(work/f'map-{map_id}.png'))
+                ipc('SEND_KEY','69','1');time.sleep(.12);ipc('SEND_KEY','69','0')
+                wait(lambda:(share/f'preview-{i}-done').exists(),60,'preview exit')
+        wait(lambda:(share/'done').exists(),60,'all clean exits')
         # Both instances release their per-process resources; any lazy broker
         # allocation must stop growing after its first use.
         def avail(name):
@@ -183,6 +213,9 @@ channel:
             return {k:dict(zip(('available','used','maximum','largest'),map(int,v))) for k,*v in rows}
         before=avail('broker-memory.log');first=avail('first-exit-memory.log');last=avail('exit-memory.log')
         assert abs(last['total']['available']-first['total']['available'])<512,(first,last)
+        preview_memory=[avail(f'preview-{i}-memory.log') for i in range(len(previews))]
+        for reading in preview_memory:
+            assert abs(reading['total']['available']-last['total']['available'])<512,reading
         assert not (share/'error').exists(),(share/'client.log').read_text()
         import hashlib
         client_log=(share/'client.log').read_text()
@@ -194,7 +227,9 @@ channel:
         assert min(m['chip_free'] for m in usage)>24000 and min(m['total_free'] for m in usage)>128000
         machine_log=(work/'amiberry.log').read_text()
         assert 'KS ROM v1.3' in machine_log and 'Slow memory' in machine_log
-        result=dict(machine=settings,executable_bytes=(share/'botched-amiga').stat().st_size,
+        render=[dict(zip(('draws','dirty_cells','full_boards','fields','max_fields','chip_bitplanes','chip_atlas'),map(int,m))) for m in re.findall(r'RENDER draws=(\d+) dirty_cells=(\d+) full_boards=(\d+) fields=(\d+) max_fields=(\d+) chip_bitplanes=(\d+) chip_atlas=(\d+)',client_log)]
+        assert render and render[0]['full_boards']==1,render
+        result=dict(preview_memory=preview_memory,preview_maps=[p[0] for p in previews],render=render,timing_resolution_ms=20,machine=settings,executable_bytes=(share/'botched-amiga').stat().st_size,
             executable_sha256=hashlib.sha256((share/'botched-amiga').read_bytes()).hexdigest(),
             library_sha256=hashlib.sha256((WS/'repos/fujinet-nio-lib/build/fujinet-nio-amiga.a').read_bytes()).hexdigest(),
             broker_sha256=hashlib.sha256((share/'fujinet-nio.device').read_bytes()).hexdigest(),memory=usage,
@@ -224,5 +259,6 @@ if __name__=='__main__':
     group=parser.add_mutually_exclusive_group()
     group.add_argument('--a1c',action='store_true',help='mixed-human reliability scenarios')
     group.add_argument('--s1',action='store_true',help='join startup-provisioned named-bot matches')
+    group.add_argument('--a2a',action='store_true',help='visual gameplay plus all nine maps on stock A500')
     args=parser.parse_args()
-    main(args.a1c,args.s1)
+    main(args.a1c,args.s1,args.a2a)

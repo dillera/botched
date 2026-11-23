@@ -22,6 +22,8 @@ for shipped maps. Historical CPU targets are not met.
 **Atari feasibility spike:** [compact stream transport, thin decoder and measured full-client budget](docs/atari-feasibility.md).
 The headless prototype reuses `fn_stream_*` assembly and fits K4 on shipped maps; physical hardware and graphics remain unverified.
 **Amiga A1c:** [Mixed-client reliability acceptance](docs/amiga/a1c-review.md) covers gameplay, exact request recovery and cooperative shutdown on a stock A500/KS1.3 with 512 KB Chip + 512 KB slow expansion RAM. Broker blocking and unconfirmed remote Close limits are documented.
+**Amiga A2a:** [Graphical tiles, dirty-region rendering and authoritative event animation](docs/amiga/a2a-review.md)
+adds a 16-colour PAL presentation on the same minimum A500, with screenshots and measured resources.
 **Not built yet:** complete retro gameplay clients, physical constrained-client acceptance, authentication beyond per-seat session tokens,
 and host persistence. See [`docs/binary-protocol-requirements.md`](docs/binary-protocol-requirements.md).
 

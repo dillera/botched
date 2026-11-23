@@ -8,6 +8,7 @@ static ba_world shown, incoming;
 static ba_editor editor = {{8, 8, 8}, 0, 0, 1, 0};
 static ba_replay replay;
 static ba_notice notice;
+static ba_animation animation;
 static void memory(const char *stage) {
   printf("MEM %s chip=%lu other=%lu total=%lu largest_chip=%lu "
          "largest_other=%lu\n",
@@ -22,7 +23,7 @@ int main(int argc, char **argv) {
   unsigned actions, job = 0, delay = 0, pace = 0, send_round = 0, events = 0,
                     frames = 0;
   uint8_t orders[3];
-  unsigned long worker_stack = 0, reserved;
+  unsigned long worker_stack = 0, reserved, animation_start = 0;
   char status[40] = "Connecting through NIO...";
   reserved = ba_stack_mark();
   if (argc < 3 || argc > 4 || (argc == 4 && strcmp(argv[3], "--capture"))) {
@@ -37,13 +38,20 @@ int main(int argc, char **argv) {
   if (!ba_display_open())
     return 20;
   memory("display");
-  ba_draw(&shown, &editor, status);
+  ba_draw(&shown, &editor, status, &animation);
   if (!ba_worker_start(argv[1], argv[2])) {
     puts("Cannot start NIO worker / bad arguments");
     ba_display_close();
     return 20;
   }
   while (!quit) {
+    if (animation.active) {
+      redraw=1;
+      if(ba_animation_tick(&animation) && capture) {
+        printf("ANIM ordinal=%u type=%u frames=%u fields=%lu\n",events,animation.event,animation.duration,ba_display_time()-animation_start);
+        fflush(stdout);
+      }
+    }
     actions = ba_input(&editor);
     if (actions & BA_QUIT)
       quit = 1;
@@ -111,6 +119,8 @@ int main(int argc, char **argv) {
           delay = 40;
         }
         if (capture) {
+          ba_draw(&shown, &editor, status, &animation);
+          ba_capture(&shown);
           memory("snapshot");
           printf("RESULT error=0 map=%u snapshot=%u width=%u height=%u "
                  "player=%u round=%u phase=%u events=%u ack=%lu cursor=%lu "
@@ -120,7 +130,6 @@ int main(int argc, char **argv) {
                  (unsigned long)replay.ack, (unsigned long)replay.cursor,
                  worker_stack, ba_stack_used());
           fflush(stdout);
-          ba_capture(&shown);
         }
       } else if (notice.kind == BA_SUBMIT) {
         editor.pending = 0;
@@ -150,11 +159,13 @@ int main(int argc, char **argv) {
           job = (notice.page[20] & 1) ? BA_SNAPSHOT : BA_FETCH;
       }
     }
-    if (replay.active && !halted && !busy) {
+    if (replay.active && !animation.active && !halted && !busy) {
       if (pace)
         --pace;
       else {
-        int event = ba_replay_next(&replay, &shown);
+        int event;
+        animation.before=shown;
+        event = ba_replay_next(&replay, &shown);
         if (event < 0) {
           halted = 1;
           code = 10;
@@ -170,7 +181,9 @@ int main(int argc, char **argv) {
                                  : "disabled");
           else
             strcpy(status, ba_event_name(event));
-          pace = 4;
+          ba_animation_begin(&animation,event);
+          animation_start=ba_display_time();
+          pace = 0;
           if (capture) {
             printf("EVENT ordinal=%u type=%d round=%u tick=%u\n", events, event,
                    shown.snapshot[1], shown.snapshot[2]);
@@ -214,19 +227,19 @@ int main(int argc, char **argv) {
       redraw = 1;
     }
     if (redraw) {
-      ba_draw(&shown, &editor, status);
+      ba_draw(&shown, &editor, status, &animation);
       redraw = 0;
     }
     WaitTOF();
   }
-  ba_draw(&shown, &editor, "Closing connection; please wait...");
+  ba_draw(&shown, &editor, "Closing connection; please wait...", &animation);
   {
     unsigned close_failed = 0, waiting = 0;
     ba_worker_stop_begin();
     while (!ba_worker_stop_poll(&worker_stack, &close_failed)) {
       ba_input(&editor);
       if (++waiting == 500)
-        ba_draw(&shown, &editor, "Waiting for broker; exit not safe yet");
+        ba_draw(&shown, &editor, "Waiting for broker; exit not safe yet", &animation);
       WaitTOF();
     }
     printf("CLOSE confirmed=%u wait_frames=%u\n", !close_failed, waiting);
@@ -235,6 +248,7 @@ int main(int argc, char **argv) {
       code = 10;
     }
   }
+  ba_display_metrics();
   ba_display_close();
   memory("closed");
   printf("EXIT main_stack=%lu worker_stack=%lu reserved_main=%lu "

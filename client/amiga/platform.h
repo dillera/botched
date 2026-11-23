@@ -1,12 +1,16 @@
 #ifndef BOTCHED_AMIGA_PLATFORM_H
 #define BOTCHED_AMIGA_PLATFORM_H
 #include "session.h"
+#include "visual.h"
 #include <exec/types.h>
 #include <intuition/intuition.h>
 extern struct Window *ba_window;
 int ba_display_open(void);
 void ba_display_close(void);
-void ba_draw(const ba_world *, const ba_editor *, const char *);
+void ba_draw(const ba_world *, const ba_editor *, const char *, const ba_animation *);
+void ba_display_metrics(void);
+unsigned long ba_display_time(void);
+void ba_ui_draw(struct RastPort *, struct RastPort *, const ba_world *, const ba_editor *, const char *);
 enum { BA_QUIT = 1, BA_REFRESH = 2, BA_CHANGED = 4, BA_SEND = 8 };
 unsigned ba_input(ba_editor *);
 void ba_capture(const ba_world *);

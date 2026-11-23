@@ -224,7 +224,7 @@ if(BOTCHED_ATARI_SPIKE)
 endif()
 
 if(BOTCHED_BUILD_TESTS)
-  add_library(botched_amiga_model STATIC client/amiga/model.c client/amiga/events.c client/amiga/play.c client/amiga/session.c)
+  add_library(botched_amiga_model STATIC client/amiga/model.c client/amiga/events.c client/amiga/play.c client/amiga/session.c client/amiga/assets.c client/amiga/visual.c)
   target_link_libraries(botched_amiga_model PUBLIC botched_wire botched_nio)
   target_include_directories(botched_amiga_model PUBLIC client/amiga)
   set_target_properties(botched_amiga_model PROPERTIES C_STANDARD 99 C_STANDARD_REQUIRED YES)

@@ -1,5 +1,6 @@
 #include "binary_bridge.hpp"
 #include "play.h"
+#include "visual.h"
 #include "ui_playback.hpp"
 #include <algorithm>
 #include <cstring>
@@ -112,10 +113,29 @@ int main() {
               unsigned pos = replay.pos;
               while (pos < replay.size && replay.bytes[pos] != 21)
                 pos += replay.bytes[pos + 1] + 2;
+              ba_animation animation{}; animation.before=world;
               int e = ba_replay_next(&replay, &world);
               check(e >= 0, "event rejected");
               if (e) {
                 ++total_events;
+                ba_world authoritative=world;
+                ba_animation_begin(&animation,e);
+                unsigned completed=0,frames=0;
+                while(animation.active) {
+                  for(unsigned p=0;p<4;++p) {
+                    int x=ba_lerp(animation.before.players[p][2]*16,world.players[p][2]*16,&animation);
+                    check(x>=0 && x<320,"animation bounds");
+                  }
+                  check(replay.ack==ack,"ack advanced during animation");
+                  completed+=ba_animation_tick(&animation);++frames;
+                }
+                check(completed==1 && frames==animation.duration,"animation completion");
+                for(unsigned p=0;p<4;++p)
+                  check(ba_lerp(animation.before.players[p][2]*16,world.players[p][2]*16,&animation)==world.players[p][2]*16,"animation endpoint");
+                check(!ba_animation_tick(&animation),"duplicate completion");
+                check(!memcmp(&authoritative,&world,sizeof world),"animation mutated mirror");
+                for(unsigned tile=0;tile<world.tile_count;++tile)
+                  check(ba_tile_image(&world,tile)<BA_ASSETS,"tile atlas bounds");
                 check(replay.ack == ack, "early ack");
                 if (expected) {
                   auto event = decode_event(
