@@ -19,9 +19,9 @@ struct NioPeer {
     bn_client c{};
     std::string url;
     size_t pages = 0, bytes = 0, max_payload = 0;
-    NioPeer(const bn_ops *ops, void *ctx, std::string endpoint, unsigned payload = 128)
+    NioPeer(const bn_ops *ops, void *ctx, std::string endpoint, unsigned payload = 128, unsigned profile = 3)
         : url(std::move(endpoint)) {
-        ensure(bn_init(&c, ops, ctx, url.c_str(), payload, 3, nio_now(), 30000), "NIO init");
+        ensure(bn_init(&c, ops, ctx, url.c_str(), payload, profile, nio_now(), 30000), "NIO init");
         pump(BN_READY);
     }
     ~NioPeer() { bn_dispose(&c); }

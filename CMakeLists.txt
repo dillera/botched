@@ -194,3 +194,14 @@ if(BOTCHED_BUILD_TESTS)
     endif()
   endif()
 endif()
+
+# Opt-in measured 6502 acceptance; requires the existing Atari general NIO archive.
+option(BOTCHED_B5_MEASURE "Run cc65/sim65 constrained-client measurements" OFF)
+if(BOTCHED_BUILD_TESTS AND BOTCHED_B5_MEASURE)
+  find_package(Python3 COMPONENTS Interpreter REQUIRED)
+  find_program(BOTCHED_CL65 cl65 REQUIRED)
+  find_program(BOTCHED_SIM65 sim65 REQUIRED)
+  add_test(NAME botched_b5_resources COMMAND ${Python3_EXECUTABLE}
+    ${CMAKE_CURRENT_SOURCE_DIR}/tests/b5/measure.py --out ${CMAKE_CURRENT_BINARY_DIR}/b5)
+  set_tests_properties(botched_b5_resources PROPERTIES TIMEOUT 180)
+endif()

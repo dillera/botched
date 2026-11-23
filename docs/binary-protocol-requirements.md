@@ -1,9 +1,11 @@
 # Botched! binary wire protocol — normative requirements for M1
 
-**Status:** B1–B3 accepted; B4 implemented for review, 2026-11-23. B5 not started.
+**Status:** B1–B4 accepted; B5 measurements implemented for review, 2026-11-23.
+B5 reports unmet full-NIO K4 and historical CPU targets explicitly.
 B2 evidence and explicit budget deviations: [codec review](binary-v1/b2-review.md).
 B3 direct TCP / Linux terminal and SDL acceptance: [transport review](binary-v1/b3-review.md).
 B4 portable NIO adapter and real POSIX NIO acceptance: [NIO review](binary-v1/b4-review.md).
+B5 complete working-storage allocations and measured NMOS 6502 costs: [resource acceptance](binary-v1/b5-review.md).
 **Authority:** current G1–G4 game implementation and the owner-confirmed decisions below.
 **Rules version:** `botched/1`, the initial **unreleased** ruleset; no `botched/2` migration.
 **Binary wire:** major 1, minor 0, independent of the rules label. Existing JSON remains unchanged.
@@ -577,9 +579,9 @@ without making arbitrary unknown opcodes legal. B1 assigns ff to this sentinel; 
   A restarted host has no room/session persistence; report that failure rather than replaying
   an old submission into a newly created match.
 
-## 11. Bounded implementation sequence (B1–B3 accepted; B4 for review; B5 not started)
+## 11. Bounded implementation sequence (B1–B4 accepted; B5 for review)
 
-Each step ends with a reviewable commit and its focused tests. B4 stops before constrained-client acceptance in B5. No renderer, bot/engine rewrite, new firmware game service or platform-wide rollout is
+Each step ends with a reviewable commit and its focused tests. B5 stops at resource acceptance and size guides; unmet targets are reported for review. No renderer, bot/engine rewrite, new firmware game service or platform-wide rollout is
 part of these steps.
 
 | Step | Deliverable / boundary | Required evidence before proceeding |

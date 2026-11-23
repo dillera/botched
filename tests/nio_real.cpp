@@ -109,7 +109,7 @@ int main() {
         for (const char *map :
              {"training-01", "foundry-01", "laserworks-01", "trapworks-01", "turretworks-01", "tarworks-01",
               "shuntworks-01", "crossroads-01", "factory-01"}) {
-            NioPeer nio(&real_ops, nullptr, "tcp://127.0.0.1:" + std::to_string(binary.port()));
+            NioPeer nio(&real_ops, nullptr, "tcp://127.0.0.1:" + std::to_string(binary.port()), 128, 2);
             client::BinaryConnection direct(128);
             client::Connection oracle;
             ensure(direct.open("127.0.0.1", binary.port(), error), error);
@@ -182,7 +182,7 @@ int main() {
         }
 
         {
-            NioPeer nio(&real_ops, nullptr, "tcp://127.0.0.1:" + std::to_string(binary.port()));
+            NioPeer nio(&real_ops, nullptr, "tcp://127.0.0.1:" + std::to_string(binary.port()), 128, 2);
             client::BinaryConnection direct(128);
             client::Connection oracle;
             ensure(direct.open("127.0.0.1", binary.port(), error), error);
@@ -233,7 +233,7 @@ int main() {
         }
 
         {
-            NioPeer nio(&real_ops, nullptr, "tcp://127.0.0.1:" + std::to_string(binary.port()));
+            NioPeer nio(&real_ops, nullptr, "tcp://127.0.0.1:" + std::to_string(binary.port()), 128, 2);
             client::BinaryConnection direct(128);
             ensure(direct.open("127.0.0.1", binary.port(), error), error);
             auto create = q("CREATE_MATCH");
@@ -262,7 +262,7 @@ int main() {
             max_payload = std::max(max_payload, nio.max_payload);
             ensure(bn_dispose(&nio.c), "deadline close");
         }
-        std::cout << "REAL NIO PASS: 9 shipped maps + target/deadline scenarios, " << pages << " pages, "
+        std::cout << "REAL NIO PASS (P128/K4): 9 shipped maps + target/deadline scenarios, " << pages << " pages, "
                   << bytes << " payload bytes, largest=" << max_payload
                   << " sizeof(bn_client)=" << sizeof(bn_client) << '\n';
         std::cout << "Actual NIO NotReady observations=" << real_not_ready << '\n';

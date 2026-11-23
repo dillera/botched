@@ -1,0 +1,761 @@
+{
+  "versions": {
+    "cc65": "cc65 V2.19 - Git 37d4bb24",
+    "cl65": "cl65 V2.19 - Git 37d4bb24",
+    "sim65": "sim65 V2.19 - Git 37d4bb24"
+  },
+  "cpu": "NMOS 6502, no wait states, cc65 -O",
+  "library_sha256": "e19d72c51c25b813b9c3d073626f96734a03d2a9590fcb8387e3ea98170ffe8a",
+  "maps": [
+    {
+      "name": "crossroads-01",
+      "variable": 698,
+      "crates": 77,
+      "core_working_ram": 2825,
+      "snapshot_pages": 5,
+      "snapshot_payload_bytes": 991,
+      "segments": {
+        "AUTOSTRT": 6,
+        "EXEHDR": 2,
+        "MAINHDR": 4,
+        "SYSCHKHDR": 4,
+        "SYSCHKTRL": 6,
+        "ZEROPAGE": 36,
+        "STARTUP": 99,
+        "ONCE": 12,
+        "CODE": 30817,
+        "SYSCHK": 246,
+        "RODATA": 33,
+        "DATA": 51,
+        "BSS": 3070
+      },
+      "software_stack_reserved": 2048,
+      "hardware_stack_reserved": 256,
+      "working_ram": 5461,
+      "resident_ram": 36422,
+      "minimum_profile": "K8",
+      "measurements": {
+        "measurement-empty": {
+          "cycles": 62,
+          "software_stack": 4,
+          "hardware_stack": 7
+        },
+        "EVENT-PLANNING_CLOSED": {
+          "cycles": 13531,
+          "software_stack": 70,
+          "hardware_stack": 18
+        },
+        "EVENT-largest-68": {
+          "cycles": 50068,
+          "software_stack": 76,
+          "hardware_stack": 19
+        },
+        "PAGE-full-240": {
+          "cycles": 196884,
+          "software_stack": 116,
+          "hardware_stack": 21
+        },
+        "SUBMIT-encode": {
+          "cycles": 21768,
+          "software_stack": 309,
+          "hardware_stack": 15
+        },
+        "PAGE-full-240-encode": {
+          "cycles": 207110,
+          "software_stack": 369,
+          "hardware_stack": 23
+        },
+        "snapshot-validate": {
+          "cycles": 1787606,
+          "software_stack": 204,
+          "hardware_stack": 21
+        },
+        "snapshot-validate-and-store": {
+          "cycles": 4410335,
+          "software_stack": 204,
+          "hardware_stack": 21
+        },
+        "snapshot-store-only-prevalidated": {
+          "cycles": 186389,
+          "software_stack": 16,
+          "hardware_stack": 10
+        }
+      }
+    },
+    {
+      "name": "factory-01",
+      "variable": 911,
+      "crates": 100,
+      "core_working_ram": 3038,
+      "snapshot_pages": 6,
+      "snapshot_payload_bytes": 1217,
+      "segments": {
+        "AUTOSTRT": 6,
+        "EXEHDR": 2,
+        "MAINHDR": 4,
+        "SYSCHKHDR": 4,
+        "SYSCHKTRL": 6,
+        "ZEROPAGE": 36,
+        "STARTUP": 99,
+        "ONCE": 12,
+        "CODE": 30817,
+        "SYSCHK": 246,
+        "RODATA": 33,
+        "DATA": 51,
+        "BSS": 3283
+      },
+      "software_stack_reserved": 2048,
+      "hardware_stack_reserved": 256,
+      "working_ram": 5674,
+      "resident_ram": 36635,
+      "minimum_profile": "K8",
+      "measurements": {
+        "measurement-empty": {
+          "cycles": 62,
+          "software_stack": 4,
+          "hardware_stack": 7
+        },
+        "EVENT-PLANNING_CLOSED": {
+          "cycles": 13531,
+          "software_stack": 70,
+          "hardware_stack": 18
+        },
+        "EVENT-largest-68": {
+          "cycles": 50068,
+          "software_stack": 76,
+          "hardware_stack": 19
+        },
+        "PAGE-full-240": {
+          "cycles": 196884,
+          "software_stack": 116,
+          "hardware_stack": 21
+        },
+        "SUBMIT-encode": {
+          "cycles": 21768,
+          "software_stack": 309,
+          "hardware_stack": 15
+        },
+        "PAGE-full-240-encode": {
+          "cycles": 207110,
+          "software_stack": 369,
+          "hardware_stack": 23
+        },
+        "snapshot-validate": {
+          "cycles": 2233566,
+          "software_stack": 204,
+          "hardware_stack": 21
+        },
+        "snapshot-validate-and-store": {
+          "cycles": 5497188,
+          "software_stack": 204,
+          "hardware_stack": 21
+        },
+        "snapshot-store-only-prevalidated": {
+          "cycles": 236218,
+          "software_stack": 16,
+          "hardware_stack": 10
+        }
+      }
+    },
+    {
+      "name": "foundry-01",
+      "variable": 814,
+      "crates": 81,
+      "core_working_ram": 2941,
+      "snapshot_pages": 5,
+      "snapshot_payload_bytes": 1048,
+      "segments": {
+        "AUTOSTRT": 6,
+        "EXEHDR": 2,
+        "MAINHDR": 4,
+        "SYSCHKHDR": 4,
+        "SYSCHKTRL": 6,
+        "ZEROPAGE": 36,
+        "STARTUP": 99,
+        "ONCE": 12,
+        "CODE": 30817,
+        "SYSCHK": 246,
+        "RODATA": 33,
+        "DATA": 51,
+        "BSS": 3186
+      },
+      "software_stack_reserved": 2048,
+      "hardware_stack_reserved": 256,
+      "working_ram": 5577,
+      "resident_ram": 36538,
+      "minimum_profile": "K8",
+      "measurements": {
+        "measurement-empty": {
+          "cycles": 62,
+          "software_stack": 4,
+          "hardware_stack": 7
+        },
+        "EVENT-PLANNING_CLOSED": {
+          "cycles": 13532,
+          "software_stack": 70,
+          "hardware_stack": 18
+        },
+        "EVENT-largest-68": {
+          "cycles": 50070,
+          "software_stack": 76,
+          "hardware_stack": 19
+        },
+        "PAGE-full-240": {
+          "cycles": 196887,
+          "software_stack": 116,
+          "hardware_stack": 21
+        },
+        "SUBMIT-encode": {
+          "cycles": 21768,
+          "software_stack": 309,
+          "hardware_stack": 15
+        },
+        "PAGE-full-240-encode": {
+          "cycles": 207124,
+          "software_stack": 369,
+          "hardware_stack": 23
+        },
+        "snapshot-validate": {
+          "cycles": 1916558,
+          "software_stack": 204,
+          "hardware_stack": 21
+        },
+        "snapshot-validate-and-store": {
+          "cycles": 4745856,
+          "software_stack": 204,
+          "hardware_stack": 21
+        },
+        "snapshot-store-only-prevalidated": {
+          "cycles": 203308,
+          "software_stack": 16,
+          "hardware_stack": 10
+        }
+      }
+    },
+    {
+      "name": "laserworks-01",
+      "variable": 643,
+      "crates": 74,
+      "core_working_ram": 2770,
+      "snapshot_pages": 4,
+      "snapshot_payload_bytes": 934,
+      "segments": {
+        "AUTOSTRT": 6,
+        "EXEHDR": 2,
+        "MAINHDR": 4,
+        "SYSCHKHDR": 4,
+        "SYSCHKTRL": 6,
+        "ZEROPAGE": 36,
+        "STARTUP": 99,
+        "ONCE": 12,
+        "CODE": 30817,
+        "SYSCHK": 246,
+        "RODATA": 33,
+        "DATA": 51,
+        "BSS": 3015
+      },
+      "software_stack_reserved": 2048,
+      "hardware_stack_reserved": 256,
+      "working_ram": 5406,
+      "resident_ram": 36367,
+      "minimum_profile": "K8",
+      "measurements": {
+        "measurement-empty": {
+          "cycles": 62,
+          "software_stack": 4,
+          "hardware_stack": 7
+        },
+        "EVENT-PLANNING_CLOSED": {
+          "cycles": 13532,
+          "software_stack": 70,
+          "hardware_stack": 18
+        },
+        "EVENT-largest-68": {
+          "cycles": 50071,
+          "software_stack": 76,
+          "hardware_stack": 19
+        },
+        "PAGE-full-240": {
+          "cycles": 196895,
+          "software_stack": 116,
+          "hardware_stack": 21
+        },
+        "SUBMIT-encode": {
+          "cycles": 21768,
+          "software_stack": 309,
+          "hardware_stack": 15
+        },
+        "PAGE-full-240-encode": {
+          "cycles": 207115,
+          "software_stack": 369,
+          "hardware_stack": 23
+        },
+        "snapshot-validate": {
+          "cycles": 1673315,
+          "software_stack": 204,
+          "hardware_stack": 21
+        },
+        "snapshot-validate-and-store": {
+          "cycles": 4138656,
+          "software_stack": 204,
+          "hardware_stack": 21
+        },
+        "snapshot-store-only-prevalidated": {
+          "cycles": 175587,
+          "software_stack": 16,
+          "hardware_stack": 10
+        }
+      }
+    },
+    {
+      "name": "shuntworks-01",
+      "variable": 654,
+      "crates": 77,
+      "core_working_ram": 2781,
+      "snapshot_pages": 5,
+      "snapshot_payload_bytes": 983,
+      "segments": {
+        "AUTOSTRT": 6,
+        "EXEHDR": 2,
+        "MAINHDR": 4,
+        "SYSCHKHDR": 4,
+        "SYSCHKTRL": 6,
+        "ZEROPAGE": 36,
+        "STARTUP": 99,
+        "ONCE": 12,
+        "CODE": 30817,
+        "SYSCHK": 246,
+        "RODATA": 33,
+        "DATA": 51,
+        "BSS": 3026
+      },
+      "software_stack_reserved": 2048,
+      "hardware_stack_reserved": 256,
+      "working_ram": 5417,
+      "resident_ram": 36378,
+      "minimum_profile": "K8",
+      "measurements": {
+        "measurement-empty": {
+          "cycles": 62,
+          "software_stack": 4,
+          "hardware_stack": 7
+        },
+        "EVENT-PLANNING_CLOSED": {
+          "cycles": 13532,
+          "software_stack": 70,
+          "hardware_stack": 18
+        },
+        "EVENT-largest-68": {
+          "cycles": 50071,
+          "software_stack": 76,
+          "hardware_stack": 19
+        },
+        "PAGE-full-240": {
+          "cycles": 196895,
+          "software_stack": 116,
+          "hardware_stack": 21
+        },
+        "SUBMIT-encode": {
+          "cycles": 21768,
+          "software_stack": 309,
+          "hardware_stack": 15
+        },
+        "PAGE-full-240-encode": {
+          "cycles": 207115,
+          "software_stack": 369,
+          "hardware_stack": 23
+        },
+        "snapshot-validate": {
+          "cycles": 1764590,
+          "software_stack": 204,
+          "hardware_stack": 21
+        },
+        "snapshot-validate-and-store": {
+          "cycles": 4348117,
+          "software_stack": 204,
+          "hardware_stack": 21
+        },
+        "snapshot-store-only-prevalidated": {
+          "cycles": 182335,
+          "software_stack": 16,
+          "hardware_stack": 10
+        }
+      }
+    },
+    {
+      "name": "tarworks-01",
+      "variable": 654,
+      "crates": 77,
+      "core_working_ram": 2781,
+      "snapshot_pages": 5,
+      "snapshot_payload_bytes": 981,
+      "segments": {
+        "AUTOSTRT": 6,
+        "EXEHDR": 2,
+        "MAINHDR": 4,
+        "SYSCHKHDR": 4,
+        "SYSCHKTRL": 6,
+        "ZEROPAGE": 36,
+        "STARTUP": 99,
+        "ONCE": 12,
+        "CODE": 30817,
+        "SYSCHK": 246,
+        "RODATA": 33,
+        "DATA": 51,
+        "BSS": 3026
+      },
+      "software_stack_reserved": 2048,
+      "hardware_stack_reserved": 256,
+      "working_ram": 5417,
+      "resident_ram": 36378,
+      "minimum_profile": "K8",
+      "measurements": {
+        "measurement-empty": {
+          "cycles": 62,
+          "software_stack": 4,
+          "hardware_stack": 7
+        },
+        "EVENT-PLANNING_CLOSED": {
+          "cycles": 13532,
+          "software_stack": 70,
+          "hardware_stack": 18
+        },
+        "EVENT-largest-68": {
+          "cycles": 50071,
+          "software_stack": 76,
+          "hardware_stack": 19
+        },
+        "PAGE-full-240": {
+          "cycles": 196895,
+          "software_stack": 116,
+          "hardware_stack": 21
+        },
+        "SUBMIT-encode": {
+          "cycles": 21768,
+          "software_stack": 309,
+          "hardware_stack": 15
+        },
+        "PAGE-full-240-encode": {
+          "cycles": 207115,
+          "software_stack": 369,
+          "hardware_stack": 23
+        },
+        "snapshot-validate": {
+          "cycles": 1763825,
+          "software_stack": 204,
+          "hardware_stack": 21
+        },
+        "snapshot-validate-and-store": {
+          "cycles": 4345907,
+          "software_stack": 204,
+          "hardware_stack": 21
+        },
+        "snapshot-store-only-prevalidated": {
+          "cycles": 182291,
+          "software_stack": 16,
+          "hardware_stack": 10
+        }
+      }
+    },
+    {
+      "name": "training-01",
+      "variable": 696,
+      "crates": 77,
+      "core_working_ram": 2823,
+      "snapshot_pages": 5,
+      "snapshot_payload_bytes": 985,
+      "segments": {
+        "AUTOSTRT": 6,
+        "EXEHDR": 2,
+        "MAINHDR": 4,
+        "SYSCHKHDR": 4,
+        "SYSCHKTRL": 6,
+        "ZEROPAGE": 36,
+        "STARTUP": 99,
+        "ONCE": 12,
+        "CODE": 30817,
+        "SYSCHK": 246,
+        "RODATA": 33,
+        "DATA": 51,
+        "BSS": 3068
+      },
+      "software_stack_reserved": 2048,
+      "hardware_stack_reserved": 256,
+      "working_ram": 5459,
+      "resident_ram": 36420,
+      "minimum_profile": "K8",
+      "measurements": {
+        "measurement-empty": {
+          "cycles": 62,
+          "software_stack": 4,
+          "hardware_stack": 7
+        },
+        "EVENT-PLANNING_CLOSED": {
+          "cycles": 13531,
+          "software_stack": 70,
+          "hardware_stack": 18
+        },
+        "EVENT-largest-68": {
+          "cycles": 50068,
+          "software_stack": 76,
+          "hardware_stack": 19
+        },
+        "PAGE-full-240": {
+          "cycles": 196884,
+          "software_stack": 116,
+          "hardware_stack": 21
+        },
+        "SUBMIT-encode": {
+          "cycles": 21768,
+          "software_stack": 309,
+          "hardware_stack": 15
+        },
+        "PAGE-full-240-encode": {
+          "cycles": 207110,
+          "software_stack": 369,
+          "hardware_stack": 23
+        },
+        "snapshot-validate": {
+          "cycles": 1775537,
+          "software_stack": 204,
+          "hardware_stack": 21
+        },
+        "snapshot-validate-and-store": {
+          "cycles": 4377035,
+          "software_stack": 204,
+          "hardware_stack": 21
+        },
+        "snapshot-store-only-prevalidated": {
+          "cycles": 184329,
+          "software_stack": 16,
+          "hardware_stack": 10
+        }
+      }
+    },
+    {
+      "name": "trapworks-01",
+      "variable": 673,
+      "crates": 77,
+      "core_working_ram": 2800,
+      "snapshot_pages": 5,
+      "snapshot_payload_bytes": 988,
+      "segments": {
+        "AUTOSTRT": 6,
+        "EXEHDR": 2,
+        "MAINHDR": 4,
+        "SYSCHKHDR": 4,
+        "SYSCHKTRL": 6,
+        "ZEROPAGE": 36,
+        "STARTUP": 99,
+        "ONCE": 12,
+        "CODE": 30817,
+        "SYSCHK": 246,
+        "RODATA": 33,
+        "DATA": 51,
+        "BSS": 3045
+      },
+      "software_stack_reserved": 2048,
+      "hardware_stack_reserved": 256,
+      "working_ram": 5436,
+      "resident_ram": 36397,
+      "minimum_profile": "K8",
+      "measurements": {
+        "measurement-empty": {
+          "cycles": 62,
+          "software_stack": 4,
+          "hardware_stack": 7
+        },
+        "EVENT-PLANNING_CLOSED": {
+          "cycles": 13531,
+          "software_stack": 70,
+          "hardware_stack": 18
+        },
+        "EVENT-largest-68": {
+          "cycles": 50068,
+          "software_stack": 76,
+          "hardware_stack": 19
+        },
+        "PAGE-full-240": {
+          "cycles": 196884,
+          "software_stack": 116,
+          "hardware_stack": 21
+        },
+        "SUBMIT-encode": {
+          "cycles": 21768,
+          "software_stack": 309,
+          "hardware_stack": 15
+        },
+        "PAGE-full-240-encode": {
+          "cycles": 207110,
+          "software_stack": 369,
+          "hardware_stack": 23
+        },
+        "snapshot-validate": {
+          "cycles": 1779455,
+          "software_stack": 204,
+          "hardware_stack": 21
+        },
+        "snapshot-validate-and-store": {
+          "cycles": 4387744,
+          "software_stack": 204,
+          "hardware_stack": 21
+        },
+        "snapshot-store-only-prevalidated": {
+          "cycles": 184399,
+          "software_stack": 16,
+          "hardware_stack": 10
+        }
+      }
+    },
+    {
+      "name": "turretworks-01",
+      "variable": 680,
+      "crates": 78,
+      "core_working_ram": 2807,
+      "snapshot_pages": 5,
+      "snapshot_payload_bytes": 999,
+      "segments": {
+        "AUTOSTRT": 6,
+        "EXEHDR": 2,
+        "MAINHDR": 4,
+        "SYSCHKHDR": 4,
+        "SYSCHKTRL": 6,
+        "ZEROPAGE": 36,
+        "STARTUP": 99,
+        "ONCE": 12,
+        "CODE": 30817,
+        "SYSCHK": 246,
+        "RODATA": 33,
+        "DATA": 51,
+        "BSS": 3052
+      },
+      "software_stack_reserved": 2048,
+      "hardware_stack_reserved": 256,
+      "working_ram": 5443,
+      "resident_ram": 36404,
+      "minimum_profile": "K8",
+      "measurements": {
+        "measurement-empty": {
+          "cycles": 62,
+          "software_stack": 4,
+          "hardware_stack": 7
+        },
+        "EVENT-PLANNING_CLOSED": {
+          "cycles": 13531,
+          "software_stack": 70,
+          "hardware_stack": 18
+        },
+        "EVENT-largest-68": {
+          "cycles": 50068,
+          "software_stack": 76,
+          "hardware_stack": 19
+        },
+        "PAGE-full-240": {
+          "cycles": 196884,
+          "software_stack": 116,
+          "hardware_stack": 21
+        },
+        "SUBMIT-encode": {
+          "cycles": 21768,
+          "software_stack": 309,
+          "hardware_stack": 15
+        },
+        "PAGE-full-240-encode": {
+          "cycles": 207110,
+          "software_stack": 369,
+          "hardware_stack": 23
+        },
+        "snapshot-validate": {
+          "cycles": 1798542,
+          "software_stack": 204,
+          "hardware_stack": 21
+        },
+        "snapshot-validate-and-store": {
+          "cycles": 4434552,
+          "software_stack": 204,
+          "hardware_stack": 21
+        },
+        "snapshot-store-only-prevalidated": {
+          "cycles": 186572,
+          "software_stack": 16,
+          "hardware_stack": 10
+        }
+      }
+    },
+    {
+      "name": "global-envelope",
+      "variable": 4152,
+      "crates": 324,
+      "core_working_ram": 6279,
+      "snapshot_pages": 16,
+      "snapshot_payload_bytes": 3693,
+      "segments": {
+        "AUTOSTRT": 6,
+        "EXEHDR": 2,
+        "MAINHDR": 4,
+        "SYSCHKHDR": 4,
+        "SYSCHKTRL": 6,
+        "ZEROPAGE": 36,
+        "STARTUP": 99,
+        "ONCE": 12,
+        "CODE": 30817,
+        "SYSCHK": 246,
+        "RODATA": 33,
+        "DATA": 51,
+        "BSS": 6524
+      },
+      "software_stack_reserved": 2048,
+      "hardware_stack_reserved": 256,
+      "working_ram": 8915,
+      "resident_ram": 39876,
+      "minimum_profile": "none",
+      "measurements": {
+        "measurement-empty": {
+          "cycles": 62,
+          "software_stack": 4,
+          "hardware_stack": 7
+        },
+        "EVENT-PLANNING_CLOSED": {
+          "cycles": 13526,
+          "software_stack": 70,
+          "hardware_stack": 18
+        },
+        "EVENT-largest-68": {
+          "cycles": 50048,
+          "software_stack": 76,
+          "hardware_stack": 19
+        },
+        "PAGE-full-240": {
+          "cycles": 196792,
+          "software_stack": 116,
+          "hardware_stack": 21
+        },
+        "SUBMIT-encode": {
+          "cycles": 21757,
+          "software_stack": 309,
+          "hardware_stack": 15
+        },
+        "PAGE-full-240-encode": {
+          "cycles": 207033,
+          "software_stack": 369,
+          "hardware_stack": 23
+        },
+        "snapshot-validate": {
+          "cycles": 7144433,
+          "software_stack": 204,
+          "hardware_stack": 21
+        },
+        "snapshot-validate-and-store": {
+          "cycles": 17642416,
+          "software_stack": 204,
+          "hardware_stack": 21
+        },
+        "snapshot-store-only-prevalidated": {
+          "cycles": 808993,
+          "software_stack": 16,
+          "hardware_stack": 10
+        }
+      }
+    }
+  ]
+}

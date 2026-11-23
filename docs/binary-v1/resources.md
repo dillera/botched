@@ -1,5 +1,11 @@
 # B1 resource budget and admission worksheet
 
+**B5 measurement addendum:** [actual allocations and 6502 costs](b5-review.md)
+supersede the estimated runtime footprint, not the frozen worksheet used by server
+admission. Core codec/storage fits K4 on shipped maps; the measured general-NIO
+configuration requires K8. Its independent global allocation exceeds K8, and the
+historical CPU targets are not met. Do not treat this B1 worksheet as port acceptance.
+
 These measurements count bytes in the frozen packed design and cells/attributes in the checked-in
 map files. They are **not runtime heap, stack, cycle or network benchmarks**. No codec exists in B1.
 B2/B5 must measure the C implementation; neither passing these arithmetic checks nor a compiler

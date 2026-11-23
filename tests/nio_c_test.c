@@ -112,7 +112,7 @@ static uint8_t read_tcp(void *p, uint16_t h, uint32_t offset, uint8_t *data, uin
     return BN_IO_OK;
 }
 int main(void) {
-    bn_client c;
+    static bn_client c;
     uint32_t now;
     int rc = 0;
     static const bn_ops ops = {open_tcp, info, write_tcp, read_tcp, close_tcp};

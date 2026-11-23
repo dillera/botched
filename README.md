@@ -14,9 +14,12 @@ ASan/UBSan; identical results in Debug and Release).
 **M1-A (minimal playable POSIX multiplayer) is built:** a TCP server and an interactive terminal
 client play a complete 2-4 player match (see "Play a match" below). **B3 is accepted:** an optional binary TCP listener and Linux terminal/SDL client
 mode share the existing server and UI. Binary sessions support transient disconnect recovery.
-**B4 is implemented for review:** a portable C99 transport uses the existing FujiNet-NIO
+**B4 is accepted:** a portable C99 transport uses the existing FujiNet-NIO
 NetworkDevice TCP service; see [B4 integration and verification](docs/binary-v1/b4-review.md).
-**Not built yet:** retro renderers, constrained-target acceptance, authentication beyond per-seat session tokens,
+**B5 measurements are ready for review:** [6502 costs and full RAM accounting](docs/binary-v1/b5-review.md).
+The codec/storage harness fits K4; the current complete general-NIO configuration needs K8
+for shipped maps. Historical CPU targets are not met.
+**Not built yet:** retro renderers, physical constrained-client acceptance, authentication beyond per-seat session tokens,
 and host persistence. See [`docs/binary-protocol-requirements.md`](docs/binary-protocol-requirements.md).
 
 ## Play a match (2-4 players, separate terminals)
