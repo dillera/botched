@@ -1,0 +1,78 @@
+{
+  "size": [
+    320,
+    256
+  ],
+  "colours": [
+    "#111122",
+    "#222233",
+    "#334455",
+    "#556677",
+    "#889999",
+    "#eeeecc",
+    "#ff7766",
+    "#66ccff",
+    "#88dd77",
+    "#cc99ff",
+    "#eeaa44",
+    "#996633",
+    "#ff4433",
+    "#448888",
+    "#bbbbbb",
+    "#ffdd88"
+  ],
+  "bitplanes": 4,
+  "screen_bitmap_bytes": 40960,
+  "two_bitmaps_bytes": 81920,
+  "detail_tile": [
+    16,
+    16
+  ],
+  "viewport_cells": [
+    12,
+    10
+  ],
+  "overview_tile": [
+    8,
+    8
+  ],
+  "maps": {
+    "crossroads-01": [
+      12,
+      10
+    ],
+    "factory-01": [
+      14,
+      11
+    ],
+    "foundry-01": [
+      11,
+      13
+    ],
+    "laserworks-01": [
+      12,
+      10
+    ],
+    "shuntworks-01": [
+      12,
+      10
+    ],
+    "tarworks-01": [
+      12,
+      10
+    ],
+    "training-01": [
+      12,
+      10
+    ],
+    "trapworks-01": [
+      12,
+      10
+    ],
+    "turretworks-01": [
+      12,
+      10
+    ]
+  },
+  "status": "Design illustrations; not emulator screenshots or measured runtime performance."
+}
