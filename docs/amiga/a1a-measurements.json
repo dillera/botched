@@ -1,0 +1,161 @@
+{
+  "machine": [
+    "chipset=ocs",
+    "cpu_model=68000",
+    "cpu_type=68000",
+    "chipmem_size=1",
+    "bogomem_size=2",
+    "fastmem_size=0",
+    "z3mem_size=0",
+    "ntsc=false",
+    "serial_direct=true",
+    "serial_hardware_ctsrts=false"
+  ],
+  "executable_bytes": 46204,
+  "executable_sha256": "0c97e4753c7b2b50389e6665897c66a965af14856ccb279eedcf858a35f0370d",
+  "library_sha256": "7831bc08243effa5df603ef867d384921202dbd59f731cfe5b8f18941eb0b159",
+  "broker_sha256": "c97f02ffb6a13884861199c63594c7dc052c87a680f46047012755bebf43852f",
+  "memory": [
+    {
+      "stage": "entry",
+      "chip_free": 439344,
+      "expansion_free": 355632,
+      "total_free": 794976,
+      "largest_chip": 439272,
+      "largest_expansion": 347256
+    },
+    {
+      "stage": "display",
+      "chip_free": 415184,
+      "expansion_free": 353736,
+      "total_free": 768920,
+      "largest_chip": 414944,
+      "largest_expansion": 347256
+    },
+    {
+      "stage": "snapshot",
+      "chip_free": 415184,
+      "expansion_free": 337208,
+      "total_free": 752392,
+      "largest_chip": 414944,
+      "largest_expansion": 333720
+    },
+    {
+      "stage": "snapshot",
+      "chip_free": 415184,
+      "expansion_free": 337152,
+      "total_free": 752336,
+      "largest_chip": 414944,
+      "largest_expansion": 333720
+    },
+    {
+      "stage": "closed",
+      "chip_free": 439344,
+      "expansion_free": 347656,
+      "total_free": 787000,
+      "largest_chip": 439272,
+      "largest_expansion": 333720
+    }
+  ],
+  "stack": {
+    "main_measured": 1812,
+    "worker_measured": 1856,
+    "main_reserved": 16384,
+    "worker_reserved": 8192
+  },
+  "chip_installed": 524288,
+  "expansion_installed": 524288,
+  "expansion_kind": "A500 slow RAM (no true Fast RAM)",
+  "avail_before": {
+    "chip": {
+      "available": 439344,
+      "used": 83888,
+      "maximum": 523232,
+      "largest": 439272
+    },
+    "fast": {
+      "available": 419920,
+      "used": 96968,
+      "maximum": 516888,
+      "largest": 392088
+    },
+    "total": {
+      "available": 859264,
+      "used": 180856,
+      "maximum": 1040120,
+      "largest": 439272
+    }
+  },
+  "avail_after_first": {
+    "chip": {
+      "available": 439344,
+      "used": 83888,
+      "maximum": 523232,
+      "largest": 439272
+    },
+    "fast": {
+      "available": 411944,
+      "used": 104944,
+      "maximum": 516888,
+      "largest": 333720
+    },
+    "total": {
+      "available": 851288,
+      "used": 188832,
+      "maximum": 1040120,
+      "largest": 439272
+    }
+  },
+  "avail_after_second": {
+    "chip": {
+      "available": 439344,
+      "used": 83888,
+      "maximum": 523232,
+      "largest": 439272
+    },
+    "fast": {
+      "available": 411944,
+      "used": 104944,
+      "maximum": 516888,
+      "largest": 333720
+    },
+    "total": {
+      "available": 851288,
+      "used": 188832,
+      "maximum": 1040120,
+      "largest": 439272
+    }
+  },
+  "verification": [
+    "two real NIO HELLO/JOIN/MAP/SNAPSHOT instances",
+    "authoritative player positions/scores",
+    "raw-key refresh",
+    "raw-key quit",
+    "clean exit",
+    "native all-nine-map terrain and snapshot checks, ASan/UBSan"
+  ],
+  "compiler": "m68k-amigaos-gcc 15.2.0; -m68000 -mcrt=nix13 -Os",
+  "linked_segments": {
+    "text": 37128,
+    "data": 304,
+    "bss": 12048,
+    "resident_hunks": 49480
+  },
+  "display_bitplanes_bytes": 24000,
+  "nio_library_bss_bytes": 2240,
+  "second_client_log": [
+    "Botched A1 starting",
+    "MEM entry chip=439344 other=347656 total=787000 largest_chip=439272 largest_other=333720",
+    "MEM display chip=415184 other=345760 total=760944 largest_chip=414944 largest_other=333720",
+    "MEM snapshot chip=415184 other=337208 total=752392 largest_chip=414944 largest_other=333720",
+    "RESULT error=0 map=1 snapshot=1 width=14 height=11 player=1 worker_stack=1856 main_stack=1720",
+    "MEM closed chip=439344 other=347656 total=787000 largest_chip=439272 largest_other=333720",
+    "EXIT main_stack=1812 worker_stack=1856 reserved_main=16384 reserved_worker=8192"
+  ],
+  "os_avail": [
+    "Type  Available    In-Use   Maximum   Largest",
+    "chip     439344     83888    523232    439272",
+    "fast     451064     65824    516888    450288",
+    "total    890408    149712   1040120    450288"
+  ]
+}
