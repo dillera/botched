@@ -215,7 +215,7 @@ GameServer::Room* GameServer::room_for(const Json& req, Json& err) {
 
 // ------------------------------------------------------------------ lobby
 
-Json GameServer::create(const Json& req) {
+Json GameServer::create(const Json& req, bool validate_only) {
     Json err;
     std::string map_id;
     std::int64_t players = 0, rounds = 0, secs = 0;
@@ -242,6 +242,7 @@ Json GameServer::create(const Json& req) {
     auto errors = validate_map(*mit->second.map, vo);
     if (!errors.empty()) return make_error("INVALID_MAP", errors.front(), &req);
 
+    if (validate_only) { Json ok = Json::object(); ok.set("ok",true); return ok; }
     Room r;
     r.id = "m" + std::to_string(next_room_++);
     r.map = mit->second.map;
@@ -261,6 +262,56 @@ Json GameServer::create(const Json& req) {
     out.set("rounds", rounds);
     out.set("target_score", target);
     return out;
+}
+
+bool GameServer::provision_pool(const std::vector<Offering>& offerings, std::ostream& report, std::string& error) {
+    if (!rooms_.empty()) { error = "pool provisioning requires an empty server"; return false; }
+    if (cfg_.max_matches < 1) { error = "max_concurrent_matches must be positive"; return false; }
+    uint64_t total = 0;
+    std::vector<Json> requests;
+    for (const auto& o : offerings) {
+        if (o.instances < 1 || uint64_t(o.instances) > uint64_t(cfg_.max_matches) - total) {
+            error = "offering " + o.id + ": instances exceed max_concurrent_matches"; return false;
+        }
+        total += o.instances;
+        Json req = o.rules;
+        auto map_id = req.get_string("map_id").value_or("");
+        auto map = maps_.find(map_id);
+        if (map == maps_.end()) { error = "offering " + o.id + ": unknown map " + map_id; return false; }
+        if (!req.find("player_count")) {
+            if (map->second.info.min_players != map->second.info.max_players) {
+                error = "offering " + o.id + ": player_count required for a map with a capacity range"; return false;
+            }
+            req.set("player_count", map->second.info.min_players);
+        }
+        req.set("bots", int(o.bots.size()));
+        auto checked = create(req, true);
+        if (!checked.get_bool("ok").value_or(false)) {
+            error = "offering " + o.id + ": " + checked.get_string("message").value_or(checked.dump()); return false;
+        }
+        requests.push_back(std::move(req));
+    }
+    // Every declaration passed the same validator used by CREATE_MATCH. No listeners
+    // or clients exist yet; capacity was checked for the complete batch above.
+    for (size_t i=0; i<offerings.size(); ++i) {
+        const auto& o=offerings[i];
+        for (int instance=1; instance<=o.instances; ++instance) {
+            auto made=create(requests[i]);
+            auto id=made.get_string("match_id").value();
+            auto& r=rooms_.at(id); r.offering=o.id; r.named_bots=o.bots;
+            Json line=Json::object();
+            line.set("offering",o.id); line.set("name",o.name); line.set("instance",instance);
+            line.set("match_id",id); line.set("map_id",r.map->id); line.set("player_count",r.capacity);
+            line.set("bots",r.bots); line.set("state","LOBBY");
+            Json names=Json::array(), blends=Json::array();
+            for(const auto& bot:o.bots) { names.push(bot.name); blends.push(bot.blend.describe()); }
+            line.set("bot_names",names); line.set("bot_blends",blends);
+            report << "pool " << line.dump() << '\n';
+        }
+    }
+    report << "pool warning: S1 retains finished matches; no recycling. Configured and ad-hoc rooms share max_concurrent_matches="
+           << cfg_.max_matches << '\n' << std::flush;
+    return true;
 }
 
 std::string GameServer::make_token(const std::string& room, int pid) {
@@ -377,6 +428,9 @@ bool GameServer::start_room(Room& r, std::string& error) {
     if (r.match) { error = "already started"; return false; }
     const int humans = static_cast<int>(r.tokens.size());
     const int joined = humans + r.bots;  // bot seats take the ids after the humans
+    if (!r.offering.empty() && joined != r.capacity) {
+        error = "configured offering waits for all human seats"; return false;
+    }
     if (humans < 1) { error = "at least one human player required"; return false; }
     if (joined < 2) { error = "at least two players required"; return false; }
     if (auto mi = maps_.find(r.map->id); mi != maps_.end() && joined < mi->second.info.min_players) {
@@ -401,7 +455,9 @@ bool GameServer::start_room(Room& r, std::string& error) {
     for (int i = 0; i < r.bots; ++i) {
         const int pid = humans + 1 + i;
         const std::uint64_t seed = fnv1a64(r.id + ":" + std::to_string(pid)) ^ (cfg_.bot_seed * 0x9e3779b97f4a7c15ULL);
-        r.ai.push_back(std::make_unique<sim::Bot>(pid, *r.map, seed, sim::personality_for(personality_base + static_cast<std::uint64_t>(i))));
+        const auto legacy = sim::personality_for(personality_base + static_cast<std::uint64_t>(i));
+        if (r.named_bots.empty()) r.ai.push_back(std::make_unique<sim::Bot>(pid, *r.map, seed, legacy));
+        else r.ai.push_back(std::make_unique<sim::Bot>(pid, *r.map, seed, legacy, r.named_bots[i]));
     }
     if (cfg_.trace) {
         std::ostream& t = *cfg_.trace;
@@ -410,7 +466,7 @@ bool GameServer::start_room(Room& r, std::string& error) {
           << ", planning " << r.planning_seconds << " s\n";
         for (auto& b : r.ai) {
             b->set_explain(true);
-            t << "  P" << b->id() << " is a bot: " << sim::to_string(b->personality()) << "\n";
+            t << "  P" << b->id() << " is a bot: " << b->identity() << "\n";
         }
         t << std::flush;
     }
@@ -626,7 +682,10 @@ Json GameServer::get_status(const Json& req) {
         Json ids = Json::array();
         for (const auto& b : r->ai) ids.push(b->id());
         st.set("bot_players", std::move(ids));
-        Json kinds = Json::array();   // G4: the personality of each bot seat, parallel to bot_players
+        // Frozen v1 requires a legacy enum per bot. Keep the original seeded seat
+        // category; actual named blends are server diagnostics only, never projected
+        // to a misleading dominant-weight archetype or an invented wire value.
+        Json kinds = Json::array();
         for (const auto& b : r->ai) kinds.push(sim::to_string(b->personality()));
         st.set("bot_personalities", std::move(kinds));
         out.set("status", std::move(st));

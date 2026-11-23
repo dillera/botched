@@ -42,6 +42,93 @@ Build once (`cmake -S . -B build && cmake --build build -j`), then:
 ./build/botched-client --join m1
 ```
 
+### Configured games and named bots (S1)
+
+Start ready-to-join rooms without a client creating them:
+
+```sh
+./build/botched-tcp-server --config docs/examples/server-pool.json --binary-port 7879 --bot-log
+# Read the printed match_id, then join normally:
+./build/botched-client --wire binary --join m1
+# Amiga Shell: botched-amiga tcp://server:7879 m1
+```
+
+The [example configuration](docs/examples/server-pool.json) uses shipped maps and
+provisions two named-bot Foundry games plus two human-only Training duels. Each
+`pool {...}` startup line is a JSON object after a fixed prefix, containing the
+offering ID/label, instance number, match ID, map, seat count, bot names/blends and
+`LOBBY` state. No lobby/discovery API is required. The entire pool validates before
+any room is created or listener opens; invalid pool declarations exit with code 2.
+Map-loading and listener failures retain their existing failure exits.
+
+`--config` is optional and applies to `botched-tcp-server`. Its `server` object
+accepts `max_concurrent_matches` and `default_planning_seconds`. Explicit
+`--max-matches` and `--planning-seconds` override them **regardless of argument
+order**. Other CLI settings retain their existing behaviour. An offering's explicit
+`planning_seconds` overrides the server default for that offering. File values
+must validate even when overridden. Without a file, existing CLI/CREATE behaviour
+is unchanged. Files are limited to 1 MiB; duplicate keys and unknown fields fail.
+
+Each offering requires `id`, `name`, `map_id`, positive `instances` and a `bots`
+array. IDs use 1–32 ASCII letters/digits or `._:-`; labels and bot names use 1–32
+printable ASCII characters. Offering IDs are unique; bot names are unique within
+an offering, case-sensitive, and may repeat in another offering or instance.
+`player_count` is mandatory for maps supporting a range; a map declaring exactly
+one count infers that count. `rounds`, `target_score` and `planning_seconds` use
+CREATE_MATCH's existing defaults and limits (1–200 rounds, 0–1000 target, 0–86400
+seconds; omitted rounds default to 12, or 100 with a positive target).
+
+Configured `bots` is an ordered array of `{name, personality}` objects, with at
+least one human seat left. All three weights `hauler`, `opportunist`, `saboteur`
+are mandatory finite JSON numbers in [0,1], summing to 1 within absolute tolerance
+`1e-6`. Decimal and exponent syntax is supported in weights only; network JSON
+remains integer-only. Bots occupy the highest seats in array order. Rooms wait
+for every configured human seat; neither bots alone nor an early START_MATCH
+starts a configured game. Ad-hoc numeric CREATE_MATCH bot counts retain the old
+selection and start behaviour.
+
+Blends are fixed at construction, not sampled each round. Normalize accepted
+weights to integer millionths using largest remainders (ties: hauler, opportunist,
+saboteur). Weight the existing trait tables with those integers. Round risk,
+sabotage value, blunder, fumble and patience to nearest integer, halves upward;
+these stay within the original archetype ranges. Allocate goal-family percentages
+by flooring and assigning largest remainders (ties: haul, mixed, hunt), giving
+exactly 100. Pure blends preserve existing decisions and RNG consumption.
+
+| Blend H/O/S | Haul/mixed/hunt | Risk | Sabotage | Blunder/fumble | Patience |
+|---|---|---:|---:|---|---:|
+| 0.2 / 0.3 / 0.5 | 41 / 25 / 34 | 93 | 132 | 11 / 9 | 6 |
+| 0.9 / 0.1 / 0 | 77 / 17 / 6 | 136 | 64 | 6 / 6 | 8 |
+| 0.5 / 0 / 0.5 | 50 / 20 / 30 | 105 | 120 | 10 / 8 | 7 |
+
+**Identity compatibility:** names and blends appear only in server startup output,
+`--bot-log` and `--trace`. Frozen binary v1 mandates one of three legacy categories
+per bot and cannot represent mixed/unknown. JSON/binary therefore retain the
+existing seeded seat category as compatibility metadata; it does **not** describe
+a configured blend. Existing clients may display that legacy label. Diagnostics
+show the actual named blend instead of pretending it is a pure archetype. No new
+wire fields, opcodes or personality values are added.
+
+**S1 limits:** rooms, including finished rooms, consume the shared global cap.
+Ad-hoc CREATE_MATCH remains enabled only within remaining capacity and never
+evicts configured rooms. Finished rooms are retained; the startup warning calls
+out that this finite pool is consumed, with no recycling. There is no presence
+tracking, bot takeover, lobby, hot reload or persistence. Restart loses games and
+credentials, recreating the pool; reused textual IDs after restart do not identify
+old sessions. S2–S4 are not implemented.
+
+Verification: `build/botched_tests --test-case='S1*'` and
+`ctest --test-dir build -R botched_pool_integration --output-on-failure` cover
+validation, deterministic blends and real mixed JSON/binary play. With existing
+licensed workspace Amiga media/tools, `python3 tools/amiga/accept.py --s1` runs the
+unchanged A500/KS1.3 client against two startup-provisioned named-bot matches
+through real NIO. S1 verification passed the existing 11 CTest checks, the new real
+TCP integration check, and five focused tests (319 assertions), also under
+ASan/UBSan. The Amiga run `build/amiga/evidence/a500-z1r97kpk` completed both
+configured matches (89 and 57 ordered events), with the accepted A1c executable
+unchanged; this is emulator/NIO evidence, not physical hardware testing.
+The approved scope is [the S1 specification](docs/server-managed-matches-spec-v2.md).
+
 ### Mixed JSON and binary play (B3)
 
 The JSON service remains the default on port 7878. Enable a separate binary listener explicitly:

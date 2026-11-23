@@ -19,6 +19,7 @@
 #include "botched/json.hpp"
 #include "botched/match.hpp"
 #include "bot.hpp"
+#include "pool_config.hpp"
 #include "map_loader.hpp"
 
 namespace botched::server {
@@ -87,6 +88,9 @@ class GameServer {
 public:
     GameServer(ServerConfig cfg, const Clock& clock);
 
+    // Startup only: validate the entire pool before creating any room.
+    bool provision_pool(const std::vector<Offering>&, std::ostream& report, std::string& error);
+
     // Adds a map to the registry. Maps are immutable (shared_ptr<const Map>) and matches keep their own
     // reference, so registering never affects running matches. Returns false (and changes nothing)
     // when the id is already registered; a missing name defaults to the id.
@@ -125,6 +129,8 @@ private:
         int planning_seconds = 0;
         int rounds = kDefaultRounds;      // fixed length, or the safety cap when target_score > 0
         int target_score = 0;             // 0 = fixed-round mode
+        std::string offering;
+        std::vector<sim::NamedBot> named_bots;
         int bots = 0;                     // seats played by the server (always the highest player ids)
         // Adapter metadata only. Observe JSON as well as binary requests without touching H3.
         std::array<std::optional<std::uint32_t>,4> numeric_high{};
@@ -137,7 +143,7 @@ private:
     };
 
     Json list_maps_request(const Json& req);
-    Json create(const Json& req);
+    Json create(const Json& req, bool validate_only = false);
     Json join(const Json& req);
     Json start(const Json& req);
     Json submit(const Json& req);

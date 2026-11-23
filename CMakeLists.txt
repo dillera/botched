@@ -49,6 +49,7 @@ endif()
 # --- Server orchestration (rooms, sessions, API dispatch). Transport-agnostic.
 add_library(botched_server STATIC
   server/server.cpp
+  server/pool_config.cpp
   server/bot.cpp
   server/map_loader.cpp
   apps/ascii_render.cpp   # board rendering for --trace
@@ -242,4 +243,12 @@ if(BOTCHED_BUILD_TESTS)
   target_include_directories(botched_amiga_reliability_test PRIVATE tests)
   target_link_libraries(botched_amiga_reliability_test PRIVATE botched_amiga_model botched_binary)
   add_test(NAME botched_amiga_reliability COMMAND botched_amiga_reliability_test)
+endif()
+
+if(BOTCHED_BUILD_TESTS AND BOTCHED_BUILD_APPS AND UNIX)
+  find_package(Python3 COMPONENTS Interpreter REQUIRED)
+  add_test(NAME botched_pool_integration COMMAND ${Python3_EXECUTABLE}
+    ${CMAKE_CURRENT_SOURCE_DIR}/tests/pool_integration.py
+    $<TARGET_FILE:botched-tcp-server> $<TARGET_FILE:botched-client>)
+  set_tests_properties(botched_pool_integration PROPERTIES TIMEOUT 120)
 endif()

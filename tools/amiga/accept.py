@@ -16,7 +16,7 @@ def wait(predicate,seconds,label):
         time.sleep(.2)
     raise RuntimeError('Timeout: '+label)
 def listening(p):return f':{p:04X} ' in pathlib.Path('/proc/net/tcp').read_text()
-def main(a1c=False):
+def main(a1c=False, s1=False):
     out=ROOT/'build/amiga/evidence';out.mkdir(parents=True,exist_ok=True)
     work=pathlib.Path(tempfile.mkdtemp(prefix='a500-',dir=out));share=work/'share';share.mkdir()
     env=json.loads(subprocess.check_output(['bash','-c',
@@ -35,7 +35,16 @@ def main(a1c=False):
         p=subprocess.Popen(list(map(str,args)),stdout=f,stderr=subprocess.STDOUT,**kw);procs.append(p);return p
     try:
         jp,bp,np,sp=port(),port(),port(),port()
-        start('server',[ROOT/'build/botched-tcp-server','--port',jp,'--binary-port',bp])
+        server_args=[ROOT/'build/botched-tcp-server','--port',jp,'--binary-port',bp]
+        if s1:
+            pool=json.loads((ROOT/'docs/examples/server-pool.json').read_text())
+            first=pool['offerings'][0]
+            first.update(instances=1,rounds=3,target_score=0,planning_seconds=0)
+            second=dict(first,id='factory',name='Factory named bots',map_id='factory-01',rounds=2,planning_seconds=8)
+            pool['offerings']=[first,second]
+            (work/'pool.json').write_text(json.dumps(pool))
+            server_args+=['--config',work/'pool.json','--bot-log']
+        start('server',server_args)
         wait(lambda:listening(jp),10,'server')
         conn=socket.create_connection(('127.0.0.1',jp));stream=conn.makefile('rwb')
         def ask(data):
@@ -46,10 +55,16 @@ def main(a1c=False):
             proxy=reliability.Proxy(bp)
             (share/'run').write_text(reliability.startup(cases,proxy.port))
         else:
-            made=ask(dict(type='CREATE_MATCH',map_id='foundry-01',player_count=4,bots=3,rounds=3,planning_seconds=0))
+            if s1:
+                entries=[json.loads(line[5:]) for line in (work/'server.log').read_text().splitlines() if line.startswith('pool {')]
+                assert len(entries)==2 and entries[0]['bot_names']==['Nasty','Sneaky Pete','Bob']
+                made=dict(ok=True,match_id=entries[0]['match_id'])
+            else:
+                made=ask(dict(type='CREATE_MATCH',map_id='foundry-01',player_count=4,bots=3,rounds=3,planning_seconds=0))
             assert made['ok'],made
             match=made['match_id']
-            second=ask(dict(type='CREATE_MATCH',map_id='factory-01',player_count=4,bots=3,rounds=2,planning_seconds=8))
+            second=(dict(ok=True,match_id=entries[1]['match_id']) if s1 else
+                    ask(dict(type='CREATE_MATCH',map_id='factory-01',player_count=4,bots=3,rounds=2,planning_seconds=8)))
             assert second['ok'],second
             (share/'run').write_text('FailAt 21\nStack 16384\nAvail >BT:os-memory.log\nBT:fujinet-load-resident BT:fujinet-nio.device fujinet-nio.device\nAvail >BT:broker-memory.log\n'
                 +f'BT:botched-amiga >BT:client.log tcp://127.0.0.1:{bp} {match} --capture\n'
@@ -206,5 +221,8 @@ channel:
 if __name__=='__main__':
     import argparse
     parser=argparse.ArgumentParser(description=__doc__)
-    parser.add_argument('--a1c',action='store_true',help='mixed-human reliability scenarios')
-    main(parser.parse_args().a1c)
+    group=parser.add_mutually_exclusive_group()
+    group.add_argument('--a1c',action='store_true',help='mixed-human reliability scenarios')
+    group.add_argument('--s1',action='store_true',help='join startup-provisioned named-bot matches')
+    args=parser.parse_args()
+    main(args.a1c,args.s1)

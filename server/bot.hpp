@@ -43,6 +43,25 @@ enum class Personality { Hauler, Opportunist, Saboteur };
 const char* to_string(Personality p);
 Personality personality_for(std::uint64_t key);  // deterministic: key % 3
 
+// Server-side tuning only; never serialized as client metadata.
+struct Traits {
+    int w_haul, w_mixed, w_hunt, risk_pct, sabotage_pct, blunder, fumble, patience;
+    bool operator==(const Traits&) const = default;
+};
+Traits traits_of(Personality);
+struct PersonalityBlend {
+    // Normalized millionths, computed once. Construction validates finite weights
+    // in [0,1], sum within 1e-6; largest remainders break ties H/O/S.
+    std::array<int,3> millionths;
+    static PersonalityBlend from_weights(const std::array<double,3>&);
+    Traits traits() const;
+    std::string describe() const;
+};
+struct NamedBot {
+    std::string name;
+    PersonalityBlend blend;
+};
+
 // What the bot is currently trying to do. It is kept until it completes, becomes impossible, times out or
 // something disrupts the plan; the details (target tiles, route) are recomputed from the world every round.
 enum class GoalKind {
@@ -60,6 +79,11 @@ public:
     Bot(int player_id, const Map& map, std::uint64_t seed) : Bot(player_id, map, seed, personality_for(seed)) {}
     Bot(int player_id, const Map& map, std::uint64_t seed, Personality p);
 
+    Bot(int player_id, const Map& map, std::uint64_t seed, Personality legacy,
+        const NamedBot& definition);
+    const Traits& traits() const { return traits_; }
+    std::string identity() const;
+
     // Plan three order tokens from a public snapshot. The bot keeps a current goal between rounds, re-evaluates
     // it against the current world at the start of every round (rival positions, hazards, crates), and picks a
     // new goal when the old one completes, becomes impossible, times out, or the last round did not go to plan.
@@ -70,6 +94,7 @@ public:
     void set_fumble_percent(int p) { fumble_percent_ = p; }
 
     int id() const { return id_; }
+    // Frozen status compatibility category; named bots use traits_, not this label.
     Personality personality() const { return personality_; }
     GoalKind goal_kind() const { return goal_.kind; }
     int goals_chosen() const { return goals_chosen_; }      // how many times a goal was (re)chosen
@@ -106,6 +131,8 @@ private:
     const Map& map_;
     Rng rng_;
     Personality personality_;
+    Traits traits_;
+    std::string identity_;
     int blunder_percent_;
     int fumble_percent_;
 

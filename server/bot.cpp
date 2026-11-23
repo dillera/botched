@@ -2,6 +2,8 @@
 
 #include <algorithm>
 #include <optional>
+#include <cmath>
+#include <stdexcept>
 #include <queue>
 
 #include "botched/engine.hpp"
@@ -141,20 +143,6 @@ const char* to_string(GoalKind k) {
     return "?";
 }
 
-namespace {
-
-constexpr int kFar = 100000;  // "unreachable" in the cost fields (tenths of a tile)
-
-// What a personality is like. Weights are the chance (%) of choosing each family of goal next:
-// haul / mixed (opportunist) / hunt (environmental disruption first, then chasing a rival).
-struct Traits {
-    int w_haul, w_mixed, w_hunt;
-    int risk_pct;      // how much a hit counts against a route (100 = baseline; lower = bolder)
-    int sabotage_pct;  // how much sabotage points and owning machinery are worth
-    int blunder, fumble;
-    int patience;      // rounds before an unfinished goal is dropped
-};
-
 Traits traits_of(Personality p) {
     switch (p) {
         case Personality::Hauler: return {80, 15, 5, 140, 60, 6, 6, 8};
@@ -163,6 +151,66 @@ Traits traits_of(Personality p) {
     }
     return {50, 30, 20, 100, 100, 10, 8, 7};
 }
+
+PersonalityBlend PersonalityBlend::from_weights(const std::array<double,3>& w) {
+    double sum = 0;
+    for (double v : w) {
+        if (!std::isfinite(v) || v < 0 || v > 1)
+            throw std::invalid_argument("personality weights must be finite numbers in [0,1]");
+        sum += v;
+    }
+    if (std::abs(sum - 1.0) > 1e-6)
+        throw std::invalid_argument("personality weights must sum to 1 within 1e-6");
+    PersonalityBlend out{};
+    std::array<double,3> remainder{};
+    int allocated = 0;
+    for (int i = 0; i < 3; ++i) {
+        double scaled = w[i] / sum * 1000000;
+        out.millionths[i] = static_cast<int>(std::floor(scaled));
+        remainder[i] = scaled - out.millionths[i];
+        allocated += out.millionths[i];
+    }
+    for (; allocated < 1000000; ++allocated) {
+        auto i = std::max_element(remainder.begin(), remainder.end()) - remainder.begin();
+        ++out.millionths[i]; remainder[i] = -1;
+    }
+    return out;
+}
+Traits PersonalityBlend::traits() const {
+    if (*std::min_element(millionths.begin(), millionths.end()) < 0 ||
+        static_cast<int64_t>(millionths[0]) + millionths[1] + millionths[2] != 1000000)
+        throw std::invalid_argument("invalid normalized personality blend");
+    const Traits base[] = {traits_of(Personality::Hauler), traits_of(Personality::Opportunist), traits_of(Personality::Saboteur)};
+    auto weighted = [&](int Traits::*member) {
+        int64_t value = 0;
+        for (int i = 0; i < 3; ++i) value += int64_t(millionths[i]) * (base[i].*member);
+        return value;
+    };
+    auto rounded = [&](int Traits::*member) { return int((weighted(member) + 500000) / 1000000); };
+    Traits t{};
+    int Traits::*goals[] = {&Traits::w_haul, &Traits::w_mixed, &Traits::w_hunt};
+    std::array<int64_t,3> remainder{};
+    int allocated = 0;
+    for (int i=0; i<3; ++i) {
+        auto value = weighted(goals[i]);
+        t.*goals[i] = int(value / 1000000); allocated += t.*goals[i];
+        remainder[i] = value % 1000000;
+    }
+    for (; allocated < 100; ++allocated) {
+        auto i = std::max_element(remainder.begin(), remainder.end()) - remainder.begin();
+        ++(t.*goals[i]); remainder[i] = -1;
+    }
+    t.risk_pct = rounded(&Traits::risk_pct); t.sabotage_pct = rounded(&Traits::sabotage_pct);
+    t.blunder = rounded(&Traits::blunder); t.fumble = rounded(&Traits::fumble); t.patience = rounded(&Traits::patience);
+    return t;
+}
+std::string PersonalityBlend::describe() const {
+    return "blend(H/O/S millionths)=" + std::to_string(millionths[0]) + "/" +
+        std::to_string(millionths[1]) + "/" + std::to_string(millionths[2]);
+}
+
+namespace {
+constexpr int kFar = 100000;
 
 // Cost of the next hit, in tiles of walking, by the damage already taken (3 damage = disabled). It grows steeply:
 // a healthy robot will take a hit to save a long detour; a robot one hit from disabling will not.
@@ -253,7 +301,15 @@ struct Bot::Ctx {
 };
 
 Bot::Bot(int player_id, const Map& map, std::uint64_t seed, Personality p)
-    : id_(player_id), map_(map), rng_(seed), personality_(p), blunder_percent_(traits_of(p).blunder), fumble_percent_(traits_of(p).fumble) {}
+    : id_(player_id), map_(map), rng_(seed), personality_(p), traits_(traits_of(p)), blunder_percent_(traits_.blunder), fumble_percent_(traits_.fumble) {}
+
+Bot::Bot(int player_id, const Map& map, std::uint64_t seed, Personality legacy, const NamedBot& definition)
+    : Bot(player_id, map, seed, legacy) {
+    traits_ = definition.blend.traits();
+    blunder_percent_ = traits_.blunder; fumble_percent_ = traits_.fumble;
+    identity_ = "name=" + Json(definition.name).dump() + " " + definition.blend.describe();
+}
+std::string Bot::identity() const { return identity_.empty() ? to_string(personality_) : identity_; }
 
 std::string Bot::goal_text(const Goal& g) const {
     std::string s = to_string(g.kind);
@@ -275,7 +331,7 @@ std::string Bot::describe() const {
         case GoalKind::Chase: g += " P" + std::to_string(goal_.target); break;
         default: break;
     }
-    return std::string(to_string(personality_)) + ": " + g;
+    return identity() + ": " + g;
 }
 
 // Tiles from which a TOGGLE reaches the console(s) of trap `trap`: the console's tile and its four neighbours.
@@ -449,7 +505,7 @@ std::array<std::string, 3> Bot::plan(const Json& snap) {
         note("could not read the snapshot (" + err + "): fallback shortest-path planner, no look-ahead");
         return plan_by_path(snap);
     }
-    const Traits tr = traits_of(personality_);
+    const Traits& tr = traits_;
     std::array<std::string, 3> wait{"WAIT", "WAIT", "WAIT"};
     {
         const Robot& m0 = g0.robot(id_);
