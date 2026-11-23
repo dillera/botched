@@ -10,9 +10,14 @@ static void rect(int x, int y, int w, int h, unsigned pen) {
   RectFill(rp, x, y, x + w - 1, y + h - 1);
 }
 static void text(int x, int y, const char *s, unsigned pen) {
+  /* Text may write the bitmap on the CPU while RectFill is still in flight. */
+  WaitBlit();
   SetAPen(rp, pen);
   Move(rp, x, y);
-  Text(rp, (char *)s, strlen(s));
+  {
+    unsigned n = strlen(s), limit = (320 - x) / 8;
+    Text(rp, (char *)s, n < limit ? n : limit);
+  }
 }
 static void ui_line(unsigned row, const char *s, unsigned pen) {
   static const int yy[] = {0, 12, 216, 234, 245, 0};
@@ -31,6 +36,8 @@ void ba_ui_draw(struct RastPort *canvas, struct RastPort *screen,
                 const ba_world *w, const ba_editor *e, const char *status) {
   unsigned i;
   char label[80];
+  /* Previous screen copies may still be reading our source bitmap. */
+  WaitBlit();
   rp = canvas;
   target = screen;
   sprintf(label, "BOTCHED! P%ld  R%ld T%ld", (long)w->player,
@@ -91,7 +98,8 @@ void ba_ui_draw(struct RastPort *canvas, struct RastPort *screen,
   } else
     ui_line(3, status, e->pending ? 7 : 1);
   ui_line(4,
-          e->pending  ? "SENDING / awaiting server confirmation"
+          !w->valid ? "Not connected / ESC returns to Shell"
+          : e->pending  ? "SENDING / awaiting server confirmation"
           : e->locked ? "ACCEPTED / replay or waiting   ESC quit"
                       : "1-9 order <> slot ENTER ready ESC quit",
           e->locked ? 8 : 1);

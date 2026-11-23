@@ -27,6 +27,40 @@ adds a 16-colour PAL presentation on the same minimum A500, with screenshots and
 **Not built yet:** complete retro gameplay clients, physical constrained-client acceptance, authentication beyond per-seat session tokens,
 and host persistence. See [`docs/binary-protocol-requirements.md`](docs/binary-protocol-requirements.md).
 
+## Amiga Workbench playtesting
+
+From the workspace root, with an existing WB3.2 A500 run disk configured:
+
+```sh
+source scripts/env.sh
+make -C external/botched -f tools/amiga/Makefile
+AMIBERRY_EXTRA_ARGS="-s 'filesystem2=rw,DH2:BT:$NIO_WORKSPACE/external/botched/build/amiga,-128'" \
+  scripts/build.sh amiga-workbench --profile wb32-a500 -- --tcp
+```
+
+This optional accelerated test profile uses a 68030; the minimum supported game
+machine remains the A500/68000/KS1.3 profile. Use `wb32-a1200` for the existing
+A1200/030 Workbench profile instead. The final **`-128`** makes the game share
+non-bootable. With `0`, Amiberry can boot the share instead of Workbench, leaving
+`SYS:`, `C:` and `DEVS:` pointing at `BT:`: DOS commands disappear and NIO cannot
+open `serial.device` (Botched error 102).
+
+In the Workbench Shell:
+
+```text
+NIO:fujinet-load-resident NIO:fujinet-nio.device fujinet-nio.device
+NIO:fujiinfo
+Stack 16384
+BT:botched-amiga tcp://127.0.0.1:7879 m1
+```
+
+Start the Botched server with its binary listener first and substitute a current
+match ID. `fujiinfo` should report the POSIX firmware/profile. The launcher bridges
+Amiberry serial I/O to host NIO; NIO makes the TCP connection, so `127.0.0.1` refers
+to that host, and an Amiga TCP/IP stack is unnecessary. A successful resident load
+alone does not verify serial communication. On transport failure the game prints
+broker diagnostics to its launching Shell (visible after Escape).
+
 ## Play a match (2-4 players, separate terminals)
 
 Build once (`cmake -S . -B build && cmake --build build -j`), then:

@@ -6,6 +6,7 @@
 #include <fujinet-nio.h>
 #include <proto/dos.h>
 #include <proto/exec.h>
+#include <stdio.h>
 #include <string.h>
 static ba_session session;
 static volatile unsigned cancel_requested;
@@ -108,6 +109,18 @@ int ba_worker_poll(ba_world *out, ba_notice *reply, unsigned long *stack) {
   pending = 0;
   if (operation == BA_LOAD || operation == BA_SNAPSHOT)
     memcpy(out, &session.world, sizeof session.world);
+  if (session.result >= 100 && session.result <= 108) {
+    uint8_t stage = 0, result = 0, cause = 0, native = 0;
+    uint16_t status = 0;
+    /* Worker is idle until the next job; report its transport diagnostics here. */
+    fn_amiga_transport_last_broker_detail(&stage, &result);
+    fn_amiga_transport_last_broker_cause(&cause);
+    fn_amiga_transport_last_serial_detail(&native, &status);
+    printf("NIO failure app=%u broker_stage=%u broker_result=%u cause=%u "
+           "serial_error=%u serial_status=%u\n",
+           session.result, stage, result, cause, native, status);
+    fflush(stdout);
+  }
   session.notice.error = session.result;
   *reply = session.notice;
   *stack = stack_used;

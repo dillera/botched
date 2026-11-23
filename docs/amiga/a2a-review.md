@@ -170,3 +170,47 @@ All maps (open links for full-size captures):
 | Tarworks | [Board](a2a/map-tarworks-01.png) |
 | Shuntworks | [Board](a2a/map-shuntworks-01.png) |
 | Crossroads | [Board](a2a/map-crossroads-01.png) |
+
+## WB3.2 manual-playtest follow-up
+
+The initial shared-folder launch advice used boot priority `0` for `BT:`. On the
+user's WB3.2/030 configuration Amiberry booted that share instead of the persistent
+Workbench disk: `Assign` showed `SYS:`, `C:`, `DEVS:` and the other standard assigns
+all targeting `BT:`. This explains missing DOS commands and error 102, independently
+of the TCP destination. The resident broker loaded, but its backend open returned
+stage/result/cause `1/1/1`; standalone `fujiinfo` also failed before any FujiBus
+request reached host NIO. Changing the game share's boot priority to **-128** fixed
+boot selection. The README now contains the corrected complete command.
+
+Verified on a disposable copy of `images/amigaos3.2-a500-run.vhd`, with separate NIO
+and Botched servers: normal Workbench assigns, successful `fujiinfo`, binary
+HELLO/JOIN/MAP/SNAPSHOT, order submission and 28 consumed events, then confirmed
+Close and clean exit. No changes to the user's persistent image, firmware or
+library were needed. This optional WB3.2/030 test is not minimum-hardware evidence.
+Local diagnostic logs/screenshots are in `/tmp/botched-wb32-diag`; the
+[connected screen](a2a/wb32-connected.png) and
+[failed-connection screen](a2a/wb32-error.png) are retained here.
+
+The game now selects ROM Topaz 8 explicitly, clips UI text to the remaining row
+width, and synchronizes blitter operations before CPU text writes/back-buffer
+reuse. The failure footer no longer claims a submission was accepted when no world
+has been loaded. Transport errors print the existing broker/serial diagnostics
+from the foreground while the worker is idle; transport and recovery semantics
+are unchanged. The failed-connection screen was checked with both missing serial
+support and an intentionally unavailable TCP endpoint.
+
+Verification commands: `make -f tools/amiga/Makefile`,
+`ctest --test-dir build -R botched_amiga --output-on-failure` (3/3 pass), and
+`python3 tools/amiga/accept.py` for the focused two-match minimum-machine run.
+The rebuilt executable is 62,600 bytes, SHA-256
+`bd913061bd4179204f6ce523533cff00c05bd370b28c27cd15d912fe586af219`.
+Text/data/BSS are 51,540/296/25,520 bytes (77,356 total, +488 versus A2a);
+bitplanes/atlas remain 81,920/5,160 Chip bytes. The larger WB3.2 machine is only
+an additional compatibility check; no new minimum memory requirement is introduced.
+
+The focused A500/KS1.3 run passed: `build/amiga/evidence/a500-npxnwkez`,
+including both completed matches, three programmes accepted exactly once,
+ordered event/animation equivalence, deadline-only play and clean exits. Minimum
+recorded free RAM was 661,224 bytes (352,064 Chip); the first match measured
+1,868/1,940 bytes main/worker stack against unchanged 16,384/8,192 reservations.
+Free memory after the second exit exactly matched the first (851,312 bytes).

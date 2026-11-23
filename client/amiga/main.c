@@ -84,7 +84,9 @@ int main(int argc, char **argv) {
           strcpy(status, "History expired: refreshing");
           job = BA_SNAPSHOT;
         } else {
-          if (notice.error == 107)
+          if (notice.error == 102)
+            strcpy(status, "NIO TCP open failed (102)");
+          else if (notice.error == 107)
             strcpy(status, "Session expired: outcome uncertain");
           else
             sprintf(status, "Network/game error %ld", (long)notice.error);

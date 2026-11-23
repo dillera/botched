@@ -10,6 +10,7 @@
 #include <string.h>
 struct Window *ba_window;
 static struct Screen *screen;
+static struct TextFont *font;
 static struct BitMap back, atlas;
 static struct RastPort canvas;
 static UBYTE *mask;
@@ -43,6 +44,7 @@ static void free_bitmap(struct BitMap *b, unsigned width, unsigned height) {
 int ba_display_open(void) {
   struct NewScreen ns = {0};
   struct NewWindow nw = {0};
+  struct TextAttr fixed = {(STRPTR)"topaz.font", 8, FS_NORMAL, FPF_ROMFONT};
   unsigned k, x, y, p;
   ns.Width = 320;
   ns.Height = 256;
@@ -69,6 +71,12 @@ int ba_display_open(void) {
   }
   InitRastPort(&canvas);
   canvas.BitMap = &back;
+  font = OpenFont(&fixed);
+  if (!font) {
+    ba_display_close();
+    return 0;
+  }
+  SetFont(&canvas, font);
   SetRast(&canvas, 0);
   SetRast(ba_window->RPort, 0);
   for (p = 0; p < 4; ++p)
@@ -89,6 +97,10 @@ int ba_display_open(void) {
 }
 void ba_display_close(void) {
   WaitBlit();
+  if (font) {
+    CloseFont(font);
+    font = 0;
+  }
   if (mask) {
     FreeMem(mask, BA_ASSETS * 24);
     mask = 0;
