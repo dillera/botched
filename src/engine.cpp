@@ -223,33 +223,36 @@ void Engine::arm_trap(GameState& s, int pid, const TrapConsole& console) {
                                  {"was_armed", was_armed}, {"previous_owner", previous}, {"owner", pid}}));
 }
 
+// TOGGLE activates every console (belt console or trap console) on the robot's own tile or on one of the four
+// orthogonally adjacent tiles, in row-major order (y, then x). Each console is activated exactly once per
+// instruction: a belt console flips its group, a trap console arms its trap for the robot's player. Two belt
+// consoles of the same group in range therefore flip it twice (a net no-op), as the rule is per console.
+// With no console in range the order is a NO_CONSOLE no-op.
 void Engine::toggle(GameState& s, int pid) {
     const Robot& r = s.robot(pid);
-    const Console* best = nullptr;
-    for (const auto& c : map_.consoles) {
-        if (std::abs(c.pos.x - r.pos.x) + std::abs(c.pos.y - r.pos.y) != 1) continue;
-        if (!best || c.id < best->id) best = &c;
-    }
-    if (!best) {
-        // G2-A: no belt console next to the robot; a trap console (lowest trap id, then scan order) may be.
-        const TrapConsole* tc = nullptr;
-        for (const auto& c : map_.trap_consoles) {
-            if (std::abs(c.pos.x - r.pos.x) + std::abs(c.pos.y - r.pos.y) != 1) continue;
-            if (!tc || c.trap < tc->trap) tc = &c;
-        }
-        if (tc) {
-            log_.emit("ORDER_EXECUTED", obj({{"player", pid}, {"order", "TOGGLE"}}));
-            arm_trap(s, pid, *tc);
-            return;
-        }
+    struct Hit { Pos pos; const Console* belt; const TrapConsole* trap; };
+    std::vector<Hit> hits;
+    auto in_range = [&](Pos p) { return std::abs(p.x - r.pos.x) + std::abs(p.y - r.pos.y) <= 1; };
+    for (const auto& c : map_.consoles) if (in_range(c.pos)) hits.push_back({c.pos, &c, nullptr});
+    for (const auto& c : map_.trap_consoles) if (in_range(c.pos)) hits.push_back({c.pos, nullptr, &c});
+    if (hits.empty()) {
         log_.emit("ORDER_NO_OP", obj({{"player", pid}, {"order", "TOGGLE"}, {"reason", "NO_CONSOLE"}}));
         return;
     }
+    std::stable_sort(hits.begin(), hits.end(), [](const Hit& a, const Hit& b) {
+        return a.pos.y != b.pos.y ? a.pos.y < b.pos.y : a.pos.x < b.pos.x;
+    });
     log_.emit("ORDER_EXECUTED", obj({{"player", pid}, {"order", "TOGGLE"}}));
-    Group* g = s.group(best->group);
-    g->reversed = !g->reversed;
-    log_.emit("GROUP_TOGGLED", obj({{"player", pid}, {"group", std::string(1, g->id)}, {"console", best->id},
-                                    {"reversed", g->reversed}}));
+    for (const Hit& h : hits) {
+        if (h.trap) {
+            arm_trap(s, pid, *h.trap);
+        } else {
+            Group* g = s.group(h.belt->group);
+            g->reversed = !g->reversed;
+            log_.emit("GROUP_TOGGLED", obj({{"player", pid}, {"group", std::string(1, g->id)}, {"console", h.belt->id},
+                                            {"reversed", g->reversed}}));
+        }
+    }
 }
 
 void Engine::run_order(GameState& s, int pid, Order o, int /*slot*/) {

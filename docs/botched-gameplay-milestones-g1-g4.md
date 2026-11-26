@@ -90,7 +90,7 @@ Evolve Botched! from a twelve-round crate-delivery race into a factory competiti
 **Activation and timing**
 
 1. At the start of a match, map-defined proximity traps are armed but have no player owner.
-2. A player adjacent to the trap's associated control console may execute `T` to arm or rearm it, gaining ownership. Rearming an already-armed trap transfers ownership without triggering it.
+2. A player on or adjacent to the trap's associated control console may execute `T` to arm or rearm it, gaining ownership (`T` activates every console in range, see *Multi-console TOGGLE* below). Rearming an already-armed trap transfers ownership without triggering it.
 3. Proximity traps are evaluated during the machinery phase of each tick, **after all player instructions and conveyor movement**, so robots moved voluntarily, pushed or transported by conveyors are evaluated at their resulting positions.
 4. If at least one robot occupies any of the eight neighbouring tiles, the trap activates once and deals 1 damage to every robot in the affected area, including its owner if present.
 5. The trap then becomes disarmed and remains inactive until rearmed.
@@ -386,6 +386,93 @@ Implements the approved "G2-D — Pit-push scoring" section, including the persi
 
 **Stop gate:** playtest `shuntworks-01` before G3.
 
+### G3 map — implementation: **done, awaiting playtest** (2026-11-22)
+
+One new map, `resources/maps/foundry-01.map` ("The Foundry", 11x13, 2-4 players). **No engine, rules or bot change**: the map is built only from the G1-G2 tokens, and `training-01`, `crossroads-01`, `factory-01` and the G2 playtest maps are untouched. G4 is not started.
+
+**Design**
+
+- **Three dispensers for up to four players, none near a dock** (every dock-to-dispenser walk is at least 6 tiles, and the three journeys are different kinds of trouble):
+  - **G3, centre pocket (5,6)** - the contested prize. Pits (4,6)/(6,6) and walls close it on both sides; mouths (5,5) and (5,7), equally far from the north and south seats. No machinery, but the four flank tiles beside the pits are SHUNT lines (+8), so everyone's nearest crate is also the most dangerous place to stand.
+  - **G1, north dead end (5,1)** - top of a one-wide corridor (5,2)-(5,4) walled in by **two traps**, X1 (4,3) and X2 (6,3). Both rings cover the whole corridor: the trip up and the trip down are two passes through a murder passage. Armed from K1 (1,5) / K2 (9,5), far across the floor, so the owner has to guess when a carrier is inside.
+  - **G2, south dead end (5,11)** - the mirror corridor (5,8)-(5,10), walled in by **two tar generators** A (4,9) / A (6,9), so every tile crawls (FORWARD_2 moves one tile). **Turrets** Y1 (3,8) / Y2 (7,8) cover the corridor mouth and the lower belts; two pads each claim them (P1 (2,7), (4,7); P2 (6,7), (8,7)).
+- **Conveyor shortcuts home:** rows 3 and 9 each carry a short lane W/E straight onto the dock. Group A is the left pair, B the right; consoles TA (3,5) / TB (7,5) reverse their own group, so a rival can send your carrier back out, into the trap ring or the tar. Pits at (2,4)/(8,4) (above the upper lanes) and (2,8)/(8,8) (beside the lower) let someone standing next to a rider shove him in. The safe-but-slower alternative is walking the open floor beside the lanes.
+- **Symmetry:** exactly left-right mirrored; top-bottom mirrored in route structure (traps <-> tar), so every seat gets the same game.
+
+**Design iterations recorded (map-only; engine untouched)**
+
+1. First draft (13x13, one trap ring across the only route to the centre and the north dispenser): the neutral trap starts armed and the planner treats damage as a wall, so all bots stalled (about 1 delivery per match). Fix: keep trap rings off the centre pocket.
+2. A single-mouthed centre starved the south seats (P3/P4 near 0 points); a second mouth plus a south corridor mirroring the north one fixed it.
+3. The board was tightened to 11x13 for cycle length. 2-3 rounds per delivery is a guideline, not a rule.
+
+**Evidence**
+
+| Check | Result |
+|---|---|
+| Whole suite | 275/275 test cases, 32 744 assertions (11 new in `tests/test_foundry.cpp`) |
+| Existing behaviour | `training-01` sim hashes still `8b9b82fb718c2751` / `415308a3742c5db6`; the three reference maps still load |
+| Map | validates for 2, 3 and 4 players; 3 dispensers, 2 traps + 2 consoles, 2 turrets + 4 pads, 2 tar generators, 6 pits, both belt groups |
+| Layout | left-right terrain identical; walking distance from each seat to each dispenser matches its mirror; every dock >= 6 tiles from every dispenser |
+| Hazards | north corridor tiles inside both trap rings (dispenser outside); south corridor tiles tar (dispenser not); turrets cover the mouth and lower belts but not the pocket or either dispenser; the pocket touches no ring, tar or turret line |
+| Engine | one step into the north corridor: 2 `TRAP_TRIGGERED`, 2 hits; south corridor: `FORWARD_1` no-op x3, `FORWARD_2` moves one tile; a robot waiting at the mouth is shot once per round by the neutral turret; a push from above on a flank tile is a SHUNT (+8) |
+| Bots | 2-4 players finish and re-run identically; 6 seeds x 4 bots: at least 10 deliveries, sabotage points scored, **all four seats deliver** |
+| Bot balance (16 seeds, 4 bots, total score by seat) | P1 97, P2 109, P3 88, P4 126, with SHUNTs, trap and turret hits and crate drops happening; bots mostly fight over the centre and do not farm a corner |
+| Live SDL | server + 3 bots, headless screenshot: both trap rings, tar corridor, turrets and pit flanks all read clearly; spawns, docks and belts are as designed |
+
+**Notes for the playtest**
+
+- Bots do not use consoles or pads on purpose (G4): the traps and turrets they meet are the neutral, armed-at-start ones, so human players are the ones who can really exploit the north and south corridors.
+- Tune the map file, not the engine: candidate knobs are pit and wall placement near the pocket, lane length, and the pad positions.
+
+**SDL layout fixes (after the first playtest of `foundry-01`, UI only):** the hover/replay caption now wraps onto two lines to the right of the "FACTORY FLOOR" label instead of running over it; the right column (scoreboard / your robot / your orders) is sized to its content (scoreboard by player count, robot panel by its status lines, `compute_layout(w, h, players, robot_lines)`) and always ends on the board panel's bottom edge, so the log sits cleanly underneath; the score-target progress bar no longer touches the deliveries line. New `--hover x,y` client flag places the mouse on a board tile for headless screenshots. Covered by a layout test (276/276 test cases); no rules change.
+
+wwwwwwwwwwwwww**Stop gate:** playtest `foundry-01` before G4.
+
+### Multi-console TOGGLE (after the `foundry-01` playtest) — **done, awaiting playtest** (2026-11-22)
+
+`TOGGLE` now activates **every** console (belt `T` or trap `K`) on the robot's own tile or any of the four orthogonally adjacent tiles, each exactly once per instruction, in row-major order (y, then x). Each console emits its normal event (`GROUP_TOGGLED` / `TRAP_ARMED`) after the single `ORDER_EXECUTED`; with no console in range the order is still `ORDER_NO_OP` `NO_CONSOLE`. It replaces the old "one console wins" rule (belt console first, then lowest id). Motivation: on `foundry-01`, standing at (2,5) between K1 and TA used to toggle only the belts; now it does both, which is a map-design matter rather than a rule one. Two belt consoles of the same group in range cancel out (per-console rule). Still `botched/1`; no snapshot or event shape changes. Details: `rules-interpretations.md` #47.
+
+Evidence: 282/282 test cases (new `tests/test_toggle.cpp`: K1+TA at (2,5) in row-major order, own-tile console, row-then-column ordering, once-per-console incl. same-group cancel, NO_CONSOLE, lone consoles unchanged; the old "smallest id" test in `test_machinery.cpp` now asserts both toggle); `training-01` hashes unchanged (bots never TOGGLE).
+
+### G4 — bot personalities and persistent goals: **done, awaiting playtest** (2026-11-22)
+
+Bots (`server/bot.cpp`) are replaced by a goal-driven planner; the rules engine, wire protocol and maps are untouched (`git diff` shows no change under `src/` or `include/`, still `botched/1`). Bots remain deterministic for a given seed, play from the public snapshot only, and still compute just **three orders per round** with the same engine look-ahead.
+
+**What shipped**
+
+- **Personalities** (`hauler`, `opportunist`, `saboteur`): weights for the next goal family (haul / mixed / hunt: hauler 80/15/5, opportunist 50/30/20, saboteur 20/25/55, as in the table above), plus risk appetite (hauler 140%, opportunist 100%, saboteur 70% of the baseline hit cost), how much sabotage points are worth to it, mistake rates (blunder 6/10/14%, fumble 6/8/10%) and goal patience (8/7/5 rounds). Seats cycle through the three personalities from a seeded start, so a three-bot match is always mixed; `GET_MATCH_STATUS` reports `bot_personalities` (parallel to `bot_players`) and the SDL scoreboard shows it next to `BOT`.
+- **Persistent goals:** `Haul` (fetch a crate and deliver it), `Contest` (cheapest of a crate, a device to control or a loaded rival), `ArmTrap` (walk to the console and TOGGLE: own and arm, including re-arming a spent trap), `ClaimTurret` (step on a pad), `Chase` (pressure a rival, preferring one carrying a crate; pushes into pits and hazards earn points through the normal rules). A goal is kept until it completes (delivered / armed and owned / claimed / sabotage earned), becomes impossible (crate taken, target unreachable, quarry disabled), times out (patience) or is disrupted. A robot carrying a crate always switches to delivering it.
+- **Re-evaluated every round:** the bot predicts where its submitted orders will leave it (assuming rivals WAIT); if next round it finds itself elsewhere, with a different cargo or more damage, the round did not go to plan (a *disruption*) and it re-rolls its goal. Even an undisturbed goal is re-targeted from the current board every round: crates and rival positions refresh the target, hazards refresh the route cost, and a bot whose crate is clearly closer to a rival may pick a different crate.
+- **Hazard-aware routes:** a weighted distance field prices tar (slow), lasers, armed trap rings and turret lines in "hits", and a hit costs more as health runs low (6 / 14 / 80 tiles at 0 / 1 / 2 damage, scaled by personality and by carrying a crate). A healthy bot will cross a beam to save a long detour; one hit from disabling effectively treats the beam as a wall. A certain disable still costs far more than any delivery gain.
+- **Sabotage as a goal:** the look-ahead rewards sabotage points earned (trap and turret hits, SHUNTs) and machinery owned, and penalises standing where a rival could shunt it into a pit. Hunting prefers environmental disruption (devices weighted x4) over a rival.
+- **Mistakes:** seeded score noise, occasional blunders (pick one of the top 30 programmes) and fumbled orders remain, per personality.
+- **Cost:** a four-bot round plans in well under a second on the largest map (a whole 12-round 4-bot match simulates in about 0.6 s).
+- Sim runner: personalities cycle by seat; `botched-sim --verbose` prints each bot's personality and current goal every round.
+
+**Evidence**
+
+| Check | Result |
+|---|---|
+| Whole suite | 293/293 test cases, 33 904 assertions (11 new in `tests/test_bot_goals.cpp`; the toggle/foundry/layout tests from earlier steps included) |
+| Rules unchanged | no change under `src/` or `include/`. The default `training-01` simulator hashes changed (bot behaviour changed) and were re-pinned once more to `fa2191378c62b475` / `582eb79a78e88fc1` |
+| Weights | 240 fresh bots per personality on trapworks-01: hauler mostly Haul and rarely hunts, saboteur hunts well over a third of the time and hauls under 40%, opportunist in between |
+| Persistence | an undisturbed hauler keeps the same goal (no re-roll) until its first delivery, then chooses a new one |
+| Re-evaluation | teleporting the robot between rounds is detected (1 disruption) and the goal is re-chosen |
+| Hazards | a bot one hit from disabling, beside a lit laser lane, never takes a beam hit or is disabled over 60 trials (30 seeds x hauler/saboteur) |
+| Sabotage | a saboteur with a push-into-pit on offer takes the SHUNT in >= 18 of 20 trials; a saboteur beside a trap console arms the trap in >= 15 of 40; goals on unreachable devices are dropped |
+| Determinism | same seed, same plans; 2-4 bot matches re-run identically; personalities cycle per seat |
+| Personality gradient (4 bots, 24 seeds, per match; sabotage = score - 5 x deliveries) | trapworks-01: sabotage hauler 0.25 / opportunist 0.44 / saboteur 1.06; shuntworks-01: 0.25 / 0.50 / 1.00; deliveries fall the other way (about 2.1 / 1.9 / 1.6 on trapworks-01). training-01 (no machinery): 4.7 / 4.2 / 3.8 deliveries, no damage |
+| foundry-01 (4 bots, 24 seeds) | hauler 0.66 deliveries and 2.5 sabotage points per match, opportunist 0.47 / 4.5, saboteur 0.34 / 4.3: bots now contest the centre, shove and shoot each other, and still deliver |
+| Live SDL | server + 3 bots on foundry-01: mixed personalities shown on the scoreboard |
+
+**Known limits / notes for the playtest**
+
+- Bots still assume rivals WAIT when planning (as before); their "reading" of rivals is limited to positions and the exposure check next to pits.
+- The saboteur's advantage is clearest on maps with devices to own; on `foundry-01` deliveries are scarce for everyone (the map is hostile by design), so absolute scores stay low.
+- Tuning knobs are all in `traits_of()` and `hit_cost_tiles()` in `server/bot.cpp`.
+
+**Stop gate:** playtest mixed-personality matches against a human before further bot work.
+
 ### Presentation requirements
 
 Players should be able to understand each hazard's state by inspecting the map:
@@ -422,10 +509,9 @@ The goal is not to make every factory dangerous. It is to give map designers a s
 
 **Bounded implementation:**
 
-- Retain `training-01`, `crossroads-01` and `factory-01` as reference/playtest resources. Don't silently replace them.
-- Design **one** new external `.map` around contested pickups, short routes, meaningful conveyor shortcuts, trap-controlled pinch points / “murder passages,” and a safe but less efficient alternative.
-- Experiment with **N−1 dispensers** (three for four players), but do not require it universally.
-- Aim for an uncontested delivery cycle of around **2–3 rounds** so journeys don't consume half a match; favour choices and encounters over raw distance.
+- Retain all the test maps like `training-01`, `crossroads-01` and `factory-01` as reference/playtest resources. Don't silently replace them.
+- Design **one** new external `.map` around contested pickups, short routes, meaningful conveyor shortcuts, trap-controlled pinch points / “murder passages,” and a safe but less efficient alternative.  Utilize all the hazard elements created so far. Be creative, and don't just plonk dispensers next to delivery points like the test maps had. Have hazards be meaningful, imagine the journey a bot has to take to get its reward, and how an opponent could thwart it. This is the game design challenge. Interesting, fun, reward game play.
+- Have fewer dispensers than players, at locations difficult to get to, to encourage varied game play.
 - Test with 2–4 players including imperfect server bots. Avoid universal Manhattan-distance rules, procedural generation, map editor or hot-loading implementation.
 
 **Acceptance:** Human playtests show contested routes and meaningful machinery usage; bots do not merely farm isolated corners. Adjust the map resource, not the engine, to improve layout balance.

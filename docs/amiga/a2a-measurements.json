@@ -1,0 +1,888 @@
+{
+  "preview_memory": [
+    {
+      "chip": {
+        "available": 439344,
+        "used": 83888,
+        "maximum": 523232,
+        "largest": 439272
+      },
+      "fast": {
+        "available": 411968,
+        "used": 104920,
+        "maximum": 516888,
+        "largest": 308408
+      },
+      "total": {
+        "available": 851312,
+        "used": 188808,
+        "maximum": 1040120,
+        "largest": 439272
+      }
+    },
+    {
+      "chip": {
+        "available": 439344,
+        "used": 83888,
+        "maximum": 523232,
+        "largest": 439272
+      },
+      "fast": {
+        "available": 411968,
+        "used": 104920,
+        "maximum": 516888,
+        "largest": 308408
+      },
+      "total": {
+        "available": 851312,
+        "used": 188808,
+        "maximum": 1040120,
+        "largest": 439272
+      }
+    },
+    {
+      "chip": {
+        "available": 439344,
+        "used": 83888,
+        "maximum": 523232,
+        "largest": 439272
+      },
+      "fast": {
+        "available": 411968,
+        "used": 104920,
+        "maximum": 516888,
+        "largest": 308408
+      },
+      "total": {
+        "available": 851312,
+        "used": 188808,
+        "maximum": 1040120,
+        "largest": 439272
+      }
+    },
+    {
+      "chip": {
+        "available": 439344,
+        "used": 83888,
+        "maximum": 523232,
+        "largest": 439272
+      },
+      "fast": {
+        "available": 411968,
+        "used": 104920,
+        "maximum": 516888,
+        "largest": 308408
+      },
+      "total": {
+        "available": 851312,
+        "used": 188808,
+        "maximum": 1040120,
+        "largest": 439272
+      }
+    },
+    {
+      "chip": {
+        "available": 439344,
+        "used": 83888,
+        "maximum": 523232,
+        "largest": 439272
+      },
+      "fast": {
+        "available": 411968,
+        "used": 104920,
+        "maximum": 516888,
+        "largest": 308408
+      },
+      "total": {
+        "available": 851312,
+        "used": 188808,
+        "maximum": 1040120,
+        "largest": 439272
+      }
+    },
+    {
+      "chip": {
+        "available": 439344,
+        "used": 83888,
+        "maximum": 523232,
+        "largest": 439272
+      },
+      "fast": {
+        "available": 411968,
+        "used": 104920,
+        "maximum": 516888,
+        "largest": 308408
+      },
+      "total": {
+        "available": 851312,
+        "used": 188808,
+        "maximum": 1040120,
+        "largest": 439272
+      }
+    },
+    {
+      "chip": {
+        "available": 439344,
+        "used": 83888,
+        "maximum": 523232,
+        "largest": 439272
+      },
+      "fast": {
+        "available": 411968,
+        "used": 104920,
+        "maximum": 516888,
+        "largest": 308408
+      },
+      "total": {
+        "available": 851312,
+        "used": 188808,
+        "maximum": 1040120,
+        "largest": 439272
+      }
+    }
+  ],
+  "preview_maps": [
+    "training-01",
+    "laserworks-01",
+    "trapworks-01",
+    "turretworks-01",
+    "tarworks-01",
+    "shuntworks-01",
+    "crossroads-01"
+  ],
+  "render": [
+    {
+      "draws": 392,
+      "dirty_cells": 519,
+      "full_boards": 1,
+      "fields": 1029,
+      "max_fields": 43,
+      "chip_bitplanes": 81920,
+      "chip_atlas": 5160
+    }
+  ],
+  "timing_resolution_ms": 20,
+  "machine": [
+    "chipset=ocs",
+    "cpu_model=68000",
+    "cpu_type=68000",
+    "chipmem_size=1",
+    "bogomem_size=2",
+    "fastmem_size=0",
+    "z3mem_size=0",
+    "ntsc=false",
+    "immediate_blits=false",
+    "serial_port=tcp://127.0.0.1:47271",
+    "serial_direct=true",
+    "serial_hardware_ctsrts=false",
+    "filesystem2=rw,DH1:BT:/home/markf/dev/nio/fujinet-nio-workspace/external/botched/build/amiga/evidence/a500-9dd2ksa3/share,0"
+  ],
+  "executable_bytes": 62036,
+  "executable_sha256": "ab93c44d523916156f0daf867150988c9ce2b9fd8bfbbae621749aa6a8eb9303",
+  "library_sha256": "7831bc08243effa5df603ef867d384921202dbd59f731cfe5b8f18941eb0b159",
+  "broker_sha256": "c97f02ffb6a13884861199c63594c7dc052c87a680f46047012755bebf43852f",
+  "memory": [
+    {
+      "stage": "entry",
+      "chip_free": 439344,
+      "expansion_free": 328264,
+      "total_free": 767608,
+      "largest_chip": 439272,
+      "largest_expansion": 324664
+    },
+    {
+      "stage": "display",
+      "chip_free": 352064,
+      "expansion_free": 326232,
+      "total_free": 678296,
+      "largest_chip": 350064,
+      "largest_expansion": 324664
+    },
+    {
+      "stage": "snapshot",
+      "chip_free": 352064,
+      "expansion_free": 309704,
+      "total_free": 661768,
+      "largest_chip": 350064,
+      "largest_expansion": 308408
+    },
+    {
+      "stage": "snapshot",
+      "chip_free": 352064,
+      "expansion_free": 309648,
+      "total_free": 661712,
+      "largest_chip": 350064,
+      "largest_expansion": 308408
+    },
+    {
+      "stage": "snapshot",
+      "chip_free": 352064,
+      "expansion_free": 309648,
+      "total_free": 661712,
+      "largest_chip": 350064,
+      "largest_expansion": 308408
+    },
+    {
+      "stage": "snapshot",
+      "chip_free": 352064,
+      "expansion_free": 309648,
+      "total_free": 661712,
+      "largest_chip": 350064,
+      "largest_expansion": 308408
+    },
+    {
+      "stage": "snapshot",
+      "chip_free": 352064,
+      "expansion_free": 309648,
+      "total_free": 661712,
+      "largest_chip": 350064,
+      "largest_expansion": 308408
+    },
+    {
+      "stage": "snapshot",
+      "chip_free": 352064,
+      "expansion_free": 309648,
+      "total_free": 661712,
+      "largest_chip": 350064,
+      "largest_expansion": 308408
+    },
+    {
+      "stage": "snapshot",
+      "chip_free": 352064,
+      "expansion_free": 309648,
+      "total_free": 661712,
+      "largest_chip": 350064,
+      "largest_expansion": 308408
+    },
+    {
+      "stage": "closed",
+      "chip_free": 439344,
+      "expansion_free": 320288,
+      "total_free": 759632,
+      "largest_chip": 439272,
+      "largest_expansion": 308408
+    }
+  ],
+  "stack": {
+    "main_measured": 1868,
+    "worker_measured": 1940,
+    "main_reserved": 16384,
+    "worker_reserved": 8192
+  },
+  "chip_installed": 524288,
+  "expansion_installed": 524288,
+  "expansion_kind": "A500 slow RAM (no true Fast RAM)",
+  "avail_before": {
+    "chip": {
+      "available": 439344,
+      "used": 83888,
+      "maximum": 523232,
+      "largest": 439272
+    },
+    "fast": {
+      "available": 419944,
+      "used": 96944,
+      "maximum": 516888,
+      "largest": 392112
+    },
+    "total": {
+      "available": 859288,
+      "used": 180832,
+      "maximum": 1040120,
+      "largest": 439272
+    }
+  },
+  "avail_after_first": {
+    "chip": {
+      "available": 439344,
+      "used": 83888,
+      "maximum": 523232,
+      "largest": 439272
+    },
+    "fast": {
+      "available": 411968,
+      "used": 104920,
+      "maximum": 516888,
+      "largest": 308408
+    },
+    "total": {
+      "available": 851312,
+      "used": 188808,
+      "maximum": 1040120,
+      "largest": 439272
+    }
+  },
+  "avail_after_second": {
+    "chip": {
+      "available": 439344,
+      "used": 83888,
+      "maximum": 523232,
+      "largest": 439272
+    },
+    "fast": {
+      "available": 411968,
+      "used": 104920,
+      "maximum": 516888,
+      "largest": 308408
+    },
+    "total": {
+      "available": 851312,
+      "used": 188808,
+      "maximum": 1040120,
+      "largest": 439272
+    }
+  },
+  "verification": [
+    "two real NIO HELLO/JOIN/MAP/SNAPSHOT instances",
+    "authoritative player positions/scores",
+    "three raw-key programmes accepted exactly once",
+    "sequential event playback",
+    "server deadline WAIT completion",
+    "raw-key quit",
+    "clean exit",
+    "nine graphical launches / all shipped maps",
+    "every event has one ordered completed animation",
+    "no accumulating exit-memory loss",
+    "cycle-exact OCS with immediate blits disabled"
+  ],
+  "hunks": {
+    "text": 51056,
+    "data": 296,
+    "bss": 25516,
+    "resident": 76868
+  },
+  "explicit_bytes": 188524,
+  "evidence": "build/amiga/evidence/a500-9dd2ksa3",
+  "runs": [
+    {
+      "log": "client.log",
+      "render": {
+        "draws": 392,
+        "dirty_cells": 519,
+        "full_boards": 1,
+        "elapsed_ticks": 1029,
+        "max_ticks": 43
+      },
+      "memory": [
+        {
+          "chip_free": 439344,
+          "expansion_free": 328264,
+          "total_free": 767608
+        },
+        {
+          "chip_free": 352064,
+          "expansion_free": 326232,
+          "total_free": 678296
+        },
+        {
+          "chip_free": 352064,
+          "expansion_free": 309704,
+          "total_free": 661768
+        },
+        {
+          "chip_free": 352064,
+          "expansion_free": 309648,
+          "total_free": 661712
+        },
+        {
+          "chip_free": 352064,
+          "expansion_free": 309648,
+          "total_free": 661712
+        },
+        {
+          "chip_free": 352064,
+          "expansion_free": 309648,
+          "total_free": 661712
+        },
+        {
+          "chip_free": 352064,
+          "expansion_free": 309648,
+          "total_free": 661712
+        },
+        {
+          "chip_free": 352064,
+          "expansion_free": 309648,
+          "total_free": 661712
+        },
+        {
+          "chip_free": 352064,
+          "expansion_free": 309648,
+          "total_free": 661712
+        },
+        {
+          "chip_free": 439344,
+          "expansion_free": 320288,
+          "total_free": 759632
+        }
+      ],
+      "stack": {
+        "main": 1868,
+        "worker": 1940
+      },
+      "events": 86,
+      "animation_elapsed": {
+        "1": {
+          "count": 3,
+          "min_ms": 80,
+          "median_ms": 80,
+          "max_ms": 80
+        },
+        "2": {
+          "count": 2,
+          "min_ms": 100,
+          "median_ms": 100.0,
+          "max_ms": 100
+        },
+        "3": {
+          "count": 3,
+          "min_ms": 60,
+          "median_ms": 80,
+          "max_ms": 120
+        },
+        "4": {
+          "count": 1,
+          "min_ms": 80,
+          "median_ms": 80,
+          "max_ms": 80
+        },
+        "5": {
+          "count": 31,
+          "min_ms": 80,
+          "median_ms": 120,
+          "max_ms": 160
+        },
+        "6": {
+          "count": 4,
+          "min_ms": 60,
+          "median_ms": 80.0,
+          "max_ms": 160
+        },
+        "7": {
+          "count": 1,
+          "min_ms": 100,
+          "median_ms": 100,
+          "max_ms": 100
+        },
+        "8": {
+          "count": 18,
+          "min_ms": 620,
+          "median_ms": 640.0,
+          "max_ms": 660
+        },
+        "10": {
+          "count": 3,
+          "min_ms": 60,
+          "median_ms": 80,
+          "max_ms": 80
+        },
+        "11": {
+          "count": 12,
+          "min_ms": 460,
+          "median_ms": 460.0,
+          "max_ms": 480
+        },
+        "20": {
+          "count": 1,
+          "min_ms": 440,
+          "median_ms": 440,
+          "max_ms": 440
+        },
+        "22": {
+          "count": 1,
+          "min_ms": 520,
+          "median_ms": 520,
+          "max_ms": 520
+        },
+        "23": {
+          "count": 1,
+          "min_ms": 320,
+          "median_ms": 320,
+          "max_ms": 320
+        },
+        "26": {
+          "count": 1,
+          "min_ms": 320,
+          "median_ms": 320,
+          "max_ms": 320
+        },
+        "27": {
+          "count": 4,
+          "min_ms": 300,
+          "median_ms": 310.0,
+          "max_ms": 320
+        }
+      }
+    },
+    {
+      "log": "client2.log",
+      "render": {
+        "draws": 250,
+        "dirty_cells": 504,
+        "full_boards": 1,
+        "elapsed_ticks": 717,
+        "max_ticks": 45
+      },
+      "memory": [
+        {
+          "chip_free": 439344,
+          "expansion_free": 320288,
+          "total_free": 759632
+        },
+        {
+          "chip_free": 352064,
+          "expansion_free": 318256,
+          "total_free": 670320
+        },
+        {
+          "chip_free": 352064,
+          "expansion_free": 309704,
+          "total_free": 661768
+        },
+        {
+          "chip_free": 352064,
+          "expansion_free": 309704,
+          "total_free": 661768
+        },
+        {
+          "chip_free": 352064,
+          "expansion_free": 309704,
+          "total_free": 661768
+        },
+        {
+          "chip_free": 439344,
+          "expansion_free": 320288,
+          "total_free": 759632
+        }
+      ],
+      "stack": {
+        "main": 1932,
+        "worker": 1940
+      },
+      "events": 56,
+      "animation_elapsed": {
+        "1": {
+          "count": 2,
+          "min_ms": 80,
+          "median_ms": 90.0,
+          "max_ms": 100
+        },
+        "2": {
+          "count": 1,
+          "min_ms": 100,
+          "median_ms": 100,
+          "max_ms": 100
+        },
+        "3": {
+          "count": 2,
+          "min_ms": 60,
+          "median_ms": 90.0,
+          "max_ms": 120
+        },
+        "4": {
+          "count": 1,
+          "min_ms": 80,
+          "median_ms": 80,
+          "max_ms": 80
+        },
+        "5": {
+          "count": 24,
+          "min_ms": 60,
+          "median_ms": 120.0,
+          "max_ms": 160
+        },
+        "8": {
+          "count": 20,
+          "min_ms": 600,
+          "median_ms": 620.0,
+          "max_ms": 660
+        },
+        "10": {
+          "count": 1,
+          "min_ms": 80,
+          "median_ms": 80,
+          "max_ms": 80
+        },
+        "11": {
+          "count": 4,
+          "min_ms": 460,
+          "median_ms": 460.0,
+          "max_ms": 480
+        },
+        "13": {
+          "count": 1,
+          "min_ms": 520,
+          "median_ms": 520,
+          "max_ms": 520
+        }
+      }
+    },
+    {
+      "log": "preview-0.log",
+      "render": {
+        "draws": 9,
+        "dirty_cells": 120,
+        "full_boards": 1,
+        "elapsed_ticks": 45,
+        "max_ticks": 35
+      },
+      "memory": [
+        {
+          "chip_free": 439344,
+          "expansion_free": 320288,
+          "total_free": 759632
+        },
+        {
+          "chip_free": 352064,
+          "expansion_free": 318256,
+          "total_free": 670320
+        },
+        {
+          "chip_free": 352064,
+          "expansion_free": 309704,
+          "total_free": 661768
+        },
+        {
+          "chip_free": 439344,
+          "expansion_free": 320288,
+          "total_free": 759632
+        }
+      ],
+      "stack": {
+        "main": 1868,
+        "worker": 1940
+      },
+      "events": 0,
+      "animation_elapsed": {}
+    },
+    {
+      "log": "preview-1.log",
+      "render": {
+        "draws": 8,
+        "dirty_cells": 120,
+        "full_boards": 1,
+        "elapsed_ticks": 43,
+        "max_ticks": 34
+      },
+      "memory": [
+        {
+          "chip_free": 439344,
+          "expansion_free": 320288,
+          "total_free": 759632
+        },
+        {
+          "chip_free": 352064,
+          "expansion_free": 318256,
+          "total_free": 670320
+        },
+        {
+          "chip_free": 352064,
+          "expansion_free": 309704,
+          "total_free": 661768
+        },
+        {
+          "chip_free": 439344,
+          "expansion_free": 320288,
+          "total_free": 759632
+        }
+      ],
+      "stack": {
+        "main": 1868,
+        "worker": 1932
+      },
+      "events": 0,
+      "animation_elapsed": {}
+    },
+    {
+      "log": "preview-2.log",
+      "render": {
+        "draws": 8,
+        "dirty_cells": 120,
+        "full_boards": 1,
+        "elapsed_ticks": 42,
+        "max_ticks": 34
+      },
+      "memory": [
+        {
+          "chip_free": 439344,
+          "expansion_free": 320288,
+          "total_free": 759632
+        },
+        {
+          "chip_free": 352064,
+          "expansion_free": 318256,
+          "total_free": 670320
+        },
+        {
+          "chip_free": 352064,
+          "expansion_free": 309704,
+          "total_free": 661768
+        },
+        {
+          "chip_free": 439344,
+          "expansion_free": 320288,
+          "total_free": 759632
+        }
+      ],
+      "stack": {
+        "main": 1868,
+        "worker": 1932
+      },
+      "events": 0,
+      "animation_elapsed": {}
+    },
+    {
+      "log": "preview-3.log",
+      "render": {
+        "draws": 9,
+        "dirty_cells": 120,
+        "full_boards": 1,
+        "elapsed_ticks": 44,
+        "max_ticks": 34
+      },
+      "memory": [
+        {
+          "chip_free": 439344,
+          "expansion_free": 320288,
+          "total_free": 759632
+        },
+        {
+          "chip_free": 352064,
+          "expansion_free": 318256,
+          "total_free": 670320
+        },
+        {
+          "chip_free": 352064,
+          "expansion_free": 309704,
+          "total_free": 661768
+        },
+        {
+          "chip_free": 439344,
+          "expansion_free": 320288,
+          "total_free": 759632
+        }
+      ],
+      "stack": {
+        "main": 1868,
+        "worker": 1932
+      },
+      "events": 0,
+      "animation_elapsed": {}
+    },
+    {
+      "log": "preview-4.log",
+      "render": {
+        "draws": 9,
+        "dirty_cells": 120,
+        "full_boards": 1,
+        "elapsed_ticks": 42,
+        "max_ticks": 34
+      },
+      "memory": [
+        {
+          "chip_free": 439344,
+          "expansion_free": 320288,
+          "total_free": 759632
+        },
+        {
+          "chip_free": 352064,
+          "expansion_free": 318256,
+          "total_free": 670320
+        },
+        {
+          "chip_free": 352064,
+          "expansion_free": 309704,
+          "total_free": 661768
+        },
+        {
+          "chip_free": 439344,
+          "expansion_free": 320288,
+          "total_free": 759632
+        }
+      ],
+      "stack": {
+        "main": 1868,
+        "worker": 1932
+      },
+      "events": 0,
+      "animation_elapsed": {}
+    },
+    {
+      "log": "preview-5.log",
+      "render": {
+        "draws": 10,
+        "dirty_cells": 120,
+        "full_boards": 1,
+        "elapsed_ticks": 44,
+        "max_ticks": 34
+      },
+      "memory": [
+        {
+          "chip_free": 439344,
+          "expansion_free": 320288,
+          "total_free": 759632
+        },
+        {
+          "chip_free": 352064,
+          "expansion_free": 318256,
+          "total_free": 670320
+        },
+        {
+          "chip_free": 352064,
+          "expansion_free": 309704,
+          "total_free": 661768
+        },
+        {
+          "chip_free": 439344,
+          "expansion_free": 320288,
+          "total_free": 759632
+        }
+      ],
+      "stack": {
+        "main": 1868,
+        "worker": 1932
+      },
+      "events": 0,
+      "animation_elapsed": {}
+    },
+    {
+      "log": "preview-6.log",
+      "render": {
+        "draws": 9,
+        "dirty_cells": 120,
+        "full_boards": 1,
+        "elapsed_ticks": 45,
+        "max_ticks": 35
+      },
+      "memory": [
+        {
+          "chip_free": 439344,
+          "expansion_free": 320288,
+          "total_free": 759632
+        },
+        {
+          "chip_free": 352064,
+          "expansion_free": 318256,
+          "total_free": 670320
+        },
+        {
+          "chip_free": 352064,
+          "expansion_free": 309704,
+          "total_free": 661768
+        },
+        {
+          "chip_free": 439344,
+          "expansion_free": 320288,
+          "total_free": 759632
+        }
+      ],
+      "stack": {
+        "main": 1868,
+        "worker": 1940
+      },
+      "events": 0,
+      "animation_elapsed": {}
+    }
+  ],
+  "timing_note": "20-ms DateStamp resolution; elapsed animation includes capture-mode event logging and task scheduling. Not an uninstrumented FPS or cycle benchmark.",
+  "animation_capture_note": "Eight sequential Amiberry screenshots requested 50 ms apart (plus IPC time); GIF uses 50 ms playback per frame. This is a visual sample, not a timing instrument."
+}

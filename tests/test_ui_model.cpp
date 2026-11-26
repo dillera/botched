@@ -106,3 +106,22 @@ TEST_CASE("ui: log lines are classified for colouring") {
     CHECK(classify_line("  belt: P1 pushes P2 (6,3) -> (7,3)") == ScrollLog::Push);
     CHECK(classify_line("  P2 W: waits") == ScrollLog::Info);
 }
+
+TEST_CASE("ui layout: the right column adapts to players and hazard lines and ends on the board panel's bottom edge") {
+    for (int players = 2; players <= 4; ++players)
+        for (int lines = 4; lines <= 6; ++lines) {
+            Layout l = compute_layout(11, 13, players, lines);
+            INFO("players " << players << " lines " << lines);
+            CHECK(l.scores.y == l.board_panel.y);
+            CHECK(l.scores.y + l.scores.h + 8 == l.robot.y);
+            CHECK(l.robot.y + l.robot.h + 8 == l.orders.y);
+            CHECK(l.orders.y + l.orders.h == l.board_panel.y + l.board_panel.h);   // bases align
+            CHECK(l.orders.y + l.orders.h < l.messages.y);                        // the log sits underneath
+            CHECK(l.scores.h >= 30 + players * 52);                                // every score card fits
+            CHECK(l.robot.h >= 25 + lines * kRobotLineH);                          // every status line fits
+            for (const auto& s : l.slots) CHECK(s.inside(l.orders));
+            for (const auto& b : l.palette) CHECK(b.inside(l.orders));
+            CHECK(l.lock_button.inside(l.orders));
+            CHECK(l.clear_button.inside(l.orders));
+        }
+}

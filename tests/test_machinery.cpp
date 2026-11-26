@@ -50,16 +50,17 @@ TEST_CASE("8. TOGGLE away from every console is a no-op") {
     CHECK(r.count("ORDER_NO_OP") == 1);
 }
 
-TEST_CASE("8. with several adjacent consoles the smallest console id is toggled") {
+TEST_CASE("8. with several consoles in range every one is toggled once, in row-major order") {
     // Consoles in (y,x) scan order: (2,1) group B = T001, (1,2) group A = T002.
     Rig r("# # # # #\n# . TB . #\n# TA . . #\n# # # # #\n", 1);
     REQUIRE(r.map.consoles.size() == 2);
     CHECK(r.map.consoles[0].id < r.map.consoles[1].id);
-    r.place(1, 2, 2, Dir::N);  // below TB (2,1)? (2,1) is N of (2,2); TA at (1,2) is W of (2,2)
+    r.place(1, 2, 2, Dir::N);  // TB (2,1) is N of (2,2); TA at (1,2) is W of (2,2)
     r.program(1, {Order::Toggle});
     r.tick(1);
     CHECK(r.s.group('B')->reversed);
-    CHECK_FALSE(r.s.group('A')->reversed);
+    CHECK(r.s.group('A')->reversed);
+    CHECK(r.count("GROUP_TOGGLED") == 2);
 }
 
 TEST_CASE("8. reversed belts push robots the other way") {

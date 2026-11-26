@@ -1,0 +1,40 @@
+; Botched! map resource
+; id: foundry-01
+; name: The Foundry
+; description: G3: three hard-to-reach dispensers (a trapped corridor, a pit pocket, a tarred vault) and belt shortcuts home.
+; players: 2-4
+;
+; Three dispensers for up to four players, and every one of them has to be earned.
+;
+;   G3 (centre pocket, 5,6) - the contested prize, equally far from the north and south docks. Pits (4,6) and
+;      (6,6) and the walls beyond them close it on both sides; its mouths are (5,5) and (5,7). It is free of
+;      machinery, but the flank tiles (4,5), (6,5), (4,7) and (6,7) each sit beside a pit: shove a robot standing
+;      there from the far side and it is a SHUNT (+8). Everyone's nearest crate, and nobody's safe.
+;   G1 (north dead end, 5,1) - the top of a one-wide corridor (5,2)-(5,4) walled in by two traps, X1 (4,3) and
+;      X2 (6,3). Both rings cover the whole corridor, so the trip up and the trip down are two passes through a
+;      murder passage. X1 is armed from K1 (1,5), X2 from K2 (9,5): far across the floor, so whoever fires has to
+;      guess when a carrier is in the corridor. Each trap hits once, then waits to be re-armed.
+;   G2 (south dead end, 5,11) - the bottom of a mirror-image corridor (5,8)-(5,10) walled in by two tar generators,
+;      A (4,9) and A (6,9). Every tile of the corridor is tar, so the trip down and the trip up crawl (FORWARD_2 moves
+;      one tile in tar, FORWARD_1 none). Turrets Y1 (3,8) and Y2 (7,8) cover the corridor mouth (4,8), (5,8), (6,8) and
+;      the lower belt tiles under them. Pads P1 (2,7), (4,7) claim Y1; P2 (6,7), (8,7) claim Y2.
+;
+; Home: each side has two short belt lanes (rows 3 and 9) that carry you W/E straight onto your own dock. Group A
+; is the left pair, B the right pair; consoles TA (3,5) / TB (7,5) reverse their own group, so a rival can carry
+; your load back out, into the trap ring or the tar. TOGGLE activates every console in reach, so standing at (2,5)
+; or (8,5) fires the trap console (K1 / K2) and the belt console (TA / TB) together. The pits at (2,4) and (8,4) sit
+; just under the upper belts: stand on row 2 above a rider and push him in (the lower belts have the same pits at
+; (2,8) and (8,8), reached from row 10).
+#   #   #   #   #   #   #   #   #   #   #
+#   S1  .   .   #   G1  #   .   .   S2  #
+#   .   .   .   #   .   #   .   .   .   #
+#   D1  C<A C<A X1  .   X2  C>B C>B D2  #
+#   .   O   .   .   .   .   .   O   .   #
+#   K1  .   TA  .   .   .   TB  .   K2  #
+#   .   .   #   O   G3  O   #   .   .   #
+#   .   P1  .   P1  .   P2  .   P2  .   #
+#   .   O   Y1  .   .   .   Y2  O   .   #
+#   D3  C<A C<A A   .   A   C>B C>B D4  #
+#   .   .   .   #   .   #   .   .   .   #
+#   S3  .   .   #   G2  #   .   .   S4  #
+#   #   #   #   #   #   #   #   #   #   #

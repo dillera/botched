@@ -1,0 +1,1237 @@
+{
+  "max_captured_payload": 240,
+  "captured_packets": 278,
+  "compiler": "cl65 V2.19 - Git 37d4bb24",
+  "library_commit": "fe333471a74d6cf1d693aae6cb480094fa915709",
+  "library_sha256": "e19d72c51c25b813b9c3d073626f96734a03d2a9590fcb8387e3ea98170ffe8a",
+  "firmware_commit": "ee928e18ff02171385fcac4a9f2d27cabdfa5b37",
+  "firmware_sha256": "627d016353ac869decac5adf79db3a5632270ed07df1fe80d4ac14f1aa29b350",
+  "segments": {
+    "ZEROPAGE": 30,
+    "STARTUP": 99,
+    "ONCE": 12,
+    "CODE": 15070,
+    "RODATA": 86,
+    "DATA": 41,
+    "BSS": 2095
+  },
+  "software_stack_reserved": 512,
+  "hardware_stack_reserved": 256,
+  "working_ram": 2934,
+  "resident_code_constants_startup": 15267,
+  "total_application_ram": 18201,
+  "world": 1291,
+  "client": 478,
+  "stream_context": 262,
+  "stream_adapter_state": 9,
+  "allocator_or_general_nio_linked": false,
+  "submit": {
+    "cycles": 4163,
+    "software_stack": 10,
+    "hardware_stack": 12
+  },
+  "decoder": [
+    {
+      "name": "training-01-initial",
+      "pages": 1,
+      "payload_bytes": 240,
+      "c": {
+        "cycles": 44181,
+        "software_stack": 31,
+        "hardware_stack": 14,
+        "world": 1291,
+        "client": 478,
+        "checksum": 594754283
+      },
+      "asm": {
+        "cycles": 40803,
+        "software_stack": 31,
+        "hardware_stack": 14,
+        "world": 1291,
+        "client": 478,
+        "checksum": 594754283
+      },
+      "baseline": {
+        "cycles": 834031,
+        "software_stack": 206,
+        "hardware_stack": 23,
+        "world": 1291,
+        "client": 478,
+        "checksum": 0
+      }
+    },
+    {
+      "name": "factory-01-initial",
+      "pages": 2,
+      "payload_bytes": 265,
+      "c": {
+        "cycles": 56483,
+        "software_stack": 31,
+        "hardware_stack": 14,
+        "world": 1291,
+        "client": 478,
+        "checksum": 2259053281
+      },
+      "asm": {
+        "cycles": 48378,
+        "software_stack": 31,
+        "hardware_stack": 14,
+        "world": 1291,
+        "client": 478,
+        "checksum": 2259053281
+      },
+      "baseline": {
+        "cycles": 940330,
+        "software_stack": 206,
+        "hardware_stack": 23,
+        "world": 1291,
+        "client": 478,
+        "checksum": 0
+      }
+    },
+    {
+      "name": "foundry-01-initial",
+      "pages": 2,
+      "payload_bytes": 280,
+      "c": {
+        "cycles": 64411,
+        "software_stack": 31,
+        "hardware_stack": 14,
+        "world": 1291,
+        "client": 478,
+        "checksum": 3991541195
+      },
+      "asm": {
+        "cycles": 56221,
+        "software_stack": 31,
+        "hardware_stack": 14,
+        "world": 1291,
+        "client": 478,
+        "checksum": 3991541195
+      },
+      "baseline": {
+        "cycles": 1057737,
+        "software_stack": 206,
+        "hardware_stack": 23,
+        "world": 1291,
+        "client": 478,
+        "checksum": 0
+      }
+    },
+    {
+      "name": "training-01-round2",
+      "pages": 4,
+      "payload_bytes": 819,
+      "c": {
+        "cycles": 191371,
+        "software_stack": 41,
+        "hardware_stack": 17,
+        "world": 1291,
+        "client": 478,
+        "checksum": 1238386954
+      },
+      "asm": {
+        "cycles": 166103,
+        "software_stack": 41,
+        "hardware_stack": 17,
+        "world": 1291,
+        "client": 478,
+        "checksum": 1238386954
+      },
+      "baseline": {
+        "cycles": 3377001,
+        "software_stack": 220,
+        "hardware_stack": 25,
+        "world": 1291,
+        "client": 478,
+        "checksum": 0
+      }
+    },
+    {
+      "name": "foundry-01-round5",
+      "pages": 4,
+      "payload_bytes": 814,
+      "c": {
+        "cycles": 185449,
+        "software_stack": 41,
+        "hardware_stack": 17,
+        "world": 1291,
+        "client": 478,
+        "checksum": 3005260444
+      },
+      "asm": {
+        "cycles": 163792,
+        "software_stack": 41,
+        "hardware_stack": 17,
+        "world": 1291,
+        "client": 478,
+        "checksum": 3005260444
+      },
+      "baseline": {
+        "cycles": 3410209,
+        "software_stack": 220,
+        "hardware_stack": 25,
+        "world": 1291,
+        "client": 478,
+        "checksum": 0
+      }
+    },
+    {
+      "name": "factory-maximum",
+      "pages": 6,
+      "payload_bytes": 1217,
+      "c": {
+        "cycles": 314723,
+        "software_stack": 31,
+        "hardware_stack": 14,
+        "world": 1291,
+        "client": 478,
+        "checksum": 2030364566
+      },
+      "asm": {
+        "cycles": 289490,
+        "software_stack": 31,
+        "hardware_stack": 14,
+        "world": 1291,
+        "client": 478,
+        "checksum": 2030364566
+      },
+      "baseline": {
+        "cycles": 5372129,
+        "software_stack": 206,
+        "hardware_stack": 23,
+        "world": 1291,
+        "client": 478,
+        "checksum": 0
+      }
+    },
+    {
+      "name": "maximum-crate-moves",
+      "pages": 10,
+      "payload_bytes": 2251,
+      "c": {
+        "cycles": 2255738,
+        "software_stack": 37,
+        "hardware_stack": 16,
+        "world": 1291,
+        "client": 478,
+        "checksum": 4094434886
+      },
+      "asm": {
+        "cycles": 607794,
+        "software_stack": 37,
+        "hardware_stack": 15,
+        "world": 1291,
+        "client": 478,
+        "checksum": 4094434886
+      },
+      "baseline": {
+        "cycles": 8867668,
+        "software_stack": 214,
+        "hardware_stack": 24,
+        "world": 1291,
+        "client": 478,
+        "checksum": 0
+      }
+    },
+    {
+      "name": "EVENT-PLANNING_CLOSED",
+      "pages": 1,
+      "payload_bytes": 36,
+      "c": {
+        "cycles": 11909,
+        "software_stack": 33,
+        "hardware_stack": 14,
+        "world": 1291,
+        "client": 478,
+        "checksum": 4014707649
+      },
+      "asm": {
+        "cycles": 8365,
+        "software_stack": 33,
+        "hardware_stack": 14,
+        "world": 1291,
+        "client": 478,
+        "checksum": 4014707649
+      }
+    },
+    {
+      "name": "EVENT-ROUND_STARTED",
+      "pages": 1,
+      "payload_bytes": 36,
+      "c": {
+        "cycles": 11997,
+        "software_stack": 33,
+        "hardware_stack": 14,
+        "world": 1291,
+        "client": 478,
+        "checksum": 755424995
+      },
+      "asm": {
+        "cycles": 8453,
+        "software_stack": 33,
+        "hardware_stack": 14,
+        "world": 1291,
+        "client": 478,
+        "checksum": 755424995
+      }
+    },
+    {
+      "name": "EVENT-ROUND_ENDED",
+      "pages": 1,
+      "payload_bytes": 63,
+      "c": {
+        "cycles": 14782,
+        "software_stack": 41,
+        "hardware_stack": 14,
+        "world": 1291,
+        "client": 478,
+        "checksum": 3638926150
+      },
+      "asm": {
+        "cycles": 11200,
+        "software_stack": 41,
+        "hardware_stack": 14,
+        "world": 1291,
+        "client": 478,
+        "checksum": 3638926150
+      }
+    },
+    {
+      "name": "EVENT-MATCH_ENDED",
+      "pages": 1,
+      "payload_bytes": 64,
+      "c": {
+        "cycles": 14921,
+        "software_stack": 41,
+        "hardware_stack": 14,
+        "world": 1291,
+        "client": 478,
+        "checksum": 3692835947
+      },
+      "asm": {
+        "cycles": 11338,
+        "software_stack": 41,
+        "hardware_stack": 14,
+        "world": 1291,
+        "client": 478,
+        "checksum": 3692835947
+      }
+    },
+    {
+      "name": "EVENT-ORDER_EXECUTED",
+      "pages": 1,
+      "payload_bytes": 37,
+      "c": {
+        "cycles": 12170,
+        "software_stack": 36,
+        "hardware_stack": 14,
+        "world": 1291,
+        "client": 478,
+        "checksum": 0
+      },
+      "asm": {
+        "cycles": 8626,
+        "software_stack": 36,
+        "hardware_stack": 14,
+        "world": 1291,
+        "client": 478,
+        "checksum": 0
+      }
+    },
+    {
+      "name": "EVENT-ORDER_NO_OP",
+      "pages": 1,
+      "payload_bytes": 38,
+      "c": {
+        "cycles": 12259,
+        "software_stack": 36,
+        "hardware_stack": 14,
+        "world": 1291,
+        "client": 478,
+        "checksum": 0
+      },
+      "asm": {
+        "cycles": 8714,
+        "software_stack": 36,
+        "hardware_stack": 14,
+        "world": 1291,
+        "client": 478,
+        "checksum": 0
+      }
+    },
+    {
+      "name": "EVENT-ORDER_SKIPPED_DISABLED",
+      "pages": 1,
+      "payload_bytes": 37,
+      "c": {
+        "cycles": 12180,
+        "software_stack": 36,
+        "hardware_stack": 14,
+        "world": 1291,
+        "client": 478,
+        "checksum": 0
+      },
+      "asm": {
+        "cycles": 8636,
+        "software_stack": 36,
+        "hardware_stack": 14,
+        "world": 1291,
+        "client": 478,
+        "checksum": 0
+      }
+    },
+    {
+      "name": "EVENT-ROBOT_MOVED",
+      "pages": 1,
+      "payload_bytes": 41,
+      "c": {
+        "cycles": 13438,
+        "software_stack": 37,
+        "hardware_stack": 15,
+        "world": 1291,
+        "client": 478,
+        "checksum": 2454231398
+      },
+      "asm": {
+        "cycles": 9888,
+        "software_stack": 37,
+        "hardware_stack": 15,
+        "world": 1291,
+        "client": 478,
+        "checksum": 2454231398
+      }
+    },
+    {
+      "name": "EVENT-ROBOT_PUSHED",
+      "pages": 1,
+      "payload_bytes": 41,
+      "c": {
+        "cycles": 13503,
+        "software_stack": 37,
+        "hardware_stack": 15,
+        "world": 1291,
+        "client": 478,
+        "checksum": 3552832359
+      },
+      "asm": {
+        "cycles": 9953,
+        "software_stack": 37,
+        "hardware_stack": 15,
+        "world": 1291,
+        "client": 478,
+        "checksum": 3552832359
+      }
+    },
+    {
+      "name": "EVENT-MOVE_BLOCKED",
+      "pages": 1,
+      "payload_bytes": 40,
+      "c": {
+        "cycles": 12252,
+        "software_stack": 36,
+        "hardware_stack": 14,
+        "world": 1291,
+        "client": 478,
+        "checksum": 0
+      },
+      "asm": {
+        "cycles": 8705,
+        "software_stack": 36,
+        "hardware_stack": 14,
+        "world": 1291,
+        "client": 478,
+        "checksum": 0
+      }
+    },
+    {
+      "name": "EVENT-ROBOT_ROTATED",
+      "pages": 1,
+      "payload_bytes": 38,
+      "c": {
+        "cycles": 12702,
+        "software_stack": 36,
+        "hardware_stack": 14,
+        "world": 1291,
+        "client": 478,
+        "checksum": 2585875809
+      },
+      "asm": {
+        "cycles": 9156,
+        "software_stack": 36,
+        "hardware_stack": 14,
+        "world": 1291,
+        "client": 478,
+        "checksum": 2585875809
+      }
+    },
+    {
+      "name": "EVENT-CRATE_SPAWNED",
+      "pages": 1,
+      "payload_bytes": 43,
+      "c": {
+        "cycles": 13701,
+        "software_stack": 37,
+        "hardware_stack": 16,
+        "world": 1291,
+        "client": 478,
+        "checksum": 2349643623
+      },
+      "asm": {
+        "cycles": 10046,
+        "software_stack": 37,
+        "hardware_stack": 16,
+        "world": 1291,
+        "client": 478,
+        "checksum": 2349643623
+      }
+    },
+    {
+      "name": "EVENT-CRATE_PICKED_UP",
+      "pages": 1,
+      "payload_bytes": 42,
+      "c": {
+        "cycles": 14577,
+        "software_stack": 37,
+        "hardware_stack": 16,
+        "world": 1291,
+        "client": 478,
+        "checksum": 1612450918
+      },
+      "asm": {
+        "cycles": 10921,
+        "software_stack": 37,
+        "hardware_stack": 16,
+        "world": 1291,
+        "client": 478,
+        "checksum": 1612450918
+      }
+    },
+    {
+      "name": "EVENT-CRATE_DROPPED",
+      "pages": 1,
+      "payload_bytes": 42,
+      "c": {
+        "cycles": 14494,
+        "software_stack": 37,
+        "hardware_stack": 16,
+        "world": 1291,
+        "client": 478,
+        "checksum": 2349643623
+      },
+      "asm": {
+        "cycles": 10840,
+        "software_stack": 37,
+        "hardware_stack": 16,
+        "world": 1291,
+        "client": 478,
+        "checksum": 2349643623
+      }
+    },
+    {
+      "name": "EVENT-CRATE_DELIVERED",
+      "pages": 1,
+      "payload_bytes": 46,
+      "c": {
+        "cycles": 15815,
+        "software_stack": 37,
+        "hardware_stack": 17,
+        "world": 1291,
+        "client": 478,
+        "checksum": 3638926150
+      },
+      "asm": {
+        "cycles": 11282,
+        "software_stack": 37,
+        "hardware_stack": 17,
+        "world": 1291,
+        "client": 478,
+        "checksum": 3638926150
+      }
+    },
+    {
+      "name": "EVENT-CRATE_MOVED",
+      "pages": 1,
+      "payload_bytes": 43,
+      "c": {
+        "cycles": 14000,
+        "software_stack": 37,
+        "hardware_stack": 16,
+        "world": 1291,
+        "client": 478,
+        "checksum": 2036885320
+      },
+      "asm": {
+        "cycles": 10346,
+        "software_stack": 37,
+        "hardware_stack": 16,
+        "world": 1291,
+        "client": 478,
+        "checksum": 2036885320
+      }
+    },
+    {
+      "name": "EVENT-CRATE_DESTROYED",
+      "pages": 1,
+      "payload_bytes": 42,
+      "c": {
+        "cycles": 15727,
+        "software_stack": 37,
+        "hardware_stack": 15,
+        "world": 1291,
+        "client": 478,
+        "checksum": 0
+      },
+      "asm": {
+        "cycles": 12083,
+        "software_stack": 37,
+        "hardware_stack": 15,
+        "world": 1291,
+        "client": 478,
+        "checksum": 0
+      }
+    },
+    {
+      "name": "EVENT-GROUP_TOGGLED",
+      "pages": 1,
+      "payload_bytes": 40,
+      "c": {
+        "cycles": 12461,
+        "software_stack": 36,
+        "hardware_stack": 14,
+        "world": 1291,
+        "client": 478,
+        "checksum": 4121066945
+      },
+      "asm": {
+        "cycles": 8914,
+        "software_stack": 36,
+        "hardware_stack": 14,
+        "world": 1291,
+        "client": 478,
+        "checksum": 4121066945
+      }
+    },
+    {
+      "name": "EVENT-LASER_HIT",
+      "pages": 1,
+      "payload_bytes": 39,
+      "c": {
+        "cycles": 14944,
+        "software_stack": 37,
+        "hardware_stack": 17,
+        "world": 1291,
+        "client": 478,
+        "checksum": 1675520547
+      },
+      "asm": {
+        "cycles": 10521,
+        "software_stack": 37,
+        "hardware_stack": 17,
+        "world": 1291,
+        "client": 478,
+        "checksum": 1675520547
+      }
+    },
+    {
+      "name": "EVENT-ROBOT_DISABLED",
+      "pages": 1,
+      "payload_bytes": 43,
+      "c": {
+        "cycles": 13399,
+        "software_stack": 37,
+        "hardware_stack": 15,
+        "world": 1291,
+        "client": 478,
+        "checksum": 2706531777
+      },
+      "asm": {
+        "cycles": 9849,
+        "software_stack": 37,
+        "hardware_stack": 15,
+        "world": 1291,
+        "client": 478,
+        "checksum": 2706531777
+      }
+    },
+    {
+      "name": "EVENT-RESPAWN_REDIRECTED",
+      "pages": 1,
+      "payload_bytes": 40,
+      "c": {
+        "cycles": 12739,
+        "software_stack": 37,
+        "hardware_stack": 15,
+        "world": 1291,
+        "client": 478,
+        "checksum": 0
+      },
+      "asm": {
+        "cycles": 9192,
+        "software_stack": 37,
+        "hardware_stack": 15,
+        "world": 1291,
+        "client": 478,
+        "checksum": 0
+      }
+    },
+    {
+      "name": "EVENT-ROBOT_RESPAWNED",
+      "pages": 1,
+      "payload_bytes": 39,
+      "c": {
+        "cycles": 13688,
+        "software_stack": 37,
+        "hardware_stack": 15,
+        "world": 1291,
+        "client": 478,
+        "checksum": 3355818532
+      },
+      "asm": {
+        "cycles": 10141,
+        "software_stack": 37,
+        "hardware_stack": 15,
+        "world": 1291,
+        "client": 478,
+        "checksum": 3355818532
+      }
+    },
+    {
+      "name": "EVENT-TRAP_ARMED",
+      "pages": 1,
+      "payload_bytes": 42,
+      "c": {
+        "cycles": 13207,
+        "software_stack": 37,
+        "hardware_stack": 15,
+        "world": 1291,
+        "client": 478,
+        "checksum": 1445946146
+      },
+      "asm": {
+        "cycles": 9658,
+        "software_stack": 37,
+        "hardware_stack": 15,
+        "world": 1291,
+        "client": 478,
+        "checksum": 1445946146
+      }
+    },
+    {
+      "name": "EVENT-TRAP_TRIGGERED",
+      "pages": 1,
+      "payload_bytes": 40,
+      "c": {
+        "cycles": 12730,
+        "software_stack": 37,
+        "hardware_stack": 15,
+        "world": 1291,
+        "client": 478,
+        "checksum": 0
+      },
+      "asm": {
+        "cycles": 9183,
+        "software_stack": 37,
+        "hardware_stack": 15,
+        "world": 1291,
+        "client": 478,
+        "checksum": 0
+      }
+    },
+    {
+      "name": "EVENT-TRAP_HIT",
+      "pages": 1,
+      "payload_bytes": 40,
+      "c": {
+        "cycles": 14986,
+        "software_stack": 36,
+        "hardware_stack": 17,
+        "world": 1291,
+        "client": 478,
+        "checksum": 3267226627
+      },
+      "asm": {
+        "cycles": 10563,
+        "software_stack": 36,
+        "hardware_stack": 17,
+        "world": 1291,
+        "client": 478,
+        "checksum": 3267226627
+      }
+    },
+    {
+      "name": "EVENT-TURRET_CAPTURED",
+      "pages": 1,
+      "payload_bytes": 41,
+      "c": {
+        "cycles": 13016,
+        "software_stack": 37,
+        "hardware_stack": 15,
+        "world": 1291,
+        "client": 478,
+        "checksum": 2868339521
+      },
+      "asm": {
+        "cycles": 9468,
+        "software_stack": 37,
+        "hardware_stack": 15,
+        "world": 1291,
+        "client": 478,
+        "checksum": 2868339521
+      }
+    },
+    {
+      "name": "EVENT-TURRET_CHARGING",
+      "pages": 1,
+      "payload_bytes": 40,
+      "c": {
+        "cycles": 13092,
+        "software_stack": 37,
+        "hardware_stack": 15,
+        "world": 1291,
+        "client": 478,
+        "checksum": 331847362
+      },
+      "asm": {
+        "cycles": 9544,
+        "software_stack": 37,
+        "hardware_stack": 15,
+        "world": 1291,
+        "client": 478,
+        "checksum": 331847362
+      }
+    },
+    {
+      "name": "EVENT-TURRET_FIRED",
+      "pages": 1,
+      "payload_bytes": 44,
+      "c": {
+        "cycles": 15547,
+        "software_stack": 37,
+        "hardware_stack": 17,
+        "world": 1291,
+        "client": 478,
+        "checksum": 188073444
+      },
+      "asm": {
+        "cycles": 11121,
+        "software_stack": 37,
+        "hardware_stack": 17,
+        "world": 1291,
+        "client": 478,
+        "checksum": 188073444
+      }
+    },
+    {
+      "name": "EVENT-TAR_SLOWED",
+      "pages": 1,
+      "payload_bytes": 39,
+      "c": {
+        "cycles": 12572,
+        "software_stack": 37,
+        "hardware_stack": 15,
+        "world": 1291,
+        "client": 478,
+        "checksum": 0
+      },
+      "asm": {
+        "cycles": 9026,
+        "software_stack": 37,
+        "hardware_stack": 15,
+        "world": 1291,
+        "client": 478,
+        "checksum": 0
+      }
+    },
+    {
+      "name": "EVENT-SCORE_AWARDED",
+      "pages": 1,
+      "payload_bytes": 45,
+      "c": {
+        "cycles": 15607,
+        "software_stack": 36,
+        "hardware_stack": 17,
+        "world": 1291,
+        "client": 478,
+        "checksum": 2605938745
+      },
+      "asm": {
+        "cycles": 11175,
+        "software_stack": 36,
+        "hardware_stack": 17,
+        "world": 1291,
+        "client": 478,
+        "checksum": 2605938745
+      }
+    },
+    {
+      "name": "EVENT-MATCH_ENDED-target",
+      "pages": 1,
+      "payload_bytes": 64,
+      "c": {
+        "cycles": 14921,
+        "software_stack": 41,
+        "hardware_stack": 14,
+        "world": 1291,
+        "client": 478,
+        "checksum": 3692835947
+      },
+      "asm": {
+        "cycles": 11339,
+        "software_stack": 41,
+        "hardware_stack": 14,
+        "world": 1291,
+        "client": 478,
+        "checksum": 3692835947
+      }
+    },
+    {
+      "name": "EVENT-MATCH_ENDED-cap",
+      "pages": 1,
+      "payload_bytes": 64,
+      "c": {
+        "cycles": 14921,
+        "software_stack": 41,
+        "hardware_stack": 14,
+        "world": 1291,
+        "client": 478,
+        "checksum": 3692835947
+      },
+      "asm": {
+        "cycles": 11339,
+        "software_stack": 41,
+        "hardware_stack": 14,
+        "world": 1291,
+        "client": 478,
+        "checksum": 3692835947
+      }
+    },
+    {
+      "name": "EVENT-ROBOT_DISABLED-laser",
+      "pages": 1,
+      "payload_bytes": 43,
+      "c": {
+        "cycles": 13399,
+        "software_stack": 37,
+        "hardware_stack": 15,
+        "world": 1291,
+        "client": 478,
+        "checksum": 2706531777
+      },
+      "asm": {
+        "cycles": 9849,
+        "software_stack": 37,
+        "hardware_stack": 15,
+        "world": 1291,
+        "client": 478,
+        "checksum": 2706531777
+      }
+    },
+    {
+      "name": "EVENT-ROBOT_DISABLED-shunt",
+      "pages": 1,
+      "payload_bytes": 43,
+      "c": {
+        "cycles": 13399,
+        "software_stack": 37,
+        "hardware_stack": 15,
+        "world": 1291,
+        "client": 478,
+        "checksum": 312730209
+      },
+      "asm": {
+        "cycles": 9849,
+        "software_stack": 37,
+        "hardware_stack": 15,
+        "world": 1291,
+        "client": 478,
+        "checksum": 312730209
+      }
+    },
+    {
+      "name": "EVENT-ROBOT_DISABLED-neutral-trap",
+      "pages": 1,
+      "payload_bytes": 43,
+      "c": {
+        "cycles": 13399,
+        "software_stack": 37,
+        "hardware_stack": 15,
+        "world": 1291,
+        "client": 478,
+        "checksum": 312730209
+      },
+      "asm": {
+        "cycles": 9849,
+        "software_stack": 37,
+        "hardware_stack": 15,
+        "world": 1291,
+        "client": 478,
+        "checksum": 312730209
+      }
+    },
+    {
+      "name": "EVENT-ROBOT_DISABLED-owned-turret",
+      "pages": 1,
+      "payload_bytes": 43,
+      "c": {
+        "cycles": 13399,
+        "software_stack": 37,
+        "hardware_stack": 15,
+        "world": 1291,
+        "client": 478,
+        "checksum": 312730209
+      },
+      "asm": {
+        "cycles": 9849,
+        "software_stack": 37,
+        "hardware_stack": 15,
+        "world": 1291,
+        "client": 478,
+        "checksum": 312730209
+      }
+    },
+    {
+      "name": "EVENT-SCORE_AWARDED-trap-damage",
+      "pages": 1,
+      "payload_bytes": 45,
+      "c": {
+        "cycles": 15607,
+        "software_stack": 36,
+        "hardware_stack": 17,
+        "world": 1291,
+        "client": 478,
+        "checksum": 1493769926
+      },
+      "asm": {
+        "cycles": 11176,
+        "software_stack": 36,
+        "hardware_stack": 17,
+        "world": 1291,
+        "client": 478,
+        "checksum": 1493769926
+      }
+    },
+    {
+      "name": "EVENT-SCORE_AWARDED-trap-disable",
+      "pages": 1,
+      "payload_bytes": 45,
+      "c": {
+        "cycles": 15607,
+        "software_stack": 36,
+        "hardware_stack": 17,
+        "world": 1291,
+        "client": 478,
+        "checksum": 2129743595
+      },
+      "asm": {
+        "cycles": 11176,
+        "software_stack": 36,
+        "hardware_stack": 17,
+        "world": 1291,
+        "client": 478,
+        "checksum": 2129743595
+      }
+    },
+    {
+      "name": "EVENT-SCORE_AWARDED-turret-damage",
+      "pages": 1,
+      "payload_bytes": 45,
+      "c": {
+        "cycles": 15607,
+        "software_stack": 36,
+        "hardware_stack": 17,
+        "world": 1291,
+        "client": 478,
+        "checksum": 1493769926
+      },
+      "asm": {
+        "cycles": 11176,
+        "software_stack": 36,
+        "hardware_stack": 17,
+        "world": 1291,
+        "client": 478,
+        "checksum": 1493769926
+      }
+    },
+    {
+      "name": "EVENT-SCORE_AWARDED-turret-disable",
+      "pages": 1,
+      "payload_bytes": 45,
+      "c": {
+        "cycles": 15607,
+        "software_stack": 36,
+        "hardware_stack": 17,
+        "world": 1291,
+        "client": 478,
+        "checksum": 2129743595
+      },
+      "asm": {
+        "cycles": 11176,
+        "software_stack": 36,
+        "hardware_stack": 17,
+        "world": 1291,
+        "client": 478,
+        "checksum": 2129743595
+      }
+    },
+    {
+      "name": "EVENT-CRATE_DESTROYED-drop-blocked",
+      "pages": 1,
+      "payload_bytes": 42,
+      "c": {
+        "cycles": 15727,
+        "software_stack": 37,
+        "hardware_stack": 15,
+        "world": 1291,
+        "client": 478,
+        "checksum": 0
+      },
+      "asm": {
+        "cycles": 12082,
+        "software_stack": 37,
+        "hardware_stack": 15,
+        "world": 1291,
+        "client": 478,
+        "checksum": 0
+      }
+    },
+    {
+      "name": "EVENT-ORDER_NO_OP-reason0",
+      "pages": 1,
+      "payload_bytes": 38,
+      "c": {
+        "cycles": 12259,
+        "software_stack": 36,
+        "hardware_stack": 14,
+        "world": 1291,
+        "client": 478,
+        "checksum": 0
+      },
+      "asm": {
+        "cycles": 8714,
+        "software_stack": 36,
+        "hardware_stack": 14,
+        "world": 1291,
+        "client": 478,
+        "checksum": 0
+      }
+    },
+    {
+      "name": "EVENT-ORDER_NO_OP-reason1",
+      "pages": 1,
+      "payload_bytes": 38,
+      "c": {
+        "cycles": 12259,
+        "software_stack": 36,
+        "hardware_stack": 14,
+        "world": 1291,
+        "client": 478,
+        "checksum": 0
+      },
+      "asm": {
+        "cycles": 8714,
+        "software_stack": 36,
+        "hardware_stack": 14,
+        "world": 1291,
+        "client": 478,
+        "checksum": 0
+      }
+    },
+    {
+      "name": "EVENT-ORDER_NO_OP-reason2",
+      "pages": 1,
+      "payload_bytes": 38,
+      "c": {
+        "cycles": 12259,
+        "software_stack": 36,
+        "hardware_stack": 14,
+        "world": 1291,
+        "client": 478,
+        "checksum": 0
+      },
+      "asm": {
+        "cycles": 8714,
+        "software_stack": 36,
+        "hardware_stack": 14,
+        "world": 1291,
+        "client": 478,
+        "checksum": 0
+      }
+    }
+  ],
+  "real_netsio": {
+    "seconds": 4.969097769993823,
+    "history": [
+      [
+        4.642,
+        8,
+        3
+      ],
+      [
+        4.869,
+        8,
+        4
+      ],
+      [
+        4.969,
+        128,
+        4
+      ]
+    ],
+    "pages": 25,
+    "events": 90,
+    "software_stack": 42,
+    "hardware_stack": 34,
+    "ticks": [
+      13,
+      132,
+      256,
+      368,
+      500,
+      500,
+      504
+    ],
+    "status": {
+      "type": "MATCH_STATUS",
+      "ok": true,
+      "status": {
+        "match_id": "m1",
+        "phase": "FINISHED",
+        "round": 3,
+        "rounds_total": 3,
+        "target_score": 0,
+        "tick": 3,
+        "state_version": 27,
+        "player_count": 4,
+        "submitted_players": [
+          1,
+          2,
+          3,
+          4
+        ],
+        "ready_players": [
+          1,
+          2,
+          3,
+          4
+        ],
+        "winners": [
+          1,
+          2,
+          3
+        ],
+        "bots": 3,
+        "bot_players": [
+          2,
+          3,
+          4
+        ],
+        "bot_personalities": [
+          "opportunist",
+          "saboteur",
+          "hauler"
+        ]
+      }
+    }
+  }
+}

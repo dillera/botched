@@ -6,6 +6,10 @@
 #pragma once
 
 #include <cstdint>
+#include <array>
+#include <functional>
+#include <deque>
+#include <iosfwd>
 #include <map>
 #include <memory>
 #include <optional>
@@ -15,6 +19,7 @@
 #include "botched/json.hpp"
 #include "botched/match.hpp"
 #include "bot.hpp"
+#include "pool_config.hpp"
 #include "map_loader.hpp"
 
 namespace botched::server {
@@ -58,6 +63,8 @@ ParseLimits request_parse_limits();
 struct ServerConfig {
     int default_planning_seconds = 60;  // spec 2 suggestion; 0 disables the timer
     int max_matches = 16;               // simultaneously hosted matches (spec 14: deployment setting)
+    int finished_retention_seconds = 300; // configured offerings only, 1..86400
+    std::ostream* pool_log = nullptr;     // runtime lifecycle diagnostics; must outlive server
     int request_budget_per_round = kDefaultRequestBudget;  // new request ids per player per round (8-128)
     // Session tokens come from OS entropy (std::random_device, 256 bits). Set this ONLY for
     // reproducible tests/simulations: it makes tokens predictable.
@@ -65,6 +72,14 @@ struct ServerConfig {
     // Seeds the server-managed bot seats (CREATE_MATCH "bots"). Bot decisions depend only on this seed,
     // the match id, the seat and the game state, so a match with the same human inputs replays identically.
     std::uint64_t bot_seed = 1;
+    // Optional diagnostics: when set, every bot seat writes one line per round (personality, goal, chosen
+    // orders) here as the round opens. Read-only; it never affects play or determinism.
+    std::ostream* bot_log = nullptr;
+    // Full diagnostics for playtest analysis (--trace): match set-up and personalities, the board and scores at
+    // every round, each bot's complete reasoning (goal choice and why, candidate programmes and scores,
+    // blunders/fumbles), human submissions, and every event of each executed round as JSON. Read-only:
+    // it never affects play or determinism.
+    std::ostream* trace = nullptr;
     // Map resources. Empty maps_dir = resolve_maps_dir() (env, executable-relative, compile-time default).
     // load_maps=false starts with an empty registry (tests that register their own maps).
     std::string maps_dir;
@@ -74,6 +89,9 @@ struct ServerConfig {
 class GameServer {
 public:
     GameServer(ServerConfig cfg, const Clock& clock);
+
+    // Startup only: validate the entire pool before creating any room.
+    bool provision_pool(const std::vector<Offering>&, std::ostream& report, std::string& error);
 
     // Adds a map to the registry. Maps are immutable (shared_ptr<const Map>) and matches keep their own
     // reference, so registering never affects running matches. Returns false (and changes nothing)
@@ -95,6 +113,16 @@ public:
     // Direct access for hosts/tests.
     const Match* find_match(const std::string& id) const;
 
+    // Read-only orchestration seams for representation adapters. No requests are dispatched,
+    // deadlines polled, programmes submitted or game versions published by these accessors.
+    std::size_t registered_map_count() const { return maps_.size(); }
+    void visit_map_info(const std::function<void(const MapInfo&)>& visitor) const;
+    const Map* registered_map(const std::string& id) const;
+    const Map* room_map(const std::string& id) const;
+    std::string check_seat(const std::string& match, int player, const std::string& credential) const;
+    std::pair<std::uint32_t,bool> numeric_key_hint(const std::string& match,int player) const;
+    bool retained_events_available(const std::string& match,int since) const;
+
 private:
     struct Room {
         std::string id;
@@ -103,7 +131,15 @@ private:
         int planning_seconds = 0;
         int rounds = kDefaultRounds;      // fixed length, or the safety cap when target_score > 0
         int target_score = 0;             // 0 = fixed-round mode
+        std::string offering, offering_name;
+        int instance = 0;
+        std::optional<std::int64_t> finished_ms;
+        std::vector<sim::NamedBot> named_bots;
         int bots = 0;                     // seats played by the server (always the highest player ids)
+        // Adapter metadata only. Observe JSON as well as binary requests without touching H3.
+        std::array<std::optional<std::uint32_t>,4> numeric_high{};
+        std::deque<int> observed_event_versions;
+        int observed_trimmed_below = 0;
         std::vector<std::string> tokens;  // human seats only: index = player id - 1
         std::vector<std::unique_ptr<sim::Bot>> ai;  // created at start; ai[i] plays player (humans + 1 + i)
         std::unique_ptr<Match> match;
@@ -111,7 +147,7 @@ private:
     };
 
     Json list_maps_request(const Json& req);
-    Json create(const Json& req);
+    Json create(const Json& req, bool validate_only = false);
     Json join(const Json& req);
     Json start(const Json& req);
     Json submit(const Json& req);
@@ -122,16 +158,19 @@ private:
 
     Room* room_for(const Json& req, Json& err);
     bool start_room(Room& r, std::string& error);
+    void observe_history(Room& r);
     void open_planning(Room& r);
     void plan_bots(Room& r);
     void advance(Room& r);
+    Json pool_record(const Room& r) const;
+    void replenish(const std::string& id);
 
     ServerConfig cfg_;
     const Clock& clock_;
     std::map<std::string, LoadedMap> maps_;
     MapDirReport map_report_;
     std::map<std::string, Room> rooms_;
-    int next_room_ = 1;
+    std::uint64_t next_room_ = 1; // never wrap/reuse; limited to 16-character wire IDs
     std::uint64_t token_counter_ = 0;
     std::string make_token(const std::string& room, int pid);
 };

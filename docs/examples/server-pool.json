@@ -1,0 +1,35 @@
+{
+  "server": {
+    "max_concurrent_matches": 8,
+    "default_planning_seconds": 90,
+    "finished_retention_seconds": 300
+  },
+  "offerings": [
+    {
+      "id": "bots3-foundry",
+      "name": "BOTS 3",
+      "map_id": "foundry-01",
+      "player_count": 4,
+      "instances": 2,
+      "bots": [
+        {"name": "Nasty", "personality": {"hauler": 0.0, "opportunist": 0.0, "saboteur": 1.0}},
+        {"name": "Sneaky Pete", "personality": {"hauler": 0.2, "opportunist": 0.3, "saboteur": 0.5}},
+        {"name": "Bob", "personality": {"hauler": 0.9, "opportunist": 0.1, "saboteur": 0.0}}
+      ],
+      "rounds": 30,
+      "target_score": 30,
+      "planning_seconds": 90
+    },
+    {
+      "id": "human-duel",
+      "name": "HUMAN DUEL",
+      "map_id": "training-01",
+      "player_count": 2,
+      "instances": 2,
+      "bots": [],
+      "rounds": 12,
+      "target_score": 0,
+      "planning_seconds": 90
+    }
+  ]
+}

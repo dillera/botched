@@ -1,0 +1,3006 @@
+{
+  "mouse_timings": [
+    {
+      "x": 245,
+      "y": 186,
+      "host_publication_ms": 152
+    },
+    {
+      "x": 20,
+      "y": 214,
+      "host_publication_ms": 92
+    },
+    {
+      "x": 28,
+      "y": 64,
+      "host_publication_ms": 244
+    },
+    {
+      "x": 240,
+      "y": 74,
+      "host_publication_ms": 163
+    },
+    {
+      "x": 250,
+      "y": 214,
+      "host_publication_ms": 324
+    }
+  ],
+  "ui_actions": [
+    {
+      "panel": 2,
+      "inspect": 0,
+      "overview": 0,
+      "x": 1,
+      "y": 1,
+      "cx": 0,
+      "cy": 0,
+      "choice": 0,
+      "slot": 0,
+      "pending": 0,
+      "o0": 255,
+      "o1": 255,
+      "o2": 255,
+      "mx": 0,
+      "my": 0,
+      "source": 1,
+      "dispatch_ms": 420,
+      "fields": 21
+    },
+    {
+      "panel": 0,
+      "inspect": 0,
+      "overview": 0,
+      "x": 1,
+      "y": 1,
+      "cx": 0,
+      "cy": 0,
+      "choice": 0,
+      "slot": 0,
+      "pending": 0,
+      "o0": 255,
+      "o1": 255,
+      "o2": 255,
+      "mx": 0,
+      "my": 0,
+      "source": 1,
+      "dispatch_ms": 580,
+      "fields": 29
+    },
+    {
+      "panel": 1,
+      "inspect": 0,
+      "overview": 0,
+      "x": 1,
+      "y": 1,
+      "cx": 0,
+      "cy": 0,
+      "choice": 0,
+      "slot": 0,
+      "pending": 0,
+      "o0": 255,
+      "o1": 255,
+      "o2": 255,
+      "mx": 0,
+      "my": 0,
+      "source": 1,
+      "dispatch_ms": 460,
+      "fields": 23
+    },
+    {
+      "panel": 0,
+      "inspect": 0,
+      "overview": 0,
+      "x": 1,
+      "y": 1,
+      "cx": 0,
+      "cy": 0,
+      "choice": 0,
+      "slot": 0,
+      "pending": 0,
+      "o0": 255,
+      "o1": 255,
+      "o2": 255,
+      "mx": 0,
+      "my": 0,
+      "source": 1,
+      "dispatch_ms": 580,
+      "fields": 29
+    },
+    {
+      "panel": 0,
+      "inspect": 0,
+      "overview": 1,
+      "x": 1,
+      "y": 1,
+      "cx": 0,
+      "cy": 0,
+      "choice": 0,
+      "slot": 0,
+      "pending": 0,
+      "o0": 255,
+      "o1": 255,
+      "o2": 255,
+      "mx": 0,
+      "my": 0,
+      "source": 1,
+      "dispatch_ms": 520,
+      "fields": 26
+    },
+    {
+      "panel": 0,
+      "inspect": 0,
+      "overview": 0,
+      "x": 1,
+      "y": 1,
+      "cx": 0,
+      "cy": 0,
+      "choice": 0,
+      "slot": 0,
+      "pending": 0,
+      "o0": 255,
+      "o1": 255,
+      "o2": 255,
+      "mx": 0,
+      "my": 0,
+      "source": 1,
+      "dispatch_ms": 320,
+      "fields": 15
+    },
+    {
+      "panel": 0,
+      "inspect": 1,
+      "overview": 0,
+      "x": 1,
+      "y": 1,
+      "cx": 0,
+      "cy": 0,
+      "choice": 0,
+      "slot": 0,
+      "pending": 0,
+      "o0": 255,
+      "o1": 255,
+      "o2": 255,
+      "mx": 0,
+      "my": 0,
+      "source": 1,
+      "dispatch_ms": 280,
+      "fields": 14
+    },
+    {
+      "panel": 0,
+      "inspect": 1,
+      "overview": 0,
+      "x": 1,
+      "y": 2,
+      "cx": 0,
+      "cy": 0,
+      "choice": 0,
+      "slot": 0,
+      "pending": 0,
+      "o0": 255,
+      "o1": 255,
+      "o2": 255,
+      "mx": 0,
+      "my": 0,
+      "source": 1,
+      "dispatch_ms": 220,
+      "fields": 10
+    },
+    {
+      "panel": 0,
+      "inspect": 1,
+      "overview": 0,
+      "x": 1,
+      "y": 3,
+      "cx": 0,
+      "cy": 0,
+      "choice": 0,
+      "slot": 0,
+      "pending": 0,
+      "o0": 255,
+      "o1": 255,
+      "o2": 255,
+      "mx": 0,
+      "my": 0,
+      "source": 1,
+      "dispatch_ms": 260,
+      "fields": 13
+    },
+    {
+      "panel": 0,
+      "inspect": 1,
+      "overview": 0,
+      "x": 1,
+      "y": 4,
+      "cx": 0,
+      "cy": 0,
+      "choice": 0,
+      "slot": 0,
+      "pending": 0,
+      "o0": 255,
+      "o1": 255,
+      "o2": 255,
+      "mx": 0,
+      "my": 0,
+      "source": 1,
+      "dispatch_ms": 240,
+      "fields": 12
+    },
+    {
+      "panel": 0,
+      "inspect": 1,
+      "overview": 0,
+      "x": 1,
+      "y": 5,
+      "cx": 0,
+      "cy": 0,
+      "choice": 0,
+      "slot": 0,
+      "pending": 0,
+      "o0": 255,
+      "o1": 255,
+      "o2": 255,
+      "mx": 0,
+      "my": 0,
+      "source": 1,
+      "dispatch_ms": 380,
+      "fields": 19
+    },
+    {
+      "panel": 0,
+      "inspect": 1,
+      "overview": 0,
+      "x": 1,
+      "y": 6,
+      "cx": 0,
+      "cy": 0,
+      "choice": 0,
+      "slot": 0,
+      "pending": 0,
+      "o0": 255,
+      "o1": 255,
+      "o2": 255,
+      "mx": 0,
+      "my": 0,
+      "source": 1,
+      "dispatch_ms": 160,
+      "fields": 8
+    },
+    {
+      "panel": 0,
+      "inspect": 1,
+      "overview": 0,
+      "x": 1,
+      "y": 7,
+      "cx": 0,
+      "cy": 0,
+      "choice": 0,
+      "slot": 0,
+      "pending": 0,
+      "o0": 255,
+      "o1": 255,
+      "o2": 255,
+      "mx": 0,
+      "my": 0,
+      "source": 1,
+      "dispatch_ms": 260,
+      "fields": 13
+    },
+    {
+      "panel": 0,
+      "inspect": 1,
+      "overview": 0,
+      "x": 1,
+      "y": 8,
+      "cx": 0,
+      "cy": 0,
+      "choice": 0,
+      "slot": 0,
+      "pending": 0,
+      "o0": 255,
+      "o1": 255,
+      "o2": 255,
+      "mx": 0,
+      "my": 0,
+      "source": 1,
+      "dispatch_ms": 140,
+      "fields": 7
+    },
+    {
+      "panel": 0,
+      "inspect": 1,
+      "overview": 0,
+      "x": 1,
+      "y": 9,
+      "cx": 0,
+      "cy": 0,
+      "choice": 0,
+      "slot": 0,
+      "pending": 0,
+      "o0": 255,
+      "o1": 255,
+      "o2": 255,
+      "mx": 0,
+      "my": 0,
+      "source": 1,
+      "dispatch_ms": 160,
+      "fields": 8
+    },
+    {
+      "panel": 0,
+      "inspect": 1,
+      "overview": 0,
+      "x": 1,
+      "y": 10,
+      "cx": 0,
+      "cy": 1,
+      "choice": 0,
+      "slot": 0,
+      "pending": 0,
+      "o0": 255,
+      "o1": 255,
+      "o2": 255,
+      "mx": 0,
+      "my": 0,
+      "source": 1,
+      "dispatch_ms": 240,
+      "fields": 12
+    },
+    {
+      "panel": 0,
+      "inspect": 1,
+      "overview": 0,
+      "x": 1,
+      "y": 11,
+      "cx": 0,
+      "cy": 2,
+      "choice": 0,
+      "slot": 0,
+      "pending": 0,
+      "o0": 255,
+      "o1": 255,
+      "o2": 255,
+      "mx": 0,
+      "my": 0,
+      "source": 1,
+      "dispatch_ms": 260,
+      "fields": 13
+    },
+    {
+      "panel": 0,
+      "inspect": 1,
+      "overview": 0,
+      "x": 1,
+      "y": 12,
+      "cx": 0,
+      "cy": 3,
+      "choice": 0,
+      "slot": 0,
+      "pending": 0,
+      "o0": 255,
+      "o1": 255,
+      "o2": 255,
+      "mx": 0,
+      "my": 0,
+      "source": 1,
+      "dispatch_ms": 240,
+      "fields": 12
+    },
+    {
+      "panel": 0,
+      "inspect": 1,
+      "overview": 0,
+      "x": 1,
+      "y": 11,
+      "cx": 0,
+      "cy": 3,
+      "choice": 0,
+      "slot": 0,
+      "pending": 0,
+      "o0": 255,
+      "o1": 255,
+      "o2": 255,
+      "mx": 0,
+      "my": 0,
+      "source": 1,
+      "dispatch_ms": 200,
+      "fields": 9
+    },
+    {
+      "panel": 0,
+      "inspect": 1,
+      "overview": 0,
+      "x": 1,
+      "y": 10,
+      "cx": 0,
+      "cy": 3,
+      "choice": 0,
+      "slot": 0,
+      "pending": 0,
+      "o0": 255,
+      "o1": 255,
+      "o2": 255,
+      "mx": 0,
+      "my": 0,
+      "source": 1,
+      "dispatch_ms": 200,
+      "fields": 10
+    },
+    {
+      "panel": 0,
+      "inspect": 1,
+      "overview": 0,
+      "x": 1,
+      "y": 9,
+      "cx": 0,
+      "cy": 3,
+      "choice": 0,
+      "slot": 0,
+      "pending": 0,
+      "o0": 255,
+      "o1": 255,
+      "o2": 255,
+      "mx": 0,
+      "my": 0,
+      "source": 1,
+      "dispatch_ms": 200,
+      "fields": 10
+    },
+    {
+      "panel": 0,
+      "inspect": 1,
+      "overview": 0,
+      "x": 1,
+      "y": 8,
+      "cx": 0,
+      "cy": 3,
+      "choice": 0,
+      "slot": 0,
+      "pending": 0,
+      "o0": 255,
+      "o1": 255,
+      "o2": 255,
+      "mx": 0,
+      "my": 0,
+      "source": 1,
+      "dispatch_ms": 240,
+      "fields": 12
+    },
+    {
+      "panel": 0,
+      "inspect": 1,
+      "overview": 0,
+      "x": 1,
+      "y": 7,
+      "cx": 0,
+      "cy": 3,
+      "choice": 0,
+      "slot": 0,
+      "pending": 0,
+      "o0": 255,
+      "o1": 255,
+      "o2": 255,
+      "mx": 0,
+      "my": 0,
+      "source": 1,
+      "dispatch_ms": 180,
+      "fields": 9
+    },
+    {
+      "panel": 0,
+      "inspect": 1,
+      "overview": 0,
+      "x": 1,
+      "y": 6,
+      "cx": 0,
+      "cy": 3,
+      "choice": 0,
+      "slot": 0,
+      "pending": 0,
+      "o0": 255,
+      "o1": 255,
+      "o2": 255,
+      "mx": 0,
+      "my": 0,
+      "source": 1,
+      "dispatch_ms": 180,
+      "fields": 9
+    },
+    {
+      "panel": 0,
+      "inspect": 1,
+      "overview": 0,
+      "x": 1,
+      "y": 5,
+      "cx": 0,
+      "cy": 3,
+      "choice": 0,
+      "slot": 0,
+      "pending": 0,
+      "o0": 255,
+      "o1": 255,
+      "o2": 255,
+      "mx": 0,
+      "my": 0,
+      "source": 1,
+      "dispatch_ms": 360,
+      "fields": 18
+    },
+    {
+      "panel": 0,
+      "inspect": 1,
+      "overview": 0,
+      "x": 1,
+      "y": 4,
+      "cx": 0,
+      "cy": 3,
+      "choice": 0,
+      "slot": 0,
+      "pending": 0,
+      "o0": 255,
+      "o1": 255,
+      "o2": 255,
+      "mx": 0,
+      "my": 0,
+      "source": 1,
+      "dispatch_ms": 160,
+      "fields": 8
+    },
+    {
+      "panel": 0,
+      "inspect": 1,
+      "overview": 0,
+      "x": 1,
+      "y": 3,
+      "cx": 0,
+      "cy": 3,
+      "choice": 0,
+      "slot": 0,
+      "pending": 0,
+      "o0": 255,
+      "o1": 255,
+      "o2": 255,
+      "mx": 0,
+      "my": 0,
+      "source": 1,
+      "dispatch_ms": 180,
+      "fields": 9
+    },
+    {
+      "panel": 0,
+      "inspect": 1,
+      "overview": 0,
+      "x": 1,
+      "y": 2,
+      "cx": 0,
+      "cy": 2,
+      "choice": 0,
+      "slot": 0,
+      "pending": 0,
+      "o0": 255,
+      "o1": 255,
+      "o2": 255,
+      "mx": 0,
+      "my": 0,
+      "source": 1,
+      "dispatch_ms": 280,
+      "fields": 14
+    },
+    {
+      "panel": 0,
+      "inspect": 1,
+      "overview": 0,
+      "x": 1,
+      "y": 1,
+      "cx": 0,
+      "cy": 1,
+      "choice": 0,
+      "slot": 0,
+      "pending": 0,
+      "o0": 255,
+      "o1": 255,
+      "o2": 255,
+      "mx": 0,
+      "my": 0,
+      "source": 1,
+      "dispatch_ms": 260,
+      "fields": 13
+    },
+    {
+      "panel": 0,
+      "inspect": 1,
+      "overview": 0,
+      "x": 1,
+      "y": 0,
+      "cx": 0,
+      "cy": 0,
+      "choice": 0,
+      "slot": 0,
+      "pending": 0,
+      "o0": 255,
+      "o1": 255,
+      "o2": 255,
+      "mx": 0,
+      "my": 0,
+      "source": 1,
+      "dispatch_ms": 240,
+      "fields": 12
+    },
+    {
+      "panel": 0,
+      "inspect": 0,
+      "overview": 0,
+      "x": 1,
+      "y": 0,
+      "cx": 0,
+      "cy": 0,
+      "choice": 0,
+      "slot": 0,
+      "pending": 0,
+      "o0": 255,
+      "o1": 255,
+      "o2": 255,
+      "mx": 0,
+      "my": 0,
+      "source": 1,
+      "dispatch_ms": 280,
+      "fields": 13
+    },
+    {
+      "panel": 0,
+      "inspect": 0,
+      "overview": 0,
+      "x": 1,
+      "y": 0,
+      "cx": 0,
+      "cy": 0,
+      "choice": 8,
+      "slot": 0,
+      "pending": 0,
+      "o0": 8,
+      "o1": 255,
+      "o2": 255,
+      "mx": 245,
+      "my": 186,
+      "source": 2,
+      "dispatch_ms": 120,
+      "fields": 6
+    },
+    {
+      "panel": 0,
+      "inspect": 0,
+      "overview": 0,
+      "x": 1,
+      "y": 0,
+      "cx": 0,
+      "cy": 0,
+      "choice": 8,
+      "slot": 0,
+      "pending": 0,
+      "o0": 255,
+      "o1": 255,
+      "o2": 255,
+      "mx": 20,
+      "my": 214,
+      "source": 2,
+      "dispatch_ms": 60,
+      "fields": 3
+    },
+    {
+      "panel": 0,
+      "inspect": 0,
+      "overview": 0,
+      "x": 1,
+      "y": 0,
+      "cx": 0,
+      "cy": 0,
+      "choice": 8,
+      "slot": 0,
+      "pending": 0,
+      "o0": 8,
+      "o1": 255,
+      "o2": 255,
+      "mx": 20,
+      "my": 214,
+      "source": 1,
+      "dispatch_ms": 100,
+      "fields": 5
+    },
+    {
+      "panel": 0,
+      "inspect": 0,
+      "overview": 0,
+      "x": 1,
+      "y": 0,
+      "cx": 0,
+      "cy": 0,
+      "choice": 8,
+      "slot": 0,
+      "pending": 0,
+      "o0": 255,
+      "o1": 255,
+      "o2": 255,
+      "mx": 20,
+      "my": 214,
+      "source": 1,
+      "dispatch_ms": 100,
+      "fields": 5
+    },
+    {
+      "panel": 0,
+      "inspect": 1,
+      "overview": 0,
+      "x": 1,
+      "y": 1,
+      "cx": 0,
+      "cy": 0,
+      "choice": 8,
+      "slot": 0,
+      "pending": 0,
+      "o0": 255,
+      "o1": 255,
+      "o2": 255,
+      "mx": 28,
+      "my": 64,
+      "source": 2,
+      "dispatch_ms": 220,
+      "fields": 11
+    },
+    {
+      "panel": 0,
+      "inspect": 0,
+      "overview": 0,
+      "x": 1,
+      "y": 1,
+      "cx": 0,
+      "cy": 0,
+      "choice": 8,
+      "slot": 0,
+      "pending": 0,
+      "o0": 255,
+      "o1": 255,
+      "o2": 255,
+      "mx": 28,
+      "my": 64,
+      "source": 2,
+      "dispatch_ms": 280,
+      "fields": 14
+    },
+    {
+      "panel": 0,
+      "inspect": 0,
+      "overview": 0,
+      "x": 1,
+      "y": 1,
+      "cx": 0,
+      "cy": 0,
+      "choice": 0,
+      "slot": 0,
+      "pending": 0,
+      "o0": 255,
+      "o1": 255,
+      "o2": 255,
+      "mx": 28,
+      "my": 64,
+      "source": 1,
+      "dispatch_ms": 80,
+      "fields": 4
+    },
+    {
+      "panel": 0,
+      "inspect": 0,
+      "overview": 0,
+      "x": 1,
+      "y": 1,
+      "cx": 0,
+      "cy": 0,
+      "choice": 1,
+      "slot": 0,
+      "pending": 0,
+      "o0": 255,
+      "o1": 255,
+      "o2": 255,
+      "mx": 28,
+      "my": 64,
+      "source": 1,
+      "dispatch_ms": 100,
+      "fields": 5
+    },
+    {
+      "panel": 0,
+      "inspect": 0,
+      "overview": 0,
+      "x": 1,
+      "y": 1,
+      "cx": 0,
+      "cy": 0,
+      "choice": 1,
+      "slot": 0,
+      "pending": 0,
+      "o0": 1,
+      "o1": 255,
+      "o2": 255,
+      "mx": 28,
+      "my": 64,
+      "source": 1,
+      "dispatch_ms": 100,
+      "fields": 4
+    },
+    {
+      "panel": 0,
+      "inspect": 0,
+      "overview": 0,
+      "x": 1,
+      "y": 1,
+      "cx": 0,
+      "cy": 0,
+      "choice": 1,
+      "slot": 1,
+      "pending": 0,
+      "o0": 1,
+      "o1": 255,
+      "o2": 255,
+      "mx": 28,
+      "my": 64,
+      "source": 1,
+      "dispatch_ms": 120,
+      "fields": 6
+    },
+    {
+      "panel": 0,
+      "inspect": 0,
+      "overview": 0,
+      "x": 1,
+      "y": 1,
+      "cx": 0,
+      "cy": 0,
+      "choice": 7,
+      "slot": 1,
+      "pending": 0,
+      "o0": 1,
+      "o1": 7,
+      "o2": 255,
+      "mx": 28,
+      "my": 64,
+      "source": 1,
+      "dispatch_ms": 140,
+      "fields": 7
+    },
+    {
+      "panel": 0,
+      "inspect": 0,
+      "overview": 0,
+      "x": 1,
+      "y": 1,
+      "cx": 0,
+      "cy": 0,
+      "choice": 7,
+      "slot": 2,
+      "pending": 0,
+      "o0": 1,
+      "o1": 7,
+      "o2": 255,
+      "mx": 28,
+      "my": 64,
+      "source": 1,
+      "dispatch_ms": 80,
+      "fields": 4
+    },
+    {
+      "panel": 0,
+      "inspect": 0,
+      "overview": 0,
+      "x": 1,
+      "y": 1,
+      "cx": 0,
+      "cy": 0,
+      "choice": 8,
+      "slot": 2,
+      "pending": 0,
+      "o0": 1,
+      "o1": 7,
+      "o2": 8,
+      "mx": 28,
+      "my": 64,
+      "source": 1,
+      "dispatch_ms": 180,
+      "fields": 9
+    },
+    {
+      "panel": 0,
+      "inspect": 0,
+      "overview": 0,
+      "x": 1,
+      "y": 1,
+      "cx": 0,
+      "cy": 0,
+      "choice": 8,
+      "slot": 2,
+      "pending": 1,
+      "o0": 1,
+      "o1": 7,
+      "o2": 8,
+      "mx": 28,
+      "my": 64,
+      "source": 1,
+      "dispatch_ms": 260,
+      "fields": 13
+    },
+    {
+      "panel": 3,
+      "inspect": 0,
+      "overview": 0,
+      "x": 1,
+      "y": 1,
+      "cx": 0,
+      "cy": 0,
+      "choice": 8,
+      "slot": 2,
+      "pending": 0,
+      "o0": 1,
+      "o1": 7,
+      "o2": 8,
+      "mx": 28,
+      "my": 64,
+      "source": 1,
+      "dispatch_ms": 400,
+      "fields": 20
+    },
+    {
+      "panel": 3,
+      "inspect": 0,
+      "overview": 0,
+      "x": 1,
+      "y": 1,
+      "cx": 0,
+      "cy": 0,
+      "choice": 8,
+      "slot": 2,
+      "pending": 0,
+      "o0": 1,
+      "o1": 7,
+      "o2": 8,
+      "mx": 28,
+      "my": 64,
+      "source": 1,
+      "dispatch_ms": 120,
+      "fields": 6
+    },
+    {
+      "panel": 3,
+      "inspect": 0,
+      "overview": 0,
+      "x": 1,
+      "y": 1,
+      "cx": 0,
+      "cy": 0,
+      "choice": 8,
+      "slot": 2,
+      "pending": 0,
+      "o0": 1,
+      "o1": 7,
+      "o2": 8,
+      "mx": 28,
+      "my": 64,
+      "source": 1,
+      "dispatch_ms": 140,
+      "fields": 7
+    },
+    {
+      "panel": 0,
+      "inspect": 0,
+      "overview": 0,
+      "x": 1,
+      "y": 1,
+      "cx": 0,
+      "cy": 0,
+      "choice": 8,
+      "slot": 2,
+      "pending": 0,
+      "o0": 1,
+      "o1": 7,
+      "o2": 8,
+      "mx": 28,
+      "my": 64,
+      "source": 1,
+      "dispatch_ms": 480,
+      "fields": 24
+    },
+    {
+      "panel": 0,
+      "inspect": 0,
+      "overview": 0,
+      "x": 3,
+      "y": 1,
+      "cx": 0,
+      "cy": 0,
+      "choice": 1,
+      "slot": 0,
+      "pending": 0,
+      "o0": 1,
+      "o1": 255,
+      "o2": 255,
+      "mx": 240,
+      "my": 74,
+      "source": 2,
+      "dispatch_ms": 120,
+      "fields": 6
+    },
+    {
+      "panel": 0,
+      "inspect": 0,
+      "overview": 0,
+      "x": 3,
+      "y": 1,
+      "cx": 0,
+      "cy": 0,
+      "choice": 1,
+      "slot": 1,
+      "pending": 0,
+      "o0": 1,
+      "o1": 255,
+      "o2": 255,
+      "mx": 240,
+      "my": 74,
+      "source": 1,
+      "dispatch_ms": 80,
+      "fields": 4
+    },
+    {
+      "panel": 0,
+      "inspect": 0,
+      "overview": 0,
+      "x": 3,
+      "y": 1,
+      "cx": 0,
+      "cy": 0,
+      "choice": 7,
+      "slot": 1,
+      "pending": 0,
+      "o0": 1,
+      "o1": 7,
+      "o2": 255,
+      "mx": 240,
+      "my": 74,
+      "source": 1,
+      "dispatch_ms": 200,
+      "fields": 10
+    },
+    {
+      "panel": 0,
+      "inspect": 0,
+      "overview": 0,
+      "x": 3,
+      "y": 1,
+      "cx": 0,
+      "cy": 0,
+      "choice": 7,
+      "slot": 2,
+      "pending": 0,
+      "o0": 1,
+      "o1": 7,
+      "o2": 255,
+      "mx": 240,
+      "my": 74,
+      "source": 1,
+      "dispatch_ms": 120,
+      "fields": 5
+    },
+    {
+      "panel": 0,
+      "inspect": 0,
+      "overview": 0,
+      "x": 3,
+      "y": 1,
+      "cx": 0,
+      "cy": 0,
+      "choice": 8,
+      "slot": 2,
+      "pending": 0,
+      "o0": 1,
+      "o1": 7,
+      "o2": 8,
+      "mx": 240,
+      "my": 74,
+      "source": 1,
+      "dispatch_ms": 160,
+      "fields": 8
+    },
+    {
+      "panel": 0,
+      "inspect": 0,
+      "overview": 0,
+      "x": 3,
+      "y": 1,
+      "cx": 0,
+      "cy": 0,
+      "choice": 8,
+      "slot": 2,
+      "pending": 1,
+      "o0": 1,
+      "o1": 7,
+      "o2": 8,
+      "mx": 250,
+      "my": 214,
+      "source": 2,
+      "dispatch_ms": 300,
+      "fields": 15
+    },
+    {
+      "panel": 0,
+      "inspect": 0,
+      "overview": 0,
+      "x": 3,
+      "y": 1,
+      "cx": 0,
+      "cy": 0,
+      "choice": 1,
+      "slot": 0,
+      "pending": 0,
+      "o0": 1,
+      "o1": 255,
+      "o2": 255,
+      "mx": 250,
+      "my": 214,
+      "source": 1,
+      "dispatch_ms": 120,
+      "fields": 6
+    },
+    {
+      "panel": 0,
+      "inspect": 0,
+      "overview": 0,
+      "x": 3,
+      "y": 1,
+      "cx": 0,
+      "cy": 0,
+      "choice": 1,
+      "slot": 1,
+      "pending": 0,
+      "o0": 1,
+      "o1": 255,
+      "o2": 255,
+      "mx": 250,
+      "my": 214,
+      "source": 1,
+      "dispatch_ms": 80,
+      "fields": 4
+    },
+    {
+      "panel": 0,
+      "inspect": 0,
+      "overview": 0,
+      "x": 3,
+      "y": 1,
+      "cx": 0,
+      "cy": 0,
+      "choice": 7,
+      "slot": 1,
+      "pending": 0,
+      "o0": 1,
+      "o1": 7,
+      "o2": 255,
+      "mx": 250,
+      "my": 214,
+      "source": 1,
+      "dispatch_ms": 140,
+      "fields": 7
+    },
+    {
+      "panel": 0,
+      "inspect": 0,
+      "overview": 0,
+      "x": 3,
+      "y": 1,
+      "cx": 0,
+      "cy": 0,
+      "choice": 7,
+      "slot": 2,
+      "pending": 0,
+      "o0": 1,
+      "o1": 7,
+      "o2": 255,
+      "mx": 250,
+      "my": 214,
+      "source": 1,
+      "dispatch_ms": 80,
+      "fields": 4
+    },
+    {
+      "panel": 0,
+      "inspect": 0,
+      "overview": 0,
+      "x": 3,
+      "y": 1,
+      "cx": 0,
+      "cy": 0,
+      "choice": 8,
+      "slot": 2,
+      "pending": 0,
+      "o0": 1,
+      "o1": 7,
+      "o2": 8,
+      "mx": 250,
+      "my": 214,
+      "source": 1,
+      "dispatch_ms": 120,
+      "fields": 6
+    },
+    {
+      "panel": 0,
+      "inspect": 0,
+      "overview": 0,
+      "x": 3,
+      "y": 1,
+      "cx": 0,
+      "cy": 0,
+      "choice": 8,
+      "slot": 2,
+      "pending": 1,
+      "o0": 1,
+      "o1": 7,
+      "o2": 8,
+      "mx": 250,
+      "my": 214,
+      "source": 1,
+      "dispatch_ms": 360,
+      "fields": 16
+    }
+  ],
+  "chip_font_bytes": 576,
+  "chip_ground_bytes": 40960,
+  "preview_memory": [
+    {
+      "chip": {
+        "available": 439344,
+        "used": 83888,
+        "maximum": 523232,
+        "largest": 439272
+      },
+      "fast": {
+        "available": 411968,
+        "used": 104920,
+        "maximum": 516888,
+        "largest": 274560
+      },
+      "total": {
+        "available": 851312,
+        "used": 188808,
+        "maximum": 1040120,
+        "largest": 439272
+      }
+    },
+    {
+      "chip": {
+        "available": 439344,
+        "used": 83888,
+        "maximum": 523232,
+        "largest": 439272
+      },
+      "fast": {
+        "available": 411968,
+        "used": 104920,
+        "maximum": 516888,
+        "largest": 274560
+      },
+      "total": {
+        "available": 851312,
+        "used": 188808,
+        "maximum": 1040120,
+        "largest": 439272
+      }
+    },
+    {
+      "chip": {
+        "available": 439344,
+        "used": 83888,
+        "maximum": 523232,
+        "largest": 439272
+      },
+      "fast": {
+        "available": 411968,
+        "used": 104920,
+        "maximum": 516888,
+        "largest": 274560
+      },
+      "total": {
+        "available": 851312,
+        "used": 188808,
+        "maximum": 1040120,
+        "largest": 439272
+      }
+    },
+    {
+      "chip": {
+        "available": 439344,
+        "used": 83888,
+        "maximum": 523232,
+        "largest": 439272
+      },
+      "fast": {
+        "available": 411968,
+        "used": 104920,
+        "maximum": 516888,
+        "largest": 274560
+      },
+      "total": {
+        "available": 851312,
+        "used": 188808,
+        "maximum": 1040120,
+        "largest": 439272
+      }
+    },
+    {
+      "chip": {
+        "available": 439344,
+        "used": 83888,
+        "maximum": 523232,
+        "largest": 439272
+      },
+      "fast": {
+        "available": 411968,
+        "used": 104920,
+        "maximum": 516888,
+        "largest": 274560
+      },
+      "total": {
+        "available": 851312,
+        "used": 188808,
+        "maximum": 1040120,
+        "largest": 439272
+      }
+    },
+    {
+      "chip": {
+        "available": 439344,
+        "used": 83888,
+        "maximum": 523232,
+        "largest": 439272
+      },
+      "fast": {
+        "available": 411968,
+        "used": 104920,
+        "maximum": 516888,
+        "largest": 274560
+      },
+      "total": {
+        "available": 851312,
+        "used": 188808,
+        "maximum": 1040120,
+        "largest": 439272
+      }
+    },
+    {
+      "chip": {
+        "available": 439344,
+        "used": 83888,
+        "maximum": 523232,
+        "largest": 439272
+      },
+      "fast": {
+        "available": 411968,
+        "used": 104920,
+        "maximum": 516888,
+        "largest": 274560
+      },
+      "total": {
+        "available": 851312,
+        "used": 188808,
+        "maximum": 1040120,
+        "largest": 439272
+      }
+    }
+  ],
+  "preview_maps": [
+    "training-01",
+    "laserworks-01",
+    "trapworks-01",
+    "turretworks-01",
+    "tarworks-01",
+    "shuntworks-01",
+    "crossroads-01"
+  ],
+  "render": [
+    {
+      "draws": 553,
+      "dirty_cells": 2641,
+      "full_boards": 15,
+      "fields": 2487,
+      "max_fields": 63,
+      "chip_bitplanes": 81920,
+      "chip_atlas": 8960
+    }
+  ],
+  "timing_resolution_ms": 20,
+  "machine": [
+    "chipset=ocs",
+    "cpu_model=68000",
+    "cpu_type=68000",
+    "chipmem_size=1",
+    "bogomem_size=2",
+    "fastmem_size=0",
+    "z3mem_size=0",
+    "ntsc=false",
+    "immediate_blits=false",
+    "serial_port=tcp://127.0.0.1:49903",
+    "serial_direct=true",
+    "serial_hardware_ctsrts=false",
+    "filesystem2=rw,DH1:BT:/home/markf/dev/nio/fujinet-nio-workspace/external/botched/build/amiga/evidence/a500-j2uctsmt/share,0"
+  ],
+  "executable_bytes": 93256,
+  "executable_sha256": "63cf24e25cc5342542584d82b6307e1e0defff49f2f80170be86af8484426f3f",
+  "library_sha256": "7831bc08243effa5df603ef867d384921202dbd59f731cfe5b8f18941eb0b159",
+  "broker_sha256": "c97f02ffb6a13884861199c63594c7dc052c87a680f46047012755bebf43852f",
+  "memory": [
+    {
+      "stage": "entry",
+      "chip_free": 439344,
+      "expansion_free": 294592,
+      "total_free": 733936,
+      "largest_chip": 439272,
+      "largest_expansion": 279696
+    },
+    {
+      "stage": "display",
+      "chip_free": 306728,
+      "expansion_free": 292232,
+      "total_free": 598960,
+      "largest_chip": 304728,
+      "largest_expansion": 279696
+    },
+    {
+      "stage": "snapshot",
+      "chip_free": 306728,
+      "expansion_free": 276032,
+      "total_free": 582760,
+      "largest_chip": 304728,
+      "largest_expansion": 274560
+    },
+    {
+      "stage": "snapshot",
+      "chip_free": 306728,
+      "expansion_free": 275920,
+      "total_free": 582648,
+      "largest_chip": 304728,
+      "largest_expansion": 274560
+    },
+    {
+      "stage": "snapshot",
+      "chip_free": 306728,
+      "expansion_free": 275920,
+      "total_free": 582648,
+      "largest_chip": 304728,
+      "largest_expansion": 274560
+    },
+    {
+      "stage": "snapshot",
+      "chip_free": 306728,
+      "expansion_free": 275920,
+      "total_free": 582648,
+      "largest_chip": 304728,
+      "largest_expansion": 274560
+    },
+    {
+      "stage": "snapshot",
+      "chip_free": 306728,
+      "expansion_free": 275920,
+      "total_free": 582648,
+      "largest_chip": 304728,
+      "largest_expansion": 274560
+    },
+    {
+      "stage": "snapshot",
+      "chip_free": 306728,
+      "expansion_free": 275920,
+      "total_free": 582648,
+      "largest_chip": 304728,
+      "largest_expansion": 274560
+    },
+    {
+      "stage": "snapshot",
+      "chip_free": 306728,
+      "expansion_free": 275920,
+      "total_free": 582648,
+      "largest_chip": 304728,
+      "largest_expansion": 274560
+    },
+    {
+      "stage": "snapshot",
+      "chip_free": 306728,
+      "expansion_free": 275920,
+      "total_free": 582648,
+      "largest_chip": 304728,
+      "largest_expansion": 274560
+    },
+    {
+      "stage": "snapshot",
+      "chip_free": 306728,
+      "expansion_free": 275920,
+      "total_free": 582648,
+      "largest_chip": 304728,
+      "largest_expansion": 274560
+    },
+    {
+      "stage": "snapshot",
+      "chip_free": 306728,
+      "expansion_free": 275920,
+      "total_free": 582648,
+      "largest_chip": 304728,
+      "largest_expansion": 274560
+    },
+    {
+      "stage": "snapshot",
+      "chip_free": 306728,
+      "expansion_free": 275920,
+      "total_free": 582648,
+      "largest_chip": 304728,
+      "largest_expansion": 274560
+    },
+    {
+      "stage": "snapshot",
+      "chip_free": 306728,
+      "expansion_free": 275920,
+      "total_free": 582648,
+      "largest_chip": 304728,
+      "largest_expansion": 274560
+    },
+    {
+      "stage": "snapshot",
+      "chip_free": 306728,
+      "expansion_free": 275920,
+      "total_free": 582648,
+      "largest_chip": 304728,
+      "largest_expansion": 274560
+    },
+    {
+      "stage": "snapshot",
+      "chip_free": 306728,
+      "expansion_free": 275920,
+      "total_free": 582648,
+      "largest_chip": 304728,
+      "largest_expansion": 274560
+    },
+    {
+      "stage": "snapshot",
+      "chip_free": 306728,
+      "expansion_free": 275864,
+      "total_free": 582592,
+      "largest_chip": 304728,
+      "largest_expansion": 274560
+    },
+    {
+      "stage": "closed",
+      "chip_free": 439344,
+      "expansion_free": 286616,
+      "total_free": 725960,
+      "largest_chip": 439272,
+      "largest_expansion": 274560
+    }
+  ],
+  "stack": {
+    "main_measured": 1900,
+    "worker_measured": 1940,
+    "main_reserved": 16384,
+    "worker_reserved": 8192
+  },
+  "chip_installed": 524288,
+  "expansion_installed": 524288,
+  "expansion_kind": "A500 slow RAM (no true Fast RAM)",
+  "avail_before": {
+    "chip": {
+      "available": 439344,
+      "used": 83888,
+      "maximum": 523232,
+      "largest": 439272
+    },
+    "fast": {
+      "available": 419944,
+      "used": 96944,
+      "maximum": 516888,
+      "largest": 392112
+    },
+    "total": {
+      "available": 859288,
+      "used": 180832,
+      "maximum": 1040120,
+      "largest": 439272
+    }
+  },
+  "avail_after_first": {
+    "chip": {
+      "available": 439344,
+      "used": 83888,
+      "maximum": 523232,
+      "largest": 439272
+    },
+    "fast": {
+      "available": 411968,
+      "used": 104920,
+      "maximum": 516888,
+      "largest": 274560
+    },
+    "total": {
+      "available": 851312,
+      "used": 188808,
+      "maximum": 1040120,
+      "largest": 439272
+    }
+  },
+  "avail_after_second": {
+    "chip": {
+      "available": 439344,
+      "used": 83888,
+      "maximum": 523232,
+      "largest": 439272
+    },
+    "fast": {
+      "available": 411968,
+      "used": 104920,
+      "maximum": 516888,
+      "largest": 274560
+    },
+    "total": {
+      "available": 851312,
+      "used": 188808,
+      "maximum": 1040120,
+      "largest": 439272
+    }
+  },
+  "verification": [
+    "two real NIO HELLO/JOIN/MAP/SNAPSHOT instances",
+    "authoritative player positions/scores",
+    "three keyboard/mouse programmes accepted exactly once",
+    "sequential event playback",
+    "server deadline WAIT completion",
+    "raw-key quit",
+    "clean exit",
+    "all nine maps launched",
+    "four completed matches / ten rounds / 257 ordered events",
+    "1429 captured frames and exact movement/push endpoints",
+    "two real pushes and mixed Amiga/JSON +8 SHUNT",
+    "H history opened/scrolled during replay",
+    "identical post-exit available memory across nine launches"
+  ],
+  "replay": {
+    "timing_resolution_ms": 20,
+    "capture_enabled": true,
+    "events": 257,
+    "frames": 1429,
+    "rounds": [
+      {
+        "file": "client.log",
+        "round": 1,
+        "wall_ms": 22120
+      },
+      {
+        "file": "client.log",
+        "round": 2,
+        "wall_ms": 14760
+      },
+      {
+        "file": "client.log",
+        "round": 3,
+        "wall_ms": 12900
+      },
+      {
+        "file": "client2.log",
+        "round": 1,
+        "wall_ms": 22120
+      },
+      {
+        "file": "client2.log",
+        "round": 2,
+        "wall_ms": 15620
+      },
+      {
+        "file": "preview-2.log",
+        "round": 1,
+        "wall_ms": 24860
+      },
+      {
+        "file": "preview-2.log",
+        "round": 2,
+        "wall_ms": 21000
+      },
+      {
+        "file": "preview-5.log",
+        "round": 1,
+        "wall_ms": 12340
+      },
+      {
+        "file": "preview-5.log",
+        "round": 2,
+        "wall_ms": 7580
+      },
+      {
+        "file": "preview-5.log",
+        "round": 3,
+        "wall_ms": 7700
+      }
+    ],
+    "stacks": [
+      {
+        "file": "client.log",
+        "main": 1900,
+        "worker": 1940
+      },
+      {
+        "file": "client2.log",
+        "main": 2180,
+        "worker": 1940
+      },
+      {
+        "file": "preview-0.log",
+        "main": 1900,
+        "worker": 1940
+      },
+      {
+        "file": "preview-1.log",
+        "main": 1900,
+        "worker": 1932
+      },
+      {
+        "file": "preview-2.log",
+        "main": 1900,
+        "worker": 1932
+      },
+      {
+        "file": "preview-3.log",
+        "main": 1900,
+        "worker": 1932
+      },
+      {
+        "file": "preview-4.log",
+        "main": 1900,
+        "worker": 1932
+      },
+      {
+        "file": "preview-5.log",
+        "main": 1900,
+        "worker": 1932
+      },
+      {
+        "file": "preview-6.log",
+        "main": 1900,
+        "worker": 1940
+      }
+    ],
+    "minimum_free": {
+      "chip": 306728,
+      "expansion": 275864,
+      "total": 582592
+    },
+    "by_event": {
+      "1": {
+        "render_ms": {
+          "count": 20,
+          "min": 20,
+          "median": 130.0,
+          "p95": 260,
+          "max": 260
+        },
+        "first_render_ms": {
+          "count": 10,
+          "min": 240,
+          "median": 260.0,
+          "p95": 260,
+          "max": 260
+        },
+        "moving_render_ms": {
+          "count": 10,
+          "min": 20,
+          "median": 20.0,
+          "p95": 20,
+          "max": 20
+        },
+        "moving_interval_ms": {
+          "count": 10,
+          "min": 40,
+          "median": 50.0,
+          "p95": 60,
+          "max": 60
+        },
+        "wall_ms": {
+          "count": 10,
+          "min": 300,
+          "median": 320.0,
+          "p95": 340,
+          "max": 340
+        }
+      },
+      "2": {
+        "render_ms": {
+          "count": 12,
+          "min": 20,
+          "median": 200.0,
+          "p95": 500,
+          "max": 500
+        },
+        "first_render_ms": {
+          "count": 6,
+          "min": 360,
+          "median": 380.0,
+          "p95": 500,
+          "max": 500
+        },
+        "moving_render_ms": {
+          "count": 6,
+          "min": 20,
+          "median": 20.0,
+          "p95": 40,
+          "max": 40
+        },
+        "moving_interval_ms": {
+          "count": 6,
+          "min": 60,
+          "median": 60.0,
+          "p95": 60,
+          "max": 60
+        },
+        "wall_ms": {
+          "count": 6,
+          "min": 440,
+          "median": 460.0,
+          "p95": 580,
+          "max": 580
+        }
+      },
+      "3": {
+        "render_ms": {
+          "count": 20,
+          "min": 20,
+          "median": 40.0,
+          "p95": 260,
+          "max": 260
+        },
+        "first_render_ms": {
+          "count": 10,
+          "min": 60,
+          "median": 250.0,
+          "p95": 260,
+          "max": 260
+        },
+        "moving_render_ms": {
+          "count": 10,
+          "min": 20,
+          "median": 20.0,
+          "p95": 20,
+          "max": 20
+        },
+        "moving_interval_ms": {
+          "count": 10,
+          "min": 40,
+          "median": 50.0,
+          "p95": 60,
+          "max": 60
+        },
+        "wall_ms": {
+          "count": 10,
+          "min": 140,
+          "median": 320.0,
+          "p95": 320,
+          "max": 320
+        }
+      },
+      "4": {
+        "render_ms": {
+          "count": 8,
+          "min": 20,
+          "median": 120.0,
+          "p95": 280,
+          "max": 280
+        },
+        "first_render_ms": {
+          "count": 4,
+          "min": 220,
+          "median": 250.0,
+          "p95": 280,
+          "max": 280
+        },
+        "moving_render_ms": {
+          "count": 4,
+          "min": 20,
+          "median": 20.0,
+          "p95": 20,
+          "max": 20
+        },
+        "moving_interval_ms": {
+          "count": 4,
+          "min": 40,
+          "median": 60.0,
+          "p95": 60,
+          "max": 60
+        },
+        "wall_ms": {
+          "count": 4,
+          "min": 300,
+          "median": 330.0,
+          "p95": 340,
+          "max": 340
+        }
+      },
+      "5": {
+        "render_ms": {
+          "count": 192,
+          "min": 20,
+          "median": 110.0,
+          "p95": 260,
+          "max": 280
+        },
+        "first_render_ms": {
+          "count": 96,
+          "min": 200,
+          "median": 260.0,
+          "p95": 260,
+          "max": 280
+        },
+        "moving_render_ms": {
+          "count": 96,
+          "min": 20,
+          "median": 20.0,
+          "p95": 20,
+          "max": 20
+        },
+        "moving_interval_ms": {
+          "count": 96,
+          "min": 40,
+          "median": 60.0,
+          "p95": 60,
+          "max": 60
+        },
+        "wall_ms": {
+          "count": 96,
+          "min": 280,
+          "median": 320.0,
+          "p95": 340,
+          "max": 340
+        }
+      },
+      "6": {
+        "render_ms": {
+          "count": 8,
+          "min": 20,
+          "median": 140.0,
+          "p95": 260,
+          "max": 260
+        },
+        "first_render_ms": {
+          "count": 4,
+          "min": 260,
+          "median": 260.0,
+          "p95": 260,
+          "max": 260
+        },
+        "moving_render_ms": {
+          "count": 4,
+          "min": 20,
+          "median": 20.0,
+          "p95": 20,
+          "max": 20
+        },
+        "moving_interval_ms": {
+          "count": 4,
+          "min": 40,
+          "median": 60.0,
+          "p95": 60,
+          "max": 60
+        },
+        "wall_ms": {
+          "count": 4,
+          "min": 320,
+          "median": 340.0,
+          "p95": 340,
+          "max": 340
+        }
+      },
+      "7": {
+        "render_ms": {
+          "count": 4,
+          "min": 20,
+          "median": 120.0,
+          "p95": 260,
+          "max": 260
+        },
+        "first_render_ms": {
+          "count": 2,
+          "min": 220,
+          "median": 240.0,
+          "p95": 260,
+          "max": 260
+        },
+        "moving_render_ms": {
+          "count": 2,
+          "min": 20,
+          "median": 20.0,
+          "p95": 20,
+          "max": 20
+        },
+        "moving_interval_ms": {
+          "count": 2,
+          "min": 60,
+          "median": 60.0,
+          "p95": 60,
+          "max": 60
+        },
+        "wall_ms": {
+          "count": 2,
+          "min": 300,
+          "median": 320.0,
+          "p95": 340,
+          "max": 340
+        }
+      },
+      "8": {
+        "render_ms": {
+          "count": 949,
+          "min": 0,
+          "median": 40,
+          "p95": 60,
+          "max": 460
+        },
+        "first_render_ms": {
+          "count": 73,
+          "min": 40,
+          "median": 60,
+          "p95": 120,
+          "max": 260
+        },
+        "moving_render_ms": {
+          "count": 876,
+          "min": 0,
+          "median": 40.0,
+          "p95": 60,
+          "max": 460
+        },
+        "moving_interval_ms": {
+          "count": 876,
+          "min": 40,
+          "median": 80.0,
+          "p95": 100,
+          "max": 500
+        },
+        "wall_ms": {
+          "count": 73,
+          "min": 920,
+          "median": 1040,
+          "p95": 1200,
+          "max": 1700
+        }
+      },
+      "9": {
+        "render_ms": {
+          "count": 34,
+          "min": 40,
+          "median": 40.0,
+          "p95": 220,
+          "max": 260
+        },
+        "first_render_ms": {
+          "count": 2,
+          "min": 220,
+          "median": 240.0,
+          "p95": 260,
+          "max": 260
+        },
+        "moving_render_ms": {
+          "count": 32,
+          "min": 40,
+          "median": 40.0,
+          "p95": 60,
+          "max": 60
+        },
+        "moving_interval_ms": {
+          "count": 32,
+          "min": 60,
+          "median": 80.0,
+          "p95": 100,
+          "max": 100
+        },
+        "wall_ms": {
+          "count": 2,
+          "min": 1460,
+          "median": 1510.0,
+          "p95": 1560,
+          "max": 1560
+        }
+      },
+      "10": {
+        "render_ms": {
+          "count": 10,
+          "min": 20,
+          "median": 70.0,
+          "p95": 120,
+          "max": 120
+        },
+        "first_render_ms": {
+          "count": 5,
+          "min": 100,
+          "median": 100,
+          "p95": 120,
+          "max": 120
+        },
+        "moving_render_ms": {
+          "count": 5,
+          "min": 20,
+          "median": 40,
+          "p95": 40,
+          "max": 40
+        },
+        "moving_interval_ms": {
+          "count": 5,
+          "min": 60,
+          "median": 60,
+          "p95": 80,
+          "max": 80
+        },
+        "wall_ms": {
+          "count": 5,
+          "min": 180,
+          "median": 200,
+          "p95": 200,
+          "max": 200
+        }
+      },
+      "11": {
+        "render_ms": {
+          "count": 104,
+          "min": 20,
+          "median": 40.0,
+          "p95": 60,
+          "max": 60
+        },
+        "first_render_ms": {
+          "count": 26,
+          "min": 60,
+          "median": 60.0,
+          "p95": 60,
+          "max": 60
+        },
+        "moving_render_ms": {
+          "count": 78,
+          "min": 20,
+          "median": 40.0,
+          "p95": 40,
+          "max": 40
+        },
+        "moving_interval_ms": {
+          "count": 78,
+          "min": 40,
+          "median": 80.0,
+          "p95": 80,
+          "max": 80
+        },
+        "wall_ms": {
+          "count": 26,
+          "min": 240,
+          "median": 280.0,
+          "p95": 300,
+          "max": 300
+        }
+      },
+      "13": {
+        "render_ms": {
+          "count": 16,
+          "min": 20,
+          "median": 40.0,
+          "p95": 220,
+          "max": 220
+        },
+        "first_render_ms": {
+          "count": 4,
+          "min": 220,
+          "median": 220.0,
+          "p95": 220,
+          "max": 220
+        },
+        "moving_render_ms": {
+          "count": 12,
+          "min": 20,
+          "median": 40.0,
+          "p95": 40,
+          "max": 40
+        },
+        "moving_interval_ms": {
+          "count": 12,
+          "min": 40,
+          "median": 70.0,
+          "p95": 80,
+          "max": 80
+        },
+        "wall_ms": {
+          "count": 4,
+          "min": 420,
+          "median": 440.0,
+          "p95": 460,
+          "max": 460
+        }
+      },
+      "20": {
+        "render_ms": {
+          "count": 12,
+          "min": 20,
+          "median": 20.0,
+          "p95": 200,
+          "max": 200
+        },
+        "first_render_ms": {
+          "count": 2,
+          "min": 180,
+          "median": 190.0,
+          "p95": 200,
+          "max": 200
+        },
+        "moving_render_ms": {
+          "count": 10,
+          "min": 20,
+          "median": 20.0,
+          "p95": 40,
+          "max": 40
+        },
+        "moving_interval_ms": {
+          "count": 10,
+          "min": 40,
+          "median": 60.0,
+          "p95": 80,
+          "max": 80
+        },
+        "wall_ms": {
+          "count": 2,
+          "min": 500,
+          "median": 520.0,
+          "p95": 540,
+          "max": 540
+        }
+      },
+      "22": {
+        "render_ms": {
+          "count": 4,
+          "min": 20,
+          "median": 130.0,
+          "p95": 340,
+          "max": 340
+        },
+        "first_render_ms": {
+          "count": 2,
+          "min": 240,
+          "median": 290.0,
+          "p95": 340,
+          "max": 340
+        },
+        "moving_render_ms": {
+          "count": 2,
+          "min": 20,
+          "median": 20.0,
+          "p95": 20,
+          "max": 20
+        },
+        "moving_interval_ms": {
+          "count": 2,
+          "min": 40,
+          "median": 50.0,
+          "p95": 60,
+          "max": 60
+        },
+        "wall_ms": {
+          "count": 2,
+          "min": 300,
+          "median": 360.0,
+          "p95": 420,
+          "max": 420
+        }
+      },
+      "23": {
+        "render_ms": {
+          "count": 4,
+          "min": 20,
+          "median": 70.0,
+          "p95": 280,
+          "max": 280
+        },
+        "first_render_ms": {
+          "count": 2,
+          "min": 120,
+          "median": 200.0,
+          "p95": 280,
+          "max": 280
+        },
+        "moving_render_ms": {
+          "count": 2,
+          "min": 20,
+          "median": 20.0,
+          "p95": 20,
+          "max": 20
+        },
+        "moving_interval_ms": {
+          "count": 2,
+          "min": 60,
+          "median": 60.0,
+          "p95": 60,
+          "max": 60
+        },
+        "wall_ms": {
+          "count": 2,
+          "min": 200,
+          "median": 280.0,
+          "p95": 360,
+          "max": 360
+        }
+      },
+      "24": {
+        "render_ms": {
+          "count": 6,
+          "min": 80,
+          "median": 140.0,
+          "p95": 400,
+          "max": 400
+        },
+        "first_render_ms": {
+          "count": 1,
+          "min": 400,
+          "median": 400,
+          "p95": 400,
+          "max": 400
+        },
+        "moving_render_ms": {
+          "count": 5,
+          "min": 80,
+          "median": 140,
+          "p95": 140,
+          "max": 140
+        },
+        "moving_interval_ms": {
+          "count": 5,
+          "min": 100,
+          "median": 160,
+          "p95": 180,
+          "max": 180
+        },
+        "wall_ms": {
+          "count": 1,
+          "min": 1180,
+          "median": 1180,
+          "p95": 1180,
+          "max": 1180
+        }
+      },
+      "25": {
+        "render_ms": {
+          "count": 4,
+          "min": 20,
+          "median": 50.0,
+          "p95": 220,
+          "max": 220
+        },
+        "first_render_ms": {
+          "count": 1,
+          "min": 220,
+          "median": 220,
+          "p95": 220,
+          "max": 220
+        },
+        "moving_render_ms": {
+          "count": 3,
+          "min": 20,
+          "median": 40,
+          "p95": 60,
+          "max": 60
+        },
+        "moving_interval_ms": {
+          "count": 3,
+          "min": 60,
+          "median": 60,
+          "p95": 100,
+          "max": 100
+        },
+        "wall_ms": {
+          "count": 1,
+          "min": 460,
+          "median": 460,
+          "p95": 460,
+          "max": 460
+        }
+      },
+      "26": {
+        "render_ms": {
+          "count": 2,
+          "min": 20,
+          "median": 240.0,
+          "p95": 460,
+          "max": 460
+        },
+        "first_render_ms": {
+          "count": 1,
+          "min": 460,
+          "median": 460,
+          "p95": 460,
+          "max": 460
+        },
+        "moving_render_ms": {
+          "count": 1,
+          "min": 20,
+          "median": 20,
+          "p95": 20,
+          "max": 20
+        },
+        "moving_interval_ms": {
+          "count": 1,
+          "min": 60,
+          "median": 60,
+          "p95": 60,
+          "max": 60
+        },
+        "wall_ms": {
+          "count": 1,
+          "min": 540,
+          "median": 540,
+          "p95": 540,
+          "max": 540
+        }
+      },
+      "27": {
+        "render_ms": {
+          "count": 8,
+          "min": 20,
+          "median": 140.0,
+          "p95": 460,
+          "max": 460
+        },
+        "first_render_ms": {
+          "count": 4,
+          "min": 260,
+          "median": 360.0,
+          "p95": 460,
+          "max": 460
+        },
+        "moving_render_ms": {
+          "count": 4,
+          "min": 20,
+          "median": 20.0,
+          "p95": 20,
+          "max": 20
+        },
+        "moving_interval_ms": {
+          "count": 4,
+          "min": 40,
+          "median": 50.0,
+          "p95": 60,
+          "max": 60
+        },
+        "wall_ms": {
+          "count": 4,
+          "min": 320,
+          "median": 430.0,
+          "p95": 540,
+          "max": 540
+        }
+      },
+      "30": {
+        "render_ms": {
+          "count": 12,
+          "min": 20,
+          "median": 40.0,
+          "p95": 200,
+          "max": 200
+        },
+        "first_render_ms": {
+          "count": 2,
+          "min": 200,
+          "median": 200.0,
+          "p95": 200,
+          "max": 200
+        },
+        "moving_render_ms": {
+          "count": 10,
+          "min": 20,
+          "median": 40.0,
+          "p95": 40,
+          "max": 40
+        },
+        "moving_interval_ms": {
+          "count": 10,
+          "min": 60,
+          "median": 80.0,
+          "p95": 80,
+          "max": 80
+        },
+        "wall_ms": {
+          "count": 2,
+          "min": 580,
+          "median": 580.0,
+          "p95": 580,
+          "max": 580
+        }
+      }
+    },
+    "spatial_samples": [
+      {
+        "file": "client.log",
+        "ordinal": 3,
+        "event": 8,
+        "step": 0,
+        "render_ms": 60,
+        "interval_ms": 80,
+        "x": 16,
+        "y": 16
+      },
+      {
+        "file": "client.log",
+        "ordinal": 3,
+        "event": 8,
+        "step": 1,
+        "render_ms": 60,
+        "interval_ms": 100,
+        "x": 17,
+        "y": 16
+      },
+      {
+        "file": "client.log",
+        "ordinal": 3,
+        "event": 8,
+        "step": 2,
+        "render_ms": 40,
+        "interval_ms": 60,
+        "x": 18,
+        "y": 16
+      },
+      {
+        "file": "client.log",
+        "ordinal": 3,
+        "event": 8,
+        "step": 3,
+        "render_ms": 60,
+        "interval_ms": 100,
+        "x": 20,
+        "y": 16
+      },
+      {
+        "file": "client.log",
+        "ordinal": 3,
+        "event": 8,
+        "step": 4,
+        "render_ms": 60,
+        "interval_ms": 80,
+        "x": 21,
+        "y": 16
+      },
+      {
+        "file": "client.log",
+        "ordinal": 3,
+        "event": 8,
+        "step": 5,
+        "render_ms": 60,
+        "interval_ms": 80,
+        "x": 22,
+        "y": 16
+      },
+      {
+        "file": "client.log",
+        "ordinal": 3,
+        "event": 8,
+        "step": 6,
+        "render_ms": 40,
+        "interval_ms": 60,
+        "x": 24,
+        "y": 16
+      },
+      {
+        "file": "client.log",
+        "ordinal": 3,
+        "event": 8,
+        "step": 7,
+        "render_ms": 60,
+        "interval_ms": 100,
+        "x": 25,
+        "y": 16
+      },
+      {
+        "file": "client.log",
+        "ordinal": 3,
+        "event": 8,
+        "step": 8,
+        "render_ms": 60,
+        "interval_ms": 80,
+        "x": 26,
+        "y": 16
+      },
+      {
+        "file": "client.log",
+        "ordinal": 3,
+        "event": 8,
+        "step": 9,
+        "render_ms": 400,
+        "interval_ms": 420,
+        "x": 28,
+        "y": 16
+      },
+      {
+        "file": "client.log",
+        "ordinal": 3,
+        "event": 8,
+        "step": 10,
+        "render_ms": 0,
+        "interval_ms": 60,
+        "x": 29,
+        "y": 16
+      },
+      {
+        "file": "client.log",
+        "ordinal": 3,
+        "event": 8,
+        "step": 11,
+        "render_ms": 0,
+        "interval_ms": 40,
+        "x": 30,
+        "y": 16
+      },
+      {
+        "file": "client.log",
+        "ordinal": 3,
+        "event": 8,
+        "step": 12,
+        "render_ms": 0,
+        "interval_ms": 40,
+        "x": 32,
+        "y": 16
+      },
+      {
+        "file": "preview-2.log",
+        "ordinal": 30,
+        "event": 9,
+        "step": 0,
+        "render_ms": 260,
+        "interval_ms": 280,
+        "x": 80,
+        "y": 16
+      },
+      {
+        "file": "preview-2.log",
+        "ordinal": 30,
+        "event": 9,
+        "step": 1,
+        "render_ms": 60,
+        "interval_ms": 100,
+        "x": 79,
+        "y": 16
+      },
+      {
+        "file": "preview-2.log",
+        "ordinal": 30,
+        "event": 9,
+        "step": 2,
+        "render_ms": 40,
+        "interval_ms": 60,
+        "x": 78,
+        "y": 16
+      },
+      {
+        "file": "preview-2.log",
+        "ordinal": 30,
+        "event": 9,
+        "step": 3,
+        "render_ms": 60,
+        "interval_ms": 100,
+        "x": 77,
+        "y": 16
+      },
+      {
+        "file": "preview-2.log",
+        "ordinal": 30,
+        "event": 9,
+        "step": 4,
+        "render_ms": 40,
+        "interval_ms": 60,
+        "x": 76,
+        "y": 16
+      },
+      {
+        "file": "preview-2.log",
+        "ordinal": 30,
+        "event": 9,
+        "step": 5,
+        "render_ms": 40,
+        "interval_ms": 80,
+        "x": 75,
+        "y": 16
+      },
+      {
+        "file": "preview-2.log",
+        "ordinal": 30,
+        "event": 9,
+        "step": 6,
+        "render_ms": 40,
+        "interval_ms": 80,
+        "x": 74,
+        "y": 16
+      },
+      {
+        "file": "preview-2.log",
+        "ordinal": 30,
+        "event": 9,
+        "step": 7,
+        "render_ms": 60,
+        "interval_ms": 100,
+        "x": 73,
+        "y": 16
+      },
+      {
+        "file": "preview-2.log",
+        "ordinal": 30,
+        "event": 9,
+        "step": 8,
+        "render_ms": 60,
+        "interval_ms": 80,
+        "x": 72,
+        "y": 16
+      },
+      {
+        "file": "preview-2.log",
+        "ordinal": 30,
+        "event": 9,
+        "step": 9,
+        "render_ms": 40,
+        "interval_ms": 60,
+        "x": 71,
+        "y": 16
+      },
+      {
+        "file": "preview-2.log",
+        "ordinal": 30,
+        "event": 9,
+        "step": 10,
+        "render_ms": 40,
+        "interval_ms": 80,
+        "x": 70,
+        "y": 16
+      },
+      {
+        "file": "preview-2.log",
+        "ordinal": 30,
+        "event": 9,
+        "step": 11,
+        "render_ms": 60,
+        "interval_ms": 100,
+        "x": 69,
+        "y": 16
+      },
+      {
+        "file": "preview-2.log",
+        "ordinal": 30,
+        "event": 9,
+        "step": 12,
+        "render_ms": 40,
+        "interval_ms": 60,
+        "x": 68,
+        "y": 16
+      },
+      {
+        "file": "preview-2.log",
+        "ordinal": 30,
+        "event": 9,
+        "step": 13,
+        "render_ms": 60,
+        "interval_ms": 100,
+        "x": 67,
+        "y": 16
+      },
+      {
+        "file": "preview-2.log",
+        "ordinal": 30,
+        "event": 9,
+        "step": 14,
+        "render_ms": 40,
+        "interval_ms": 60,
+        "x": 66,
+        "y": 16
+      },
+      {
+        "file": "preview-2.log",
+        "ordinal": 30,
+        "event": 9,
+        "step": 15,
+        "render_ms": 40,
+        "interval_ms": 80,
+        "x": 65,
+        "y": 16
+      },
+      {
+        "file": "preview-2.log",
+        "ordinal": 30,
+        "event": 9,
+        "step": 16,
+        "render_ms": 40,
+        "interval_ms": 80,
+        "x": 64,
+        "y": 16
+      },
+      {
+        "file": "preview-5.log",
+        "ordinal": 40,
+        "event": 9,
+        "step": 0,
+        "render_ms": 220,
+        "interval_ms": 240,
+        "x": 96,
+        "y": 48
+      },
+      {
+        "file": "preview-5.log",
+        "ordinal": 40,
+        "event": 9,
+        "step": 1,
+        "render_ms": 40,
+        "interval_ms": 80,
+        "x": 96,
+        "y": 49
+      },
+      {
+        "file": "preview-5.log",
+        "ordinal": 40,
+        "event": 9,
+        "step": 2,
+        "render_ms": 40,
+        "interval_ms": 80,
+        "x": 96,
+        "y": 50
+      },
+      {
+        "file": "preview-5.log",
+        "ordinal": 40,
+        "event": 9,
+        "step": 3,
+        "render_ms": 40,
+        "interval_ms": 80,
+        "x": 96,
+        "y": 51
+      },
+      {
+        "file": "preview-5.log",
+        "ordinal": 40,
+        "event": 9,
+        "step": 4,
+        "render_ms": 40,
+        "interval_ms": 80,
+        "x": 96,
+        "y": 52
+      },
+      {
+        "file": "preview-5.log",
+        "ordinal": 40,
+        "event": 9,
+        "step": 5,
+        "render_ms": 40,
+        "interval_ms": 60,
+        "x": 96,
+        "y": 53
+      },
+      {
+        "file": "preview-5.log",
+        "ordinal": 40,
+        "event": 9,
+        "step": 6,
+        "render_ms": 40,
+        "interval_ms": 80,
+        "x": 96,
+        "y": 54
+      },
+      {
+        "file": "preview-5.log",
+        "ordinal": 40,
+        "event": 9,
+        "step": 7,
+        "render_ms": 40,
+        "interval_ms": 80,
+        "x": 96,
+        "y": 55
+      },
+      {
+        "file": "preview-5.log",
+        "ordinal": 40,
+        "event": 9,
+        "step": 8,
+        "render_ms": 40,
+        "interval_ms": 80,
+        "x": 96,
+        "y": 56
+      },
+      {
+        "file": "preview-5.log",
+        "ordinal": 40,
+        "event": 9,
+        "step": 9,
+        "render_ms": 40,
+        "interval_ms": 60,
+        "x": 96,
+        "y": 57
+      },
+      {
+        "file": "preview-5.log",
+        "ordinal": 40,
+        "event": 9,
+        "step": 10,
+        "render_ms": 40,
+        "interval_ms": 80,
+        "x": 96,
+        "y": 58
+      },
+      {
+        "file": "preview-5.log",
+        "ordinal": 40,
+        "event": 9,
+        "step": 11,
+        "render_ms": 40,
+        "interval_ms": 80,
+        "x": 96,
+        "y": 59
+      },
+      {
+        "file": "preview-5.log",
+        "ordinal": 40,
+        "event": 9,
+        "step": 12,
+        "render_ms": 40,
+        "interval_ms": 80,
+        "x": 96,
+        "y": 60
+      },
+      {
+        "file": "preview-5.log",
+        "ordinal": 40,
+        "event": 9,
+        "step": 13,
+        "render_ms": 40,
+        "interval_ms": 60,
+        "x": 96,
+        "y": 61
+      },
+      {
+        "file": "preview-5.log",
+        "ordinal": 40,
+        "event": 9,
+        "step": 14,
+        "render_ms": 40,
+        "interval_ms": 80,
+        "x": 96,
+        "y": 62
+      },
+      {
+        "file": "preview-5.log",
+        "ordinal": 40,
+        "event": 9,
+        "step": 15,
+        "render_ms": 40,
+        "interval_ms": 80,
+        "x": 96,
+        "y": 63
+      },
+      {
+        "file": "preview-5.log",
+        "ordinal": 40,
+        "event": 9,
+        "step": 16,
+        "render_ms": 40,
+        "interval_ms": 80,
+        "x": 96,
+        "y": 64
+      }
+    ],
+    "baseline_movement_ms": {
+      "source": "594941ca / a500-xemumoq6 / client.log",
+      "count": 18,
+      "min": 640,
+      "median": 800,
+      "max": 920,
+      "note": "Old ANIM ended before the terminal draw; not identical instrumentation."
+    },
+    "executable_sections": {
+      "text": 79632,
+      "data": 300,
+      "bss": 30608,
+      "resident_total": 110540
+    },
+    "caption_storage_bytes": 1764,
+    "explicit_graphics_chip_bytes": 132416
+  },
+  "evidence": "build/amiga/evidence/a500-j2uctsmt"
+}

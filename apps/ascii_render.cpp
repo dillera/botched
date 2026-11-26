@@ -383,7 +383,7 @@ std::string describe_tile(const Map& map, const Json& snap, Pos pos, int viewer)
         case Terrain::TurretPad:
             return "control pad of turret " + std::to_string(t.owner) + " - step onto it to claim the turret";
         case Terrain::TrapConsole:
-            return "control console of trap " + std::to_string(t.owner) + " - stand next to it and TOGGLE (T) to arm the trap and claim it";
+            return "control console of trap " + std::to_string(t.owner) + " - stand on or next to it and TOGGLE (T) to arm the trap and claim it";
         case Terrain::Conveyor:
             return "conveyor heading " + dname(effective_dir(t, v)) + " (group " + t.group + ", " +
                    (v.group_reversed(t.group) ? "reversed" : "normal") + ") - it will move you at the end of every tick";
